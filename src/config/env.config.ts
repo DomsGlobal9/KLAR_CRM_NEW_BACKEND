@@ -27,6 +27,10 @@ interface EnvConfig {
     CORS_ALLOWED_HEADERS: string[];
     CORS_CREDENTIALS: boolean;
     CORS_MAX_AGE: number;
+
+    // Supabase
+    SUPABASE_URL: string;
+    SUPABASE_ANON_KEY: string;
 }
 
 // Parse comma-separated strings into arrays
@@ -72,6 +76,10 @@ export const envConfig: EnvConfig = {
     CORS_ALLOWED_HEADERS: parseArray(process.env.CORS_ALLOWED_HEADERS, ['Content-Type', 'Authorization']),
     CORS_CREDENTIALS: parseBoolean(process.env.CORS_CREDENTIALS, true),
     CORS_MAX_AGE: parseNumber(process.env.CORS_MAX_AGE, 86400),
+
+    // Supabase
+    SUPABASE_URL: process.env.SUPABASE_URL || '',
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
 };
 
 // Validation
@@ -80,6 +88,8 @@ export const validateEnv = (): void => {
         'SMTP_HOST',
         'SMTP_USER',
         'SMTP_PASS',
+        'SUPABASE_URL',
+        'SUPABASE_ANON_KEY',
     ];
 
     const missingFields = requiredFields.filter(field => !process.env[field]);

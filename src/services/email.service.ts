@@ -1,4 +1,5 @@
 import { mailConfig, MailOptions } from '../config/mail.config';
+import { supabase } from '../config/supabase.config';
 
 export interface SendEmailPayload {
     to: string | string[];
@@ -8,6 +9,7 @@ export interface SendEmailPayload {
     cc?: string | string[];
     bcc?: string | string[];
     replyTo?: string;
+    requireNewLead?: boolean;
     attachments?: Array<{
         filename: string;
         path?: string;
@@ -45,17 +47,47 @@ export class EmailService {
                 throw new Error('Either text or html content is required');
             }
 
-            // Convert single recipient to array for consistency
-            const toArray = Array.isArray(payload.to) ? payload.to : [payload.to];
+            // Convert and deduplicate recipients
+            const processRecipients = (recipients: string | string[] | undefined): string[] => {
+                if (!recipients) return [];
+                const arr = Array.isArray(recipients) ? recipients : [recipients];
+                return [...new Set(arr.map(r => r.trim()))];
+            };
+
+            const uniqueTo = processRecipients(payload.to);
+            const uniqueCc = processRecipients(payload.cc);
+            const uniqueBcc = processRecipients(payload.bcc);
+
+
+            // DEFAULT: Check if lead exists before sending (requireNewLead defaults to TRUE)
+            // Only skip this check if explicitly set to false (e.g., for quotation emails)
+            const shouldCheckLead = payload.requireNewLead !== false;
+
+            if (shouldCheckLead && uniqueTo.length > 0) {
+                // Check if any of the 'to' emails exist in leads table
+                const { count, error } = await supabase
+                    .from('leads')
+                    .select('id', { count: 'exact', head: true })
+                    .in('email', uniqueTo);
+
+                if (error) {
+                    console.error('Error checking lead existence:', error);
+                } else if (count && count > 0) {
+                    return {
+                        success: false,
+                        error: 'Email blocked: This email address already exists as a lead. Only one email per new lead is allowed.'
+                    };
+                }
+            }
 
             // Send email using mail config
             const result = await mailConfig.sendMail({
-                to: toArray,
+                to: uniqueTo,
                 subject: payload.subject,
                 text: payload.text,
                 html: payload.html,
-                cc: payload.cc,
-                bcc: payload.bcc,
+                cc: uniqueCc.length > 0 ? uniqueCc : undefined,
+                bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
                 replyTo: payload.replyTo,
                 attachments: payload.attachments,
             });
