@@ -1,4 +1,3 @@
-// supabase.config.ts
 import { createClient } from '@supabase/supabase-js';
 import { envConfig, validateConfig, getCurrentSupabaseServiceRole } from './env.config';
 
@@ -127,7 +126,6 @@ export const getSupabaseConfig = () => ({
  */
 export const testAdminPrivileges = async () => {
     try {
-        // Try to query a system table or perform an admin operation
         const { data, error } = await supabaseAdmin
             .from('pg_tables')
             .select('tablename')
@@ -135,7 +133,7 @@ export const testAdminPrivileges = async () => {
 
         if (error) {
             console.warn(`⚠️ Admin privileges test: ${error.message}`);
-            // Fallback to another test
+            
             const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
             console.log(`✅ Admin client has proper privileges (can list users)`);
         } else {

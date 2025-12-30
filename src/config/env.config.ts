@@ -57,6 +57,7 @@ interface EnvConfig {
      */
     SUPABASE_URL: string;
     SUPABASE_ANON_KEY: string;
+    SUPABASE_SERVICE_ROLE: string;
 }
 
 /**
@@ -266,6 +267,7 @@ export const envConfig: EnvConfig = {
      */
     SUPABASE_URL: getSupabaseUrl(),
     SUPABASE_ANON_KEY: getSupabaseAnonKey(),
+    SUPABASE_SERVICE_ROLE: getSupabaseServiceRole(),
 };
 
 /**
