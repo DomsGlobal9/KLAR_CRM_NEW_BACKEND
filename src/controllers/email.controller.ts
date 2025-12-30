@@ -1,5 +1,12 @@
-import { Request, Response } from 'express';
-import { emailService, SendEmailPayload, BulkEmailPayload } from '../services/email.service';
+import { 
+    Request, 
+    Response 
+} from 'express';
+import { 
+    emailService, 
+    SendEmailPayload, 
+    BulkEmailPayload 
+} from '../services';
 
 export class EmailController {
     /**

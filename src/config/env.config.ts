@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import path from 'path';
 
 /**
  * Load environment variables
@@ -29,7 +28,9 @@ interface EnvConfig {
     DEFAULT_FROM_NAME: string;
     DEFAULT_REPLY_TO: string;
 
-    // CORS
+    /**
+     * CORS
+     */
     CORS_ORIGIN: string[];
     CORS_METHODS: string[];
     CORS_ALLOWED_HEADERS: string[];
@@ -37,12 +38,23 @@ interface EnvConfig {
     CORS_MAX_AGE: number;
 
     /**
-     * Supabase
+     * Supabase - All environments
      */
     SUPABASE_PRODUCTION_URL: string;
     SUPABASE_PRODUCTION_ANON_KEY: string;
+    SUPABASE_PRODUCTION_SERVICE_ROLE: string;
+
     SUPABASE_TESTING_URL: string;
     SUPABASE_TESTING_ANON_KEY: string;
+    SUPABASE_TESTING_SERVICE_ROLE: string;
+
+    SUPABASE_DEVELOPMENT_URL: string;
+    SUPABASE_DEVELOPMENT_ANON_KEY: string;
+    SUPABASE_DEVELOPMENT_SERVICE_ROLE: string;
+
+    /**
+     * Active environment Supabase config
+     */
     SUPABASE_URL: string;
     SUPABASE_ANON_KEY: string;
 }
@@ -124,14 +136,26 @@ const validateRequiredFields = (): void => {
      */
     validateRequired(process.env.SUPABASE_PRODUCTION_URL, 'SUPABASE_PRODUCTION_URL');
     validateRequired(process.env.SUPABASE_PRODUCTION_ANON_KEY, 'SUPABASE_PRODUCTION_ANON_KEY');
+    validateRequired(process.env.SUPABASE_PRODUCTION_SERVICE_ROLE, 'SUPABASE_PRODUCTION_SERVICE_ROLE');
 
     /**
-     * Supabase testing validation (required for development/test)
+     * Supabase testing validation (required for test environment)
      */
     const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
-    if (nodeEnv === 'development' || nodeEnv === 'test') {
+
+    if (nodeEnv === 'test') {
         validateRequired(process.env.SUPABASE_TESTING_URL, 'SUPABASE_TESTING_URL');
         validateRequired(process.env.SUPABASE_TESTING_ANON_KEY, 'SUPABASE_TESTING_ANON_KEY');
+        validateRequired(process.env.SUPABASE_TESTING_SERVICE_ROLE, 'SUPABASE_TESTING_SERVICE_ROLE');
+    }
+
+    /**
+     * Supabase development validation (required for development environment)
+     */
+    if (nodeEnv === 'development') {
+        validateRequired(process.env.SUPABASE_DEVELOPMENT_URL, 'SUPABASE_DEVELOPMENT_URL');
+        validateRequired(process.env.SUPABASE_DEVELOPMENT_ANON_KEY, 'SUPABASE_DEVELOPMENT_ANON_KEY');
+        validateRequired(process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE, 'SUPABASE_DEVELOPMENT_SERVICE_ROLE');
     }
 };
 
@@ -144,19 +168,43 @@ validateRequiredFields();
  * Determine which Supabase URL and key to use based on NODE_ENV
  */
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
+
 const getSupabaseUrl = (): string => {
-    if (nodeEnv === 'production') {
-        return validateRequired(process.env.SUPABASE_PRODUCTION_URL, 'SUPABASE_PRODUCTION_URL');
-    } else {
-        return validateRequired(process.env.SUPABASE_TESTING_URL, 'SUPABASE_TESTING_URL');
+    switch (nodeEnv) {
+        case 'production':
+            return validateRequired(process.env.SUPABASE_PRODUCTION_URL, 'SUPABASE_PRODUCTION_URL');
+        case 'test':
+            return validateRequired(process.env.SUPABASE_TESTING_URL, 'SUPABASE_TESTING_URL');
+        case 'development':
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_URL, 'SUPABASE_DEVELOPMENT_URL');
+        default:
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_URL, 'SUPABASE_DEVELOPMENT_URL');
     }
 };
 
 const getSupabaseAnonKey = (): string => {
-    if (nodeEnv === 'production') {
-        return validateRequired(process.env.SUPABASE_PRODUCTION_ANON_KEY, 'SUPABASE_PRODUCTION_ANON_KEY');
-    } else {
-        return validateRequired(process.env.SUPABASE_TESTING_ANON_KEY, 'SUPABASE_TESTING_ANON_KEY');
+    switch (nodeEnv) {
+        case 'production':
+            return validateRequired(process.env.SUPABASE_PRODUCTION_ANON_KEY, 'SUPABASE_PRODUCTION_ANON_KEY');
+        case 'test':
+            return validateRequired(process.env.SUPABASE_TESTING_ANON_KEY, 'SUPABASE_TESTING_ANON_KEY');
+        case 'development':
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_ANON_KEY, 'SUPABASE_DEVELOPMENT_ANON_KEY');
+        default:
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_ANON_KEY, 'SUPABASE_DEVELOPMENT_ANON_KEY');
+    }
+};
+
+const getSupabaseServiceRole = (): string => {
+    switch (nodeEnv) {
+        case 'production':
+            return validateRequired(process.env.SUPABASE_PRODUCTION_SERVICE_ROLE, 'SUPABASE_PRODUCTION_SERVICE_ROLE');
+        case 'test':
+            return validateRequired(process.env.SUPABASE_TESTING_SERVICE_ROLE, 'SUPABASE_TESTING_SERVICE_ROLE');
+        case 'development':
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE, 'SUPABASE_DEVELOPMENT_SERVICE_ROLE');
+        default:
+            return validateRequired(process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE, 'SUPABASE_DEVELOPMENT_SERVICE_ROLE');
     }
 };
 
@@ -199,15 +247,22 @@ export const envConfig: EnvConfig = {
     CORS_MAX_AGE: parseNumber(process.env.CORS_MAX_AGE, 86400),
 
     /**
-     * Supabase - Always include both sets
+     * Supabase - All environment configurations
      */
     SUPABASE_PRODUCTION_URL: validateRequired(process.env.SUPABASE_PRODUCTION_URL, 'SUPABASE_PRODUCTION_URL'),
     SUPABASE_PRODUCTION_ANON_KEY: validateRequired(process.env.SUPABASE_PRODUCTION_ANON_KEY, 'SUPABASE_PRODUCTION_ANON_KEY'),
+    SUPABASE_PRODUCTION_SERVICE_ROLE: validateRequired(process.env.SUPABASE_PRODUCTION_SERVICE_ROLE, 'SUPABASE_PRODUCTION_SERVICE_ROLE'),
+
     SUPABASE_TESTING_URL: process.env.SUPABASE_TESTING_URL || '',
     SUPABASE_TESTING_ANON_KEY: process.env.SUPABASE_TESTING_ANON_KEY || '',
+    SUPABASE_TESTING_SERVICE_ROLE: process.env.SUPABASE_TESTING_SERVICE_ROLE || '',
+
+    SUPABASE_DEVELOPMENT_URL: process.env.SUPABASE_DEVELOPMENT_URL || '',
+    SUPABASE_DEVELOPMENT_ANON_KEY: process.env.SUPABASE_DEVELOPMENT_ANON_KEY || '',
+    SUPABASE_DEVELOPMENT_SERVICE_ROLE: process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE || '',
 
     /**
-     * Dynamic Supabase config based on NODE_ENV
+     * Active Supabase config based on NODE_ENV
      */
     SUPABASE_URL: getSupabaseUrl(),
     SUPABASE_ANON_KEY: getSupabaseAnonKey(),
@@ -253,11 +308,70 @@ export const validateConfig = (): void => {
         throw new Error(`Invalid email format for DEFAULT_REPLY_TO: ${config.DEFAULT_REPLY_TO}`);
     }
 
-    console.log(`✓ Environment configuration loaded successfully for ${config.NODE_ENV} environment`);
-    console.log(`✓ Using Supabase URL: ${config.SUPABASE_URL.substring(0, 30)}...`);
+    /**
+     * Validate Supabase URLs format
+     */
+    const supabaseUrlRegex = /^https:\/\/[a-zA-Z0-9-]+\.supabase\.co$/;
+    if (!supabaseUrlRegex.test(config.SUPABASE_URL)) {
+        console.warn(`⚠️  SUPABASE_URL may not be in correct format: ${config.SUPABASE_URL}`);
+        console.warn('Expected format: https://[project-id].supabase.co');
+    }
+
+    /**
+     * Validate Supabase keys format (JWT tokens)
+     */
+    const supabaseKeyRegex = /^eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\..+/;
+    if (!supabaseKeyRegex.test(config.SUPABASE_ANON_KEY)) {
+        console.warn(`⚠️  SUPABASE_ANON_KEY may not be in correct format. Expected JWT token starting with 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'`);
+    }
 };
 
 /**
  * Run validation on import
  */
 validateConfig();
+
+/**
+ * Helper function to get service role key for the current environment
+ */
+export const getCurrentSupabaseServiceRole = (): string => {
+    return getSupabaseServiceRole();
+};
+
+/**
+ * Helper function to log current environment info
+ */
+export const logEnvironmentInfo = (): void => {
+    console.log(`🚀 Environment: ${envConfig.NODE_ENV}`);
+    // console.log(`🔗 Supabase URL: ${envConfig.SUPABASE_URL.substring(0, 30)}...`);
+    // console.log(`🔑 Supabase Key: ${envConfig.SUPABASE_ANON_KEY.substring(0, 20)}...`);
+    console.log(`🌐 CORS Origin: ${envConfig.CORS_ORIGIN.join(', ')}`);
+};
+
+/**
+ * Helper function to check if in production
+ */
+export const isProduction = (): boolean => {
+    return envConfig.NODE_ENV === 'production';
+};
+
+/**
+ * Helper function to check if in development
+ */
+export const isDevelopment = (): boolean => {
+    return envConfig.NODE_ENV === 'development';
+};
+
+/**
+ * Helper function to check if in test
+ */
+export const isTest = (): boolean => {
+    return envConfig.NODE_ENV === 'test';
+};
+
+/**
+ * Auto-log environment info on import
+ */
+if (isDevelopment()) {
+    logEnvironmentInfo();
+}
