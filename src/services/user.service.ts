@@ -1,5 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { supabaseAdmin } from '../config';
+import { userSyncService } from './user-sync.service';
 import { userRepository } from '../repositories/user.repository';
 import {
     User,
@@ -8,9 +10,16 @@ import {
     ChangePasswordInput,
     AdminRMAssignment
 } from '../models/user.model';
+import {
+    formatAuthUser,
+    getUserById,
+    getUserByEmail,
+    getUserByUsername,
+    createAuditLog,
+} from '../helpers';
 
 export const userService = {
-    
+
     /**
      * Password handling
      * @param password 
@@ -31,9 +40,10 @@ export const userService = {
      * @param createdBy 
      * @returns 
      */
-    async createUser(userData: any, createdBy?: string): Promise<User> {
+    async createUser(userData: any, createdBy?: string): Promise<any> {
         if (createdBy) {
-            const creator = await userRepository.getUserById(createdBy);
+            // Get creator info from Supabase Auth
+            const creator = await getUserById(createdBy);
             if (!creator) throw new Error('Creator not found');
 
             if (creator.role === 'rm') throw new Error('RMs cannot create users');
@@ -43,52 +53,65 @@ export const userService = {
         }
 
         /**
-         * Check if username or email already exists
-         */ 
-        const existingUser = await userRepository.getUserByEmail(userData.email);
+         * Check if email already exists in Supabase Auth
+         */
+        const existingUser = await getUserByEmail(userData.email);
         if (existingUser) throw new Error('Email already registered');
 
-        const existingUsername = await userRepository.getUserByUsername(userData.username);
-        if (existingUsername) throw new Error('Username already taken');
-
         /**
-         * Hash password
+         * Create user directly in Supabase Auth with all metadata
          */
-        const passwordHash = await this.hashPassword(userData.password);
-
-        /**
-         * Create user
-         */
-        const user = await userRepository.createUser({
-            ...userData,
-            password_hash: passwordHash,
-            created_by: createdBy
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: userData.email,
+            password: userData.password,
+            email_confirm: true, // Auto-confirm
+            user_metadata: {
+                username: userData.username,
+                role: userData.role,
+                full_name: userData.full_name || null,
+                phone: userData.phone || null,
+                profile_image_url: userData.profile_image_url || null,
+                assigned_under: userData.assigned_under || null,
+                department: userData.department || null,
+                notes: userData.notes || null,
+                status: 'active',
+                assigned_leads_count: 0,
+                created_by: createdBy || null,
+                last_login_at: null
+            }
         });
-        console.log("After user creation data we get", user);
+
+        if (authError) {
+            console.error('Failed to create user in Auth:', authError);
+            throw new Error(`Failed to create user: ${authError.message}`);
+        }
+
+        console.log(`✅ User created in Supabase Auth: ${userData.email}`);
 
         /**
-         * Log the action
+         * Create audit log using the new Auth user ID
          */
-        await userRepository.createAuditLog({
+        await createAuditLog({
             user_id: createdBy,
             action: 'USER_CREATED',
             entity_type: 'user',
-            entity_id: user.id,
+            entity_id: authUser.user.id,
             new_values: {
-                id: user.id,
-                email: user.email,
-                role: user.role,
+                id: authUser.user.id,
+                email: userData.email,
+                role: userData.role,
                 created_by: createdBy
             }
         });
 
-        return user;
-    },
-
-    async getUserProfile(id: string): Promise<User> {
-        const user = await userRepository.getUserById(id);
-        if (!user) throw new Error('User not found');
-        return user;
+        return {
+            id: authUser.user.id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role,
+            status: 'active',
+            ...authUser.user.user_metadata
+        };
     },
 
     async updateUserProfile(id: string, updates: UpdateUserInput, updatedBy?: string): Promise<User> {
@@ -282,7 +305,7 @@ export const userService = {
                         throw new Error('Admins can only view admin and RM users');
                     }
                     break;
-                
+
                 // Can only see themselves
                 case 'rm':
                     if (requesterId) {

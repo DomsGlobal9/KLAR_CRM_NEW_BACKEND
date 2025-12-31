@@ -340,24 +340,20 @@ export const userRepository = {
      * @returns 
      */
     async getSuperadminCount(): Promise<number> {
-        console.log("Entered into Repository for superadmin count");
-
         try {
-            const { count, error } = await supabaseAdmin
-                .from('users')
-                .select('*', { count: 'exact', head: true })
-                .eq('role', 'superadmin')
-                .eq('status', 'active');
-
-            console.log("THe count we get from repository", count);
-            console.log("The error we get", error);
-
+            const { data: users, error } = await supabaseAdmin.auth.admin.listUsers();
             if (error) {
-                console.error("Supabase error:", error);
+                console.error('Error listing users:', error);
                 throw error;
             }
 
-            return count || 0;
+            const superadminCount = users?.users?.filter(user =>
+                user.user_metadata?.role === 'superadmin' &&
+                user.user_metadata?.status === 'active'
+            ).length || 0;
+
+            console.log("Superadmin count:", superadminCount);
+            return superadminCount;
         } catch (error) {
             console.error("Error in getSuperadminCount:", error);
             throw error;

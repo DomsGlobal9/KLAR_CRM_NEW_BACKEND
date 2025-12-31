@@ -3,8 +3,10 @@ import { authController } from '../controllers';
 
 const router = express.Router();
 
-// Public routes (no authentication required)
-router.post('/register/superadmin', authController.registerSuperAdmin);
+/**
+ * Public routes (no auth required)
+ */
+router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.post('/refresh-token', authController.refreshToken);
