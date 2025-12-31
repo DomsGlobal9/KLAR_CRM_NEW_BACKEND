@@ -1,2 +1,2 @@
-export { authMiddleware } from "./auth.middleware";
+export { AuthRequest, authenticate, requireRole } from "./auth.middleware";
 export { roleMiddleware } from "./role.middleware";
