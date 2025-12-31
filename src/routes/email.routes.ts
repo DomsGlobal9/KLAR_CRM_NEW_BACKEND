@@ -8,14 +8,14 @@ const router = Router();
  * @desc    Health check for email service
  * @access  Public
  */
-router.get('/email/health', emailController.healthCheck.bind(emailController));
+router.get('/health', emailController.healthCheck.bind(emailController));
 
 /**
  * @route   GET /api/email/status
  * @desc    Get email service status
  * @access  Public
  */
-router.get('/email/status', emailController.getServiceStatus.bind(emailController));
+router.get('/status', emailController.getServiceStatus.bind(emailController));
 
 /**
  * @route   POST /api/email/send
@@ -23,7 +23,7 @@ router.get('/email/status', emailController.getServiceStatus.bind(emailControlle
  * @access  Public
  * @body    {SendEmailPayload}
  */
-router.post('/email/send', emailController.sendEmail.bind(emailController));
+router.post('/send', emailController.sendEmail.bind(emailController));
 
 /**
  * @route   POST /api/email/send-bulk
@@ -31,7 +31,7 @@ router.post('/email/send', emailController.sendEmail.bind(emailController));
  * @access  Public
  * @body    {BulkEmailPayload}
  */
-router.post('/email/send-bulk', emailController.sendBulkEmails.bind(emailController));
+router.post('/send-bulk', emailController.sendBulkEmails.bind(emailController));
 
 /**
  * @route   POST /api/email/send-test
@@ -39,7 +39,7 @@ router.post('/email/send-bulk', emailController.sendBulkEmails.bind(emailControl
  * @access  Public
  * @body    {to?: string}
  */
-router.post('/email/send-test', emailController.sendTestEmail.bind(emailController));
+router.post('/send-test', emailController.sendTestEmail.bind(emailController));
 
 /**
  * @route   POST /api/email/validate
@@ -47,6 +47,6 @@ router.post('/email/send-test', emailController.sendTestEmail.bind(emailControll
  * @access  Public
  * @body    {emails: string | string[]}
  */
-router.post('/email/validate', emailController.validateEmails.bind(emailController));
+router.post('/validate', emailController.validateEmails.bind(emailController));
 
 export default router;

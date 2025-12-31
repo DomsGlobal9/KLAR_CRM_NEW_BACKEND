@@ -377,3 +377,18 @@ export const isTest = (): boolean => {
 if (isDevelopment()) {
     logEnvironmentInfo();
 }
+
+export function validateEnv() {
+  const required = [
+    'SMTP_HOST',
+    'SMTP_PORT',
+    'SMTP_USER',
+    'SMTP_PASS'
+  ];
+
+  for (const key of required) {
+    if (!process.env[key]) {
+      throw new Error(`Missing env variable: ${key}`);
+    }
+  }
+}
