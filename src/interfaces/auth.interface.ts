@@ -3,6 +3,7 @@ export interface RegisterPayload {
     email: string;
     password: string;
     role_id?: string;
+    team_id?: string;
     full_name?: string;
     phone?: string;
     department?: string;

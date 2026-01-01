@@ -13,7 +13,7 @@ export const authController = {
      */
     async register(req: AuthRequest, res: Response) {
         try {
-            const result = await AuthService.register(req.body, req.user);
+            const result = await AuthService.register(req.body);
 
             await createAuditLog({
                 user_id: req.user?.id || result.data.user?.id,
@@ -22,6 +22,7 @@ export const authController = {
                 entity_id: result.data.user?.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
+                details: 'Initial superadmin created',
             });
 
             res.status(201).json({

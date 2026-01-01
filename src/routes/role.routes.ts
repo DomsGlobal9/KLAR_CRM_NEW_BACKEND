@@ -1,6 +1,5 @@
 import express from 'express';
 import { roleController } from '../controllers';
-import { authenticate, requireRole } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
@@ -11,21 +10,21 @@ const router = express.Router();
 /**
  * Create a new role
  */
-router.post('/', authenticate, requireRole('superadmin'), roleController.createRole);
+router.post('/', roleController.createRole);
 
 /**
  * Get all roles
  */
-router.get('/', authenticate, requireRole('superadmin'), roleController.getAllRoles);
+router.get('/', roleController.getAllRoles);
 
 /**
  * Get a role by ID
  */
-router.put('/:id', authenticate, requireRole('superadmin'), roleController.updateRole);
+router.put('/:id', roleController.updateRole);
 
-/**
+/*
  * Delete a role by ID
  */
-router.delete('/:id', authenticate, requireRole('superadmin'), roleController.deleteRole);
+router.delete('/:id', roleController.deleteRole);
 
 export default router;

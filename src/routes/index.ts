@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import emailRoutes from './email.routes';
-// import userAuthRoutes from './user.routes';
+import userRoutes from './user.routes';
 import authRoutes from './auth.routes';
 import rolesRoutes from './role.routes';
+import teamRoutes from './team.route';
+import teamMemberRoutes from './teamMembers.routes';
 
 const router = Router();
 
@@ -11,7 +13,9 @@ const router = Router();
  */
 router.use('/email', emailRoutes);
 router.use('/role', rolesRoutes);
-// router.use('/auth', userAuthRoutes);
+router.use('/user', userRoutes);
+router.use('/team', teamRoutes);
+router.use('/team-member', teamMemberRoutes);
 router.use(authRoutes);
 
 export default router;

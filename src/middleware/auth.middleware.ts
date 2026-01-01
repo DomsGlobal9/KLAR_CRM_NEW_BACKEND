@@ -11,6 +11,7 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Access token required' });
@@ -19,6 +20,8 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   const token = authHeader.split(' ')[1];
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  console.log("From auth middleware we get", {user, error});
 
   if (error || !user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
@@ -29,7 +32,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   req.user = {
     id: user.id,
     email: user.email!,
-    role: metadata.role || 'user',
+    role: metadata.role_name,
     ...metadata
   };
 

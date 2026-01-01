@@ -1,6 +1,6 @@
 export { AuthService } from "./auth.service";
 export { userService } from "./user.service";
-export { userSyncService } from "./user-sync.service";
+export { teamMemberService } from "./teamMember.service";
 export { 
     SendEmailPayload,
     EmailResponse,

@@ -8,7 +8,6 @@ export const roleRepository = {
             .from('roles')
             .select('*')
             .order('name');
-
         if (error) throw error;
         return data ?? [];
     },
@@ -19,7 +18,6 @@ export const roleRepository = {
             .select('*')
             .eq('name', name)
             .single();
-
         if (error && error.code !== 'PGRST116') throw error;
         return data ?? null;
     },
@@ -30,7 +28,6 @@ export const roleRepository = {
             .insert(payload)
             .select()
             .single();
-
         if (error) throw error;
         return data;
     },
@@ -42,7 +39,6 @@ export const roleRepository = {
             .eq('id', id)
             .select()
             .single();
-
         if (error) throw error;
         return data;
     },
@@ -53,7 +49,6 @@ export const roleRepository = {
             .select('assigned_people, is_system')
             .eq('id', id)
             .single();
-
         if (!role) throw new Error('Role not found');
         if (role.is_system) throw new Error('Cannot delete system roles');
         if (role.assigned_people > 0)
@@ -63,38 +58,39 @@ export const roleRepository = {
             .from('roles')
             .delete()
             .eq('id', id);
-
         if (error) throw error;
     },
 
     async getRoleByIdOrName(identifier: { id?: string; name?: string }) {
-
         let query = supabaseAdmin.from('roles').select('*');
-
         if (identifier.id) query = query.eq('id', identifier.id);
         if (identifier.name) query = query.eq('name', identifier.name);
-
         const { data, error } = await query.single();
-
         if (error) throw new Error('Invalid role');
         return data;
     },
 
     async incrementAssignedCount(roleId: string) {
         const { error } = await supabaseAdmin
-            .from('roles')
-            .update({ assigned_people: supabaseAdmin.rpc('increment') })
-            .eq('id', roleId);
+            .rpc('increment_assigned_people', { p_role_id: roleId });
 
         if (error) throw error;
     },
 
     async decrementAssignedCount(roleId: string) {
         const { error } = await supabaseAdmin
-            .from('roles')
-            .update({ assigned_people: supabaseAdmin.rpc('decrement') })
-            .eq('id', roleId);
+            .rpc('decrement_assigned_people', { p_role_id: roleId });
 
         if (error) throw error;
+    },
+
+    async getById(id: string): Promise<Role | null> {
+        const { data, error } = await supabaseAdmin
+            .from('roles')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        return data ?? null;
     },
 };

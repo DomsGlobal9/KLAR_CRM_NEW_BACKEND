@@ -1,7 +1,6 @@
 import { roleRepository } from '../repositories/role.repository';
 
 export const roleService = {
-
     async getAllRoles() {
         return roleRepository.getAll();
     },
@@ -9,19 +8,16 @@ export const roleService = {
     async createRole(
         name: string,
         description: string | null,
-        permissions: any,
-        userId: string
+        permissions: any
     ) {
         const existing = await roleRepository.getByName(name);
         if (existing) {
             throw new Error('Role with this name already exists');
         }
-
         return roleRepository.create({
             name,
             description,
             permissions,
-            created_by: userId,
             is_system: false
         });
     },
@@ -36,7 +32,6 @@ export const roleService = {
                 throw new Error('Another role with this name already exists');
             }
         }
-
         return roleRepository.update(id, updates);
     },
 

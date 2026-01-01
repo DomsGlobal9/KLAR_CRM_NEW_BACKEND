@@ -1,4 +1,4 @@
-import { AuthRepository, roleRepository } from '../repositories';
+import { AuthRepository, roleRepository, teamRepository } from '../repositories';
 import { getAllowedRoles } from '../utils';
 import { RegisterPayload } from '../interfaces';
 
@@ -10,50 +10,45 @@ export const AuthService = {
      * @param requester 
      * @returns 
      */
-    async register(payload: RegisterPayload, requester?: any) {
-        if (!payload.role_id) {
-            throw new Error('Role is required');
+    async register(payload: RegisterPayload) {
+        const { email, password, username, full_name, phone } = payload;
+
+        if (!email || !password || !username) {
+            throw new Error('Email, password, and username are required');
         }
 
-        const role = await roleRepository.getRoleByIdOrName({
-            id: payload.role_id
-        });
+        const { data: existingUsers } = await AuthRepository.listUsers();
+        if (existingUsers.users.length > 0) {
+            throw new Error('Registration is closed. Superadmin already exists.');
+        }
 
-        const { data } = await AuthRepository.listUsers();
+        const role = await roleRepository.getRoleByIdOrName({ name: 'superadmin' });
+        if (!role) {
+            throw new Error('Superadmin role not found in database');
+        }
 
-        if (data.users.some(u => u.email === payload.email)) {
+        if (role.name !== 'superadmin') {
+            throw new Error('Only superadmin can be registered');
+        }
+
+        if (existingUsers.users.some((u: any) => u.email === email)) {
             throw new Error('Email already registered');
         }
 
-        if (
-            payload.username &&
-            data.users.some(u => u.user_metadata?.username === payload.username)
-        ) {
-            throw new Error('Username already taken');
-        }
-
-        if (
-            role.name === 'superadmin' &&
-            data.users.some(u => u.user_metadata?.role_id === role.id)
-        ) {
-            throw new Error('Superadmin already exists');
-        }
-
         const result = await AuthRepository.createUser({
-            email: payload.email,
-            password: payload.password,
+            email,
+            password,
             email_confirm: true,
             user_metadata: {
-                username: payload.username,
+                username,
                 role_id: role.id,
-                role_name: role.name,
-                full_name: payload.full_name ?? null,
-                phone: payload.phone ?? null,
-                department: payload.department ?? null,
-                notes: payload.notes ?? null,
+                role_name: 'superadmin',
+                team_id: null,
+                full_name: full_name ?? null,
+                phone: phone ?? null,
                 status: 'active',
-                created_by: requester?.id ?? null,
-                assigned_under: role.name === 'rm' ? requester?.id : null,
+                created_by: null,
+                assigned_under: null,
                 assigned_leads_count: 0,
                 last_login_at: null
             }
@@ -63,7 +58,6 @@ export const AuthService = {
 
         return result;
     },
-
 
     /**
      * Login user
@@ -92,4 +86,6 @@ export const AuthService = {
 
         return true;
     },
+
+    
 };
