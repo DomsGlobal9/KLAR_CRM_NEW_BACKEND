@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config';
 import { OTP, CreateOTPPayload } from '../interfaces/otp.interface';
+import { OTPGenerator } from '../utils';
 
 export const otpRepository = {
     /**
@@ -46,7 +47,7 @@ export const otpRepository = {
      * Verify OTP
      */
     async verify(email: string, otp_code: string, type: OTP['type']): Promise<OTP> {
-        
+
         // First find the OTP
         const otp = await this.findByEmailAndType(email, type);
 
@@ -66,7 +67,7 @@ export const otpRepository = {
 
         // Check if OTP matches
         if (otp.otp_code !== otp_code.toUpperCase()) {
-            
+
             // Increment attempts
             await supabaseAdmin
                 .from('otps')
@@ -119,8 +120,6 @@ export const otpRepository = {
      * Resend OTP (invalidate old and create new)
      */
     async resend(email: string, type: OTP['type']): Promise<OTP> {
-        
-        // Delete any existing unverified OTPs for this email
         await supabaseAdmin
             .from('otps')
             .delete()
@@ -128,9 +127,8 @@ export const otpRepository = {
             .eq('type', type)
             .eq('verified', false);
 
-        // Create new OTP
-        const otp_code = require('../utils/otp.generator').OTPGenerator.generate();
-        const expires_at = require('../utils/otp.generator').OTPGenerator.getExpirationTime();
+        const otp_code = OTPGenerator.generate();
+        const expires_at = OTPGenerator.getExpirationTime();
 
         return this.create({ email, type, otp_code, expires_at });
     }

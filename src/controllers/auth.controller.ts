@@ -128,12 +128,15 @@ export const authController = {
     async sendRegistrationOTP(req: Request, res: Response) {
         try {
             const { email } = req.body;
-            if (!email) return res.status(400).json({ error: 'Email is required' });
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({ error: 'Valid email is required' });
+            }
 
-            const result = await otpService.sendRegistrationOTP(email);
+            const result = await otpService.sendOTP(email.toLowerCase(), 'registration');
             res.json(result);
         } catch (err: any) {
-            res.status(400).json({ error: err.message });
+            console.error('Send registration OTP failed:', err);
+            res.status(400).json({ error: err.message || 'Failed to send OTP' });
         }
     },
 
@@ -145,162 +148,131 @@ export const authController = {
             const { email, otp_code, password, username, full_name, phone } = req.body;
 
             if (!email || !otp_code || !password || !username) {
-                return res.status(400).json({ error: 'All fields are required' });
+                return res.status(400).json({ error: 'Email, OTP, password, and username are required' });
             }
 
-            /**
-             * Verify OTP first
-             */
-            const isValid = await otpService.verifyRegistrationOTP(email, otp_code);
+            // Verify OTP
+            const isValid = await otpService.verifyOTP(email.toLowerCase(), otp_code, 'registration');
             if (!isValid) {
                 return res.status(400).json({ error: 'Invalid or expired OTP' });
             }
 
-            /**
-             * Now register superadmin
-             */
-            const payload = { email, password, username, full_name, phone };
+            // Register superadmin
+            const payload = { email: email.toLowerCase(), password, username, full_name, phone };
             const result = await AuthService.register(payload);
 
+            const userId = result.data.user?.id;
+            if (!userId) {
+                throw new Error('User creation succeeded but no user ID returned');
+            }
+
             await createAuditLog({
-                user_id: result.data.user?.id,
+                user_id: userId,
                 action: 'USER_CREATED',
                 entity_type: 'user',
-                entity_id: result.data.user?.id,
-                details: 'Initial superadmin created via OTP',
+                entity_id: userId,
+                details: 'Initial superadmin created via OTP verification',
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
             });
 
             res.status(201).json({
-                message: 'Superadmin registered successfully. You can now log in.',
+                message: 'Superadmin registered successfully. You can now log in with OTP.',
             });
         } catch (err: any) {
-            res.status(400).json({ error: err.message });
+            console.error('Superadmin registration failed:', err);
+            res.status(400).json({ error: err.message || 'Registration failed' });
         }
     },
 
     /**
-     * Step 1: Send login OTP
+     * Step 1: Send login OTP to registered user
      */
     async sendLoginOTP(req: Request, res: Response) {
-        console.log("Enter into SEnd login otp controller function");
         try {
             const { email } = req.body;
-            console.log("Email get from postman", email); 
-            if (!email) return res.status(400).json({ error: 'Email is required' });
-
-            /**
-             * Check if user exists
-             */
-            const { data: users } = await AuthRepository.listUsers();
-            const user = users.users.find((u: any) => u.email === email);
-            if (!user) {
-                return res.status(400).json({ error: 'Email not registered' });
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({ error: 'Valid email is required' });
             }
 
-            /**
-             * Send OTP (we'll use password_reset type or create 'login' type)
-             */
-            const result = await otpService.sendPasswordResetOTP(email);
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(404).json({ error: 'Email not registered' });
+            }
+
+            // Send login OTP
+            const result = await otpService.sendOTP(normalizedEmail, 'login');
+
             res.json({ success: true, message: 'Login OTP sent to your email' });
         } catch (err: any) {
-            res.status(400).json({ error: err.message });
+            console.error('Send login OTP failed:', err);
+            res.status(400).json({ error: err.message || 'Failed to send login OTP' });
         }
     },
 
     /**
-     * Step 2: Verify login OTP and issue session
+     * Step 2: Verify custom OTP and let Supabase create the session
      */
     async verifyLoginOTP(req: Request, res: Response) {
         try {
-            const { email, otp_code } = req.body;
-            if (!email || !otp_code) {
-                return res.status(400).json({ error: 'Email and OTP are required' });
+            const { email, password, otp_code } = req.body;
+
+            if (!email || !otp_code || !password) {
+                return res.status(400).json({ error: 'Email, password, and OTP code are required' });
             }
 
-            /**
-             * Verify OTP first
-             */
-            const isValid = await otpService.verifyPasswordResetOTP(email, otp_code);
+            const normalizedEmail = email.toLowerCase();
+
+            const isValid = await otpService.verifyOTP(normalizedEmail, otp_code, 'login');
             if (!isValid) {
                 return res.status(400).json({ error: 'Invalid or expired OTP' });
             }
 
-            /**
-             * Get user details
-             */
-            const { data: users } = await AuthRepository.listUsers();
-            const user = users.users.find((u: any) => u.email === email);
-            if (!user) {
-                return res.status(400).json({ error: 'User not found' });
-            }
+            const { data, error } = await AuthService.login(email, password);
+            if (error) throw error;
+
+            const user = data.user;
+            const session = data.session;
+            const metadata = user.user_metadata || {};
 
             /**
-             * Sign in user (Supabase will create session)
+             * Send ONLY tokens to UI
              */
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password: 'dummy-password-not-used',
+            res.json({
+                session_details: {
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at,
+                }
             });
 
             if (error) {
-
-                const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-                    type: 'magiclink',
-                    email,
-                });
-
-                if (sessionError) throw sessionError;
-
-                throw new Error('Session creation failed');
+                console.error('Supabase signInWithOtp failed:', error);
+                return res.status(500).json({ error: 'Failed to create session' });
             }
 
-            res.json({
-                session_details: {
-                    access_token: data.session.access_token,
-                    refresh_token: data.session.refresh_token,
-                    expires_at: data.session.expires_at,
-                }
+            if (!data.session) {
+                return res.status(500).json({ error: 'No session returned after OTP login' });
+            }
+
+            await createAuditLog({
+                user_id: user.id,
+                action: 'USER_LOGIN',
+                entity_type: 'user',
+                entity_id: user.id,
+                details: 'Login via custom OTP verification',
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
             });
         } catch (err: any) {
-            res.status(401).json({ error: err.message });
+            console.error('Login OTP verification failed:', err);
+            res.status(401).json({ error: err.message || 'Login failed' });
         }
     },
-
-    /**
-     * Verify OTP and send magic link (recommended)
-     */
-    // async verifyLoginOTP(req: Request, res: Response) {
-    //     try {
-    //         const { email, otp_code } = req.body;
-    //         if (!email || !otp_code) {
-    //             return res.status(400).json({ error: 'Email and OTP required' });
-    //         }
-
-    //         const isValid = await otpService.verifyPasswordResetOTP(email, otp_code);
-    //         if (!isValid) {
-    //             return res.status(400).json({ error: 'Invalid or expired OTP' });
-    //         }
-
-    //         // Generate magic link
-    //         const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    //             type: 'magiclink',
-    //             email,
-    //         });
-
-    //         if (error) throw error;
-
-    //         // In real app, send this link via email
-    //         // For now, return it (only for dev!)
-    //         res.json({
-    //             message: 'OTP verified. Magic link generated.',
-    //             magic_link: data.properties.action_link, // ONLY FOR TESTING
-    //             warning: 'Do not expose magic links in production!'
-    //         });
-    //     } catch (err: any) {
-    //         res.status(400).json({ error: err.message });
-    //     }
-    // },
 
 };
