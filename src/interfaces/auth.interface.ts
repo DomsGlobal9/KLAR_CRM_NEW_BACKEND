@@ -8,6 +8,7 @@ export interface RegisterPayload {
     phone?: string;
     department?: string;
     notes?: string;
+    email_verified?: boolean;
 }
 
 export interface LoginPayload {

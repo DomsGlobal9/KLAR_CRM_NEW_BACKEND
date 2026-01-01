@@ -4,6 +4,7 @@ export interface CreateTeamMemberPayload {
   password: string;
   role_id: string;
   team_id?: string | null;
+  email_verified?: boolean;
 }
 
 export interface UpdateTeamMemberPayload {

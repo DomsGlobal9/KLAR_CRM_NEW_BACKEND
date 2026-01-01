@@ -7,3 +7,4 @@ export {
     BulkEmailPayload,
     emailService, 
 } from "./email.service";
+export { otpService } from "./otp.service";

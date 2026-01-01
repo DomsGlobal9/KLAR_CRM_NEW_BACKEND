@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware';
-import { AuthService } from '../services';
+import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
-import { roleRepository } from '../repositories';
+import { AuthRepository, roleRepository } from '../repositories';
+import { supabase, supabaseAdmin } from '../config';
 
 export const authController = {
 
@@ -117,6 +118,189 @@ export const authController = {
         } catch (err: any) {
             res.status(500).json({ error: err.message });
         }
-    }
+    },
+
+    // ===== OTP Based Authentication Methods begins from here =====
+
+    /**
+     * Step 1: Send OTP for superadmin registration
+     */
+    async sendRegistrationOTP(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+            if (!email) return res.status(400).json({ error: 'Email is required' });
+
+            const result = await otpService.sendRegistrationOTP(email);
+            res.json(result);
+        } catch (err: any) {
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    /**
+     * Step 2: Verify OTP and create superadmin
+     */
+    async verifyAndRegister(req: Request, res: Response) {
+        try {
+            const { email, otp_code, password, username, full_name, phone } = req.body;
+
+            if (!email || !otp_code || !password || !username) {
+                return res.status(400).json({ error: 'All fields are required' });
+            }
+
+            /**
+             * Verify OTP first
+             */
+            const isValid = await otpService.verifyRegistrationOTP(email, otp_code);
+            if (!isValid) {
+                return res.status(400).json({ error: 'Invalid or expired OTP' });
+            }
+
+            /**
+             * Now register superadmin
+             */
+            const payload = { email, password, username, full_name, phone };
+            const result = await AuthService.register(payload);
+
+            await createAuditLog({
+                user_id: result.data.user?.id,
+                action: 'USER_CREATED',
+                entity_type: 'user',
+                entity_id: result.data.user?.id,
+                details: 'Initial superadmin created via OTP',
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            res.status(201).json({
+                message: 'Superadmin registered successfully. You can now log in.',
+            });
+        } catch (err: any) {
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    /**
+     * Step 1: Send login OTP
+     */
+    async sendLoginOTP(req: Request, res: Response) {
+        console.log("Enter into SEnd login otp controller function");
+        try {
+            const { email } = req.body;
+            console.log("Email get from postman", email); 
+            if (!email) return res.status(400).json({ error: 'Email is required' });
+
+            /**
+             * Check if user exists
+             */
+            const { data: users } = await AuthRepository.listUsers();
+            const user = users.users.find((u: any) => u.email === email);
+            if (!user) {
+                return res.status(400).json({ error: 'Email not registered' });
+            }
+
+            /**
+             * Send OTP (we'll use password_reset type or create 'login' type)
+             */
+            const result = await otpService.sendPasswordResetOTP(email);
+            res.json({ success: true, message: 'Login OTP sent to your email' });
+        } catch (err: any) {
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    /**
+     * Step 2: Verify login OTP and issue session
+     */
+    async verifyLoginOTP(req: Request, res: Response) {
+        try {
+            const { email, otp_code } = req.body;
+            if (!email || !otp_code) {
+                return res.status(400).json({ error: 'Email and OTP are required' });
+            }
+
+            /**
+             * Verify OTP first
+             */
+            const isValid = await otpService.verifyPasswordResetOTP(email, otp_code);
+            if (!isValid) {
+                return res.status(400).json({ error: 'Invalid or expired OTP' });
+            }
+
+            /**
+             * Get user details
+             */
+            const { data: users } = await AuthRepository.listUsers();
+            const user = users.users.find((u: any) => u.email === email);
+            if (!user) {
+                return res.status(400).json({ error: 'User not found' });
+            }
+
+            /**
+             * Sign in user (Supabase will create session)
+             */
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password: 'dummy-password-not-used',
+            });
+
+            if (error) {
+
+                const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+                    type: 'magiclink',
+                    email,
+                });
+
+                if (sessionError) throw sessionError;
+
+                throw new Error('Session creation failed');
+            }
+
+            res.json({
+                session_details: {
+                    access_token: data.session.access_token,
+                    refresh_token: data.session.refresh_token,
+                    expires_at: data.session.expires_at,
+                }
+            });
+        } catch (err: any) {
+            res.status(401).json({ error: err.message });
+        }
+    },
+
+    /**
+     * Verify OTP and send magic link (recommended)
+     */
+    // async verifyLoginOTP(req: Request, res: Response) {
+    //     try {
+    //         const { email, otp_code } = req.body;
+    //         if (!email || !otp_code) {
+    //             return res.status(400).json({ error: 'Email and OTP required' });
+    //         }
+
+    //         const isValid = await otpService.verifyPasswordResetOTP(email, otp_code);
+    //         if (!isValid) {
+    //             return res.status(400).json({ error: 'Invalid or expired OTP' });
+    //         }
+
+    //         // Generate magic link
+    //         const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    //             type: 'magiclink',
+    //             email,
+    //         });
+
+    //         if (error) throw error;
+
+    //         // In real app, send this link via email
+    //         // For now, return it (only for dev!)
+    //         res.json({
+    //             message: 'OTP verified. Magic link generated.',
+    //             magic_link: data.properties.action_link, // ONLY FOR TESTING
+    //             warning: 'Do not expose magic links in production!'
+    //         });
+    //     } catch (err: any) {
+    //         res.status(400).json({ error: err.message });
+    //     }
+    // },
 
 };
