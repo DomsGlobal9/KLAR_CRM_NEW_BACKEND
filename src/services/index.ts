@@ -8,3 +8,4 @@ export {
     emailService, 
 } from "./email.service";
 export { otpService } from "./otp.service";
+export { StageService } from "./stage.service";
