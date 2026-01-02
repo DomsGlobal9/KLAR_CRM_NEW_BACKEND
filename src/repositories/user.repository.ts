@@ -33,7 +33,16 @@ export const userRepository = {
     async getById(userId: string) {
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (error) throw error;
-        return data.user;
-    },
+
+        const user = data.user;
+
+        return {
+            id: user.id,
+            email: user.email,
+            role: user.user_metadata?.role_name,
+            username: user.user_metadata?.username,
+        };
+    }
+
 
 };
