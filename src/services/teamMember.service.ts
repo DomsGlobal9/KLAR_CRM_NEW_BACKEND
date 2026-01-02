@@ -1,9 +1,20 @@
 import { CreateTeamMemberPayload, UpdateTeamMemberPayload } from '../interfaces';
+import { otpService } from '../services';
 import {
     teamMemberRepository,
     roleRepository,
     teamRepository
 } from '../repositories';
+
+/**
+ * Temporary storage for pending member creation (in-memory or Redis in production)
+ */
+const pendingMemberCreations = new Map<string, {
+    role_id: string;
+    team_id: string | null;
+    requested_by: string;
+    expires_at: number;
+}>();
 
 export const teamMemberService = {
 
@@ -11,28 +22,28 @@ export const teamMemberService = {
      * Add a new team member
      */
     async addTeamMember(payload: CreateTeamMemberPayload) {
-        // Get role by ID
+
         const role = await roleRepository.getById(payload.role_id);
         if (!role) throw new Error('Role not found');
 
-        // Check if role is superadmin
+
         if (role.name === 'superadmin') {
             throw new Error('Cannot create superadmin');
         }
 
-        // Validate team exists if team_id is provided
+
         if (payload.team_id) {
             const team = await teamRepository.getById(payload.team_id);
             if (!team) throw new Error('Team not found');
         }
 
-        // Check for existing email
+
         const existingByEmail = await teamMemberRepository.getUserByEmail(payload.email);
         if (existingByEmail) {
             throw new Error('Email already exists');
         }
 
-        // Check for existing username
+
         const existingByUsername = await teamMemberRepository.getUserByUsername(payload.username);
         if (existingByUsername) {
             throw new Error('Username already exists');
@@ -55,10 +66,10 @@ export const teamMemberService = {
             throw new Error('User creation failed: ' + (error?.message || 'Unknown error'));
         }
 
-        // Update role assigned count
+
         await roleRepository.incrementAssignedCount(payload.role_id);
 
-        // Update team members count if assigned to a team
+
         if (payload.team_id) {
             await teamRepository.incrementMembersCount(payload.team_id);
         }
@@ -81,7 +92,7 @@ export const teamMemberService = {
             u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
         );
 
-        // Fetch all roles and teams for efficiency
+
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();
 
@@ -170,10 +181,10 @@ export const teamMemberService = {
             throw new Error('Cannot modify superadmin');
         }
 
-        // Get the current metadata, handling the nested structure
+
         let currentMetadata = user.user_metadata;
 
-        // If metadata is nested (like in your example), extract the inner metadata
+
         if (currentMetadata?.user_metadata) {
             currentMetadata = currentMetadata.user_metadata;
         }
@@ -182,7 +193,7 @@ export const teamMemberService = {
         const oldTeamId = currentMetadata?.team_id;
         const updateMetadata: any = {};
 
-        // Handle role update
+
         if (payload.role_id && payload.role_id !== oldRoleId) {
             const newRole = await roleRepository.getById(payload.role_id);
             if (!newRole) throw new Error('Role not found');
@@ -194,24 +205,24 @@ export const teamMemberService = {
             updateMetadata.role_id = payload.role_id;
             updateMetadata.role_name = newRole.name;
 
-            // Update role assigned counts
+
             if (oldRoleId) {
                 await roleRepository.decrementAssignedCount(oldRoleId);
             }
             await roleRepository.incrementAssignedCount(payload.role_id);
         }
 
-        // Handle team update
+
         if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
             if (payload.team_id) {
-                // Validate new team exists
+
                 const newTeam = await teamRepository.getById(payload.team_id);
                 if (!newTeam) throw new Error('Team not found');
             }
 
             updateMetadata.team_id = payload.team_id;
 
-            // Update team members counts
+
             if (oldTeamId) {
                 await teamRepository.decrementMembersCount(oldTeamId);
             }
@@ -220,24 +231,24 @@ export const teamMemberService = {
             }
         }
 
-        // Prepare metadata for update - merge with existing metadata
+
         const newMetadata = {
             ...currentMetadata,
             ...updateMetadata
         };
 
-        // Update user metadata
+
         const { data, error } = await teamMemberRepository.updateUser(userId, {
             user_metadata: newMetadata
         });
 
         if (error) throw error;
 
-        // Return enriched data - also handle nested structure in response
+
         const updatedUser = data.user;
         let userMetadata = updatedUser.user_metadata;
 
-        // If metadata is nested, use the inner one
+
         if (userMetadata?.user_metadata) {
             userMetadata = userMetadata.user_metadata;
         }
@@ -250,7 +261,7 @@ export const teamMemberService = {
 
         return {
             ...updatedUser,
-            user_metadata: userMetadata,  // Return cleaned metadata
+            user_metadata: userMetadata,
             role: role ? { id: role.id, name: role.name } : null,
             team: team ? { id: team.id, name: team.name } : null
         };
@@ -273,7 +284,7 @@ export const teamMemberService = {
         const roleId = user.user_metadata?.role_id;
         const teamId = user.user_metadata?.team_id;
 
-        // Decrement counts before deleting user
+
         if (roleId) {
             await roleRepository.decrementAssignedCount(roleId);
         }
@@ -282,7 +293,7 @@ export const teamMemberService = {
             await teamRepository.decrementMembersCount(teamId);
         }
 
-        // Delete the user
+
         const { error: deleteError } = await teamMemberRepository.deleteUser(userId);
         if (deleteError) throw deleteError;
     },
@@ -315,5 +326,101 @@ export const teamMemberService = {
             team: team ? { id: team.id, name: team.name } : null,
             user_metadata: user.user_metadata
         };
+    },
+
+    /**
+     * Step 1: Validate and send OTP for team member creation
+     */
+    async sendAddMemberOTP(payload: {
+        email: string;
+        role_id: string;
+        team_id?: string | null;
+        requested_by: string;
+    }) {
+        const { email, role_id, team_id, requested_by } = payload;
+
+        const role = await roleRepository.getById(role_id);
+        if (!role) throw new Error('Role not found');
+        if (role.name === 'superadmin') throw new Error('Cannot assign superadmin role');
+
+        if (team_id) {
+            const team = await teamRepository.getById(team_id);
+            if (!team) throw new Error('Team not found');
+        }
+
+        const { data } = await teamMemberRepository.listUsers();
+        const existing = data.users.find((u: any) => u.email.toLowerCase() === email);
+        if (existing) throw new Error('Email already registered');
+
+        const result = await otpService.sendOTP(email, 'registration');
+
+        pendingMemberCreations.set(email, {
+            role_id,
+            team_id: team_id || null,
+            requested_by,
+            expires_at: Date.now() + 10 * 60 * 1000 
+        });
+
+        setTimeout(() => pendingMemberCreations.delete(email), 10 * 60 * 1000);
+
+        return result;
+    },
+
+    /**
+     * Step 2: Verify OTP and complete member creation
+     */
+    async verifyOTPAndCreateMember(payload: {
+        email: string;
+        otp_code: string;
+        username: string;
+        full_name?: string;
+        phone?: string | null;
+        created_by: string;
+    }) {
+        const { email, otp_code, username, full_name, phone } = payload;
+
+        const isValid = await otpService.verifyOTP(email, otp_code, 'registration');
+        if (!isValid) throw new Error('Invalid or expired OTP');
+
+        const pending = pendingMemberCreations.get(email);
+        if (!pending || Date.now() > pending.expires_at) {
+            throw new Error('OTP session expired. Please request a new one.');
+        }
+
+        pendingMemberCreations.delete(email);
+
+        const { role_id, team_id, requested_by } = pending;
+
+        const role = await roleRepository.getById(role_id);
+        if (!role) throw new Error('Role no longer valid');
+
+        const { data, error } = await teamMemberRepository.createUser({
+            email,
+            password: Math.random().toString(36).slice(-12) + "Temp!123",
+            email_confirm: true,
+            user_metadata: {
+                username,
+                role_id,
+                role_name: role.name,
+                team_id: team_id,
+                full_name: full_name || null,
+                phone: phone || null,
+                email_verified: true,
+                created_by: requested_by
+            }
+        });
+
+        if (error || !data.user) {
+            throw new Error('Failed to create user: ' + (error?.message || 'Unknown error'));
+        }
+
+        const user = data.user;
+
+        await roleRepository.incrementAssignedCount(role_id);
+        if (team_id) {
+            await teamRepository.incrementMembersCount(team_id);
+        }
+
+        return user;
     }
 };

@@ -55,5 +55,82 @@ export const teamMemberController = {
     async remove(req: AuthRequest, res: Response) {
         await teamMemberService.removeTeamMember(req.params.memberId);
         res.json({ message: 'Member removed' });
-    }
+    },
+
+    /**
+     * Step 1: Send OTP to add a new team member (Superadmin only)
+     */
+    async sendAddMemberOTP(req: AuthRequest, res: Response) {
+        try {
+            if (req.user?.role_name !== 'superadmin') {
+                return res.status(403).json({ error: 'Only superadmin can add team members' });
+            }
+
+            const { email, role_id, team_id } = req.body;
+
+            if (!email || !role_id) {
+                return res.status(400).json({ error: 'Email and role_id are required' });
+            }
+
+            const result = await teamMemberService.sendAddMemberOTP({
+                email: email.toLowerCase(),
+                role_id,
+                team_id: team_id || null,
+                requested_by: req.user.id
+            });
+
+            res.json(result);
+        } catch (e: any) {
+            res.status(400).json({ error: e.message });
+        }
+    },
+
+    /**
+     * Step 2: Verify OTP and create the team member
+     */
+    async verifyOTPAndCreateMember(req: AuthRequest, res: Response) {
+        try {
+            if (req.user?.role_name !== 'superadmin') {
+                return res.status(403).json({ error: 'Only superadmin can create team members' });
+            }
+
+            const { email, otp_code, username, full_name, phone } = req.body;
+
+            if (!email || !otp_code || !username) {
+                return res.status(400).json({ error: 'Email, OTP, and username are required' });
+            }
+
+            const user = await teamMemberService.verifyOTPAndCreateMember({
+                email: email.toLowerCase(),
+                otp_code,
+                username,
+                full_name,
+                phone: phone || null,
+                created_by: req.user.id
+            });
+
+            await createAuditLog({
+                user_id: req.user.id,
+                action: 'TEAM_MEMBER_ADDED',
+                entity_type: 'user',
+                entity_id: user.id,
+                details: `Team member created via OTP: ${email}`,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            res.status(201).json({
+                message: 'Team member created successfully',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    username: user.user_metadata.username,
+                    role_name: user.user_metadata.role_name,
+                    team_id: user.user_metadata.team_id
+                }
+            });
+        } catch (e: any) {
+            res.status(400).json({ error: e.message });
+        }
+    },
 };

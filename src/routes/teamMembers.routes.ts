@@ -7,6 +7,16 @@ router.use(authenticate, requireRole('superadmin', 'admin'));
 
 
 /**
+ * Send OTP to add a new team member
+ */
+router.post('/send-otp', teamMemberController.sendAddMemberOTP);
+
+/**
+ * Verify OTP and create a new team member
+ */
+router.post('/verify-otp-and-create', teamMemberController.verifyOTPAndCreateMember);
+
+/**
  * Create a new team member
  */
 router.post('/', teamMemberController.addMember);
