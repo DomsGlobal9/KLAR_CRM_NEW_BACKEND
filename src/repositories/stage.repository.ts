@@ -1,128 +1,174 @@
-import { supabase, supabaseAdmin } from "../config";
+import { supabase } from '../utils/supabase.client';
+import { 
+  IStage, 
+  ICreateStage, 
+  IUpdateStage, 
+  IStageFilters,
+  IPipelineData 
+} from '../interfaces/stage.interface';
 
-export const StageRepository = {
-  // -------------------------
-  // Create stage (append or at custom position)
-  // -------------------------
-  async createStage(payload: {
-    name: string;
-    description?: string | null;
-    is_active?: boolean;
-    position?: number | null; // optional explicit position
-  }) {
-    // use your DB function insert_stage_at_position()
-    return supabaseAdmin.rpc("insert_stage_at_position", {
-      p_name: payload.name,
-      p_description: payload?.description ?? null,
-      p_is_active: payload?.is_active ?? true,
-      p_position: payload?.position ?? null,
-    });
-  },
+export class StageRepository {
+  private tableName = 'pipeline_stages';
 
-  // -------------------------
-  // List all stages ordered by position
-  // -------------------------
-  async listStages() {
-    return supabaseAdmin
-      .from("stages")
-      .select("*")
-      .order("position", { ascending: true });
-  },
-
-  // -------------------------
-  // Get ordered list with stage_number (your VIEW)
-  // -------------------------
-  async listStagesWithNumbers() {
-    return supabaseAdmin.from("stages_with_numbers").select("*").order("position");
-  },
-
-  // -------------------------
-  // Get single stage by id
-  // -------------------------
-  async getStageById(id: string) {
-    return supabaseAdmin.from("stages").select("*").eq("id", id).single();
-  },
-
-  // -------------------------
-  // Update stage fields
-  // -------------------------
-  async updateStage(id: string, payload: any) {
-    return supabaseAdmin
-      .from("stages")
-      .update({
-        name: payload?.name,
-        description: payload?.description ?? null,
-        is_active: payload?.is_active,
+  async create(stageData: ICreateStage): Promise<IStage> {
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .insert({
+        ...stageData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
-      .eq("id", id)
       .select()
       .single();
-  },
 
-  // -------------------------
-  // Soft toggle active status
-  // -------------------------
-  async toggleActive(id: string, is_active: boolean) {
-    return supabaseAdmin
-      .from("stages")
-      .update({ is_active })
-      .eq("id", id)
+    if (error) throw error;
+    return data as IStage;
+  }
+
+  async findById(id: string): Promise<IStage | null> {
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data as IStage;
+  }
+
+  async findAll(filters: IStageFilters = {}): Promise<IStage[]> {
+    let query = supabase.from(this.tableName).select('*');
+    
+    // Search by name
+    if (filters.search) {
+      query = query.ilike('name', `%${filters.search}%`);
+    }
+    
+    // Filter by created_by
+    if (filters.created_by) {
+      query = query.eq('created_by', filters.created_by);
+    }
+    
+    // Sorting
+    if (filters.sort_by) {
+      query = query.order(filters.sort_by, { 
+        ascending: filters.order === 'asc' || filters.order === undefined 
+      });
+    } else {
+      query = query.order('position', { ascending: true });
+    }
+    
+    // Pagination
+    if (filters.page && filters.limit) {
+      const from = (filters.page - 1) * filters.limit;
+      const to = from + filters.limit - 1;
+      query = query.range(from, to);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data as IStage[];
+  }
+
+  async update(id: string, stageData: IUpdateStage): Promise<IStage> {
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .update({
+        ...stageData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
       .select()
       .single();
-  },
 
-  // -------------------------
-  // Delete and reorder positions (your DB function)
-  // -------------------------
-  async deleteStage(id: string) {
-    return supabaseAdmin.rpc("delete_stage_and_reorder", {
-      p_stage_id: id,
-    });
-  },
+    if (error) throw error;
+    return data as IStage;
+  }
 
-  // -------------------------
-  // Move stage up/down
-  // direction: 'up' | 'down'
-  // -------------------------
-  async moveStage(id: string, direction: "up" | "down") {
-    return supabaseAdmin.rpc("move_stage_position", {
-      p_stage_id: id,
-      p_direction: direction,
-    });
-  },
+  async delete(id: string): Promise<boolean> {
+    // First, check if stage has any leads
+    const { data: leadsData, error: leadsError } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('stage', id)
+      .limit(1);
 
-  // -------------------------
-  // Swap two stages
-  // -------------------------
-  async swapStages(stageId1: string, stageId2: string) {
-    return supabaseAdmin.rpc("swap_stage_positions", {
-      p_stage_id_1: stageId1,
-      p_stage_id_2: stageId2,
-    });
-  },
+    if (leadsError) throw leadsError;
+    
+    if (leadsData && leadsData.length > 0) {
+      throw new Error(`Cannot delete stage with ${leadsData.length} leads. Move leads to another stage first.`);
+    }
 
-  // -------------------------
-  // Increment member count
-  // -------------------------
-  async incrementMember(stageId: string) {
-    return supabaseAdmin.rpc("increment_stage_members", {
-      p_stage_id: stageId,
-    });
-  },
+    // Delete the stage
+    const { error } = await supabase
+      .from(this.tableName)
+      .delete()
+      .eq('id', id);
 
-  // -------------------------
-  // Decrement member count
-  // -------------------------
-  async decrementMember(stageId: string) {
-    return supabaseAdmin.rpc("decrement_stage_members", {
-      p_stage_id: stageId,
-    });
-  },
+    if (error) throw error;
+    return true;
+  }
 
-  // -------------------------
-  // Recalculate all member counts
-  // -------------------------
-  async recalcMemberCounts() {
-    return supabaseAdmin.rpc("recalculate_stage_member_counts");
-  },
-};
+  async getPipelineStats(userId?: string): Promise<IPipelineData> {
+    // Get all stages
+    const stages = await this.findAll({ created_by: userId });
+    const pipelineData: IPipelineData = {};
+    
+    // For each stage, get lead count and total value
+    for (const stage of stages) {
+      let query = supabase
+        .from('leads')
+        .select('budget', { count: 'exact', head: false })
+        .eq('stage', stage.id);
+      
+      if (userId) {
+        query = query.eq('assigned_to', userId);
+      }
+      
+      const { data: leads, count, error } = await query;
+      
+      if (error) throw error;
+      
+      const totalValue = leads?.reduce((sum, lead) => sum + (lead.budget || 0), 0) || 0;
+      
+      pipelineData[stage.id] = {
+        count: count || 0,
+        total_value: totalValue
+      };
+    }
+    
+    return pipelineData;
+  }
+
+  async count(filters: IStageFilters = {}): Promise<number> {
+    let query = supabase.from(this.tableName).select('*', { count: 'exact', head: true });
+    
+    if (filters.search) {
+      query = query.ilike('name', `%${filters.search}%`);
+    }
+    
+    if (filters.created_by) {
+      query = query.eq('created_by', filters.created_by);
+    }
+    
+    const { count, error } = await query;
+    
+    if (error) throw error;
+    return count || 0;
+  }
+
+  async getDefaultStages(): Promise<IStage[]> {
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('*')
+      .eq('is_default', true)
+      .order('position', { ascending: true });
+
+    if (error) throw error;
+    return data as IStage[];
+  }
+}
