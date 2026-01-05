@@ -7,9 +7,6 @@ export const userController = {
 
     /**
      * Update self user profile
-     * @param req 
-     * @param res 
-     * @returns 
      */
     async updateMe(req: AuthRequest, res: Response) {
         try {
@@ -27,20 +24,40 @@ export const userController = {
                 entity_id: userId
             });
 
-            res.json({ message: 'Profile updated successfully' });
+            return res.json({
+                success: true,
+                message: 'Profile updated successfully'
+            });
         } catch (err: any) {
-            res.status(400).json({ error: err.message });
+            return res.status(400).json({
+                success: false,
+                error: err.message || 'Failed to update profile'
+            });
         }
     },
 
+    /**
+     * Get logged-in user profile
+     */
     async getMe(req: AuthRequest, res: Response) {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'Unauthorized 9876' });
-        }
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized 9876' });
+            }
 
-        const user = await userService.getMe(userId);
-        res.json({ user });
+            const user = await userService.getMe(userId);
+
+            return res.json({
+                success: true,
+                user
+            });
+        } catch (err: any) {
+            return res.status(400).json({
+                success: false,
+                error: err.message || 'Failed to fetch user'
+            });
+        }
     }
 
 };

@@ -1,5 +1,6 @@
 import express from 'express';
 import { roleController } from '../controllers';
+import { authenticate, requireRole } from '../middleware';
 
 const router = express.Router();
 
@@ -16,6 +17,12 @@ router.post('/', roleController.createRole);
  * Get all roles
  */
 router.get('/', roleController.getAllRoles);
+
+/**
+ * Get role name and id only
+ */
+// router.get('/id-names', authenticate, requireRole("superadmin", "admin"), roleController.getRoleIdNames);
+router.get('/id-names', roleController.getRoleIdNames);
 
 /**
  * Get a role by ID

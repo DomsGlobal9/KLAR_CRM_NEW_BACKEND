@@ -5,6 +5,10 @@ export const roleService = {
         return roleRepository.getAll();
     },
 
+    async getAllRoleIdNames() {
+        return roleRepository.getAllIdAndNames();
+    },
+
     async createRole(
         name: string,
         description: string | null,
