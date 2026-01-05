@@ -11,7 +11,7 @@ export const stageRepository = {
   /**
    * Create a new stage
    */
-  async createStage(payload: CreateStagePayload, userId?: string): Promise<Stage> {
+  async createStage(payload: CreateStagePayload, userId?: string): Promise<any> {
     const { data, error } = await supabaseAdmin
       .from('stages')
       .insert({
@@ -34,7 +34,7 @@ export const stageRepository = {
   /**
    * Get all stages
    */
-  async getAllStages(filter: StageFilter = {}): Promise<Stage[]> {
+  async getAllStages(filter: StageFilter = {}): Promise<any[]> {
     let query = supabaseAdmin
       .from('stages')
       .select('*')
@@ -63,7 +63,7 @@ export const stageRepository = {
       throw new Error(`Failed to fetch stages: ${error.message}`);
     }
 
-    return data as Stage[];
+    return data;
   },
 
   /**
@@ -157,7 +157,7 @@ export const stageRepository = {
    */
   async reorderStages(stages: Array<{ id: string; position: number }>): Promise<Stage[]> {
     // Update in batch
-    const updates = stages.map(stage => 
+    const updates = stages.map(stage =>
       supabaseAdmin
         .from('stages')
         .update({ position: stage.position })
@@ -167,7 +167,7 @@ export const stageRepository = {
     );
 
     const results = await Promise.all(updates);
-    
+
     // Check for errors
     results.forEach((result, index) => {
       if (result.error) {

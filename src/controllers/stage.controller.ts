@@ -17,11 +17,14 @@ export const stageController = {
       const userId = (req as any).user?.id; // Assuming authentication middleware
 
       const stage = await stageService.createStage(payload, userId);
+      if (!stage) {
+        throw new Error('Stage creation failed');
+      }
 
       res.status(201).json({
         success: true,
         message: 'Stage created successfully',
-        data: stage
+        // data: stage
       });
     } catch (error: any) {
       res.status(400).json({
@@ -44,10 +47,24 @@ export const stageController = {
       };
 
       const stages = await stageService.getAllStages(filter);
+      if (!stages) {
+        throw new Error('Failed to retrieve stages');
+      }
+
+      const formattedData = stages.map(stage => ({
+        id: stage.id,
+        name: stage.name,
+        color: stage.color
+        // No other fields like position, is_default, created_at, etc.
+      }));
+
+      if (formattedData.length === 0) {
+        throw new Error('No stages found');
+      }
 
       res.json({
         success: true,
-        data: stages,
+        data: formattedData,
         count: stages.length
       });
     } catch (error: any) {
