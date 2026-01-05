@@ -39,8 +39,6 @@ export const leadRepository = {
         }
 
         const lead = leadData as Lead;
-
-        // Create requirements record if any requirement data is provided
         let requirements: LeadRequirements | null = null;
 
         const hasRequirements =

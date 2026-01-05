@@ -12,20 +12,16 @@ export const leadService = {
    * Create a new lead with optional requirements
    */
   async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
-    // Validate payload
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
-    
-    // Sanitize data
+        
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
     
-    // Check for duplicate email (optional)
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
       console.log(`Lead with email ${sanitizedData.email} already exists`);
-      // You can choose to update existing or throw error
     }
     
     // Create lead with requirements

@@ -11,6 +11,8 @@ export const leadController = {
         try {
             const payload: CreateLeadPayload = req.body;
 
+            console.log("THe lead data we are getting from frontend", req.body);
+
             const lead = await leadService.createLead(payload);
 
             // Create audit log
