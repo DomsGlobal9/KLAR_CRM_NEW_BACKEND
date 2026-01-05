@@ -6,6 +6,7 @@ import rolesRoutes from './role.routes';
 import teamRoutes from './team.route';
 import teamMemberRoutes from './teamMembers.routes';
 import leadRoutes from './lead.routes';
+import stageRoutes from './stage.routes';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use('/role', rolesRoutes);
 router.use('/user', userRoutes);
 router.use('/team', teamRoutes);
 router.use('/team-member', teamMemberRoutes);
+router.use('/stage', stageRoutes);
 router.use('/lead', leadRoutes);
 router.use(authRoutes);
 
