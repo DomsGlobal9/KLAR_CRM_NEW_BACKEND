@@ -3,4 +3,13 @@ export { UpdateSelfPayload, UserMetadata } from './user.interface';
 export { Team } from './team.interface';
 export { CreateTeamMemberPayload, UpdateTeamMemberPayload } from './teamMember.interface';
 export { OTP, CreateOTPPayload, VerifyOTPPayload, UserRegistrationPayload } from './otp.interface';
+export { 
+    Lead, 
+    LeadRequirements, 
+    LeadWithRequirements, 
+    CreateLeadPayload,
+    UpdateLeadPayload,
+    LeadFilter,
+    LeadStats,
+} from "./lead.interface";
 export {  Stage } from './stage.interface';

@@ -3,22 +3,27 @@ import { envConfig } from './env.config';
 
 export const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
-        // Allow no-origin requests (Postman, curl, mobile apps)
-        if (!origin && envConfig.NODE_ENV === 'development') {
+        if (!origin) {
             return callback(null, true);
         }
 
-        // Allow all if wildcard present
+        /**
+         * Allow wild card entry
+         */
         if (envConfig.CORS_ORIGIN.includes('*')) {
             return callback(null, true);
         }
 
-        // Allow specific origins
+        /**
+         * Allow specific origins
+         */
         if (origin && envConfig.CORS_ORIGIN.includes(origin)) {
             return callback(null, true);
         }
 
-        // Production → block
+        /**
+         * Production → block
+         */
         if (envConfig.NODE_ENV === 'production') {
             console.error(`❌ CORS blocked for origin: ${origin}`);
             return callback(new Error('Not allowed by CORS'));

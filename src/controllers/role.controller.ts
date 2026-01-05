@@ -11,6 +11,18 @@ export const roleController = {
         }
     },
 
+    async getRoleIdNames(req: Request, res: Response) {
+        try {
+            const roles = await roleService.getAllRoleIdNames();
+            res.json({
+                message: 'Role id & names fetched successfully',
+                roles
+            });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     async createRole(req: Request, res: Response) {
         try {
             const { name, description, permissions } = req.body;

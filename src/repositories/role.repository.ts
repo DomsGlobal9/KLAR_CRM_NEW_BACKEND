@@ -12,6 +12,17 @@ export const roleRepository = {
         return data ?? [];
     },
 
+    async getAllIdAndNames(): Promise<Pick<Role, 'id' | 'name'>[]> {
+        const { data, error } = await supabaseAdmin
+            .from('roles')
+            .select('id, name')
+            .neq('name', 'superadmin')  
+            .order('name');
+
+        if (error) throw error;
+        return data ?? [];
+    },
+
     async getByName(name: string): Promise<Role | null> {
         const { data, error } = await supabaseAdmin
             .from('roles')

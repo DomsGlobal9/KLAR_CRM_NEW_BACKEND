@@ -10,3 +10,5 @@ export {
     generateOTPEmailTemplate,
     getOTPEmailSubject,
 } from './otp.service.helper';
+
+export { AuditLogData, createLeadAuditLog } from "./audit-log.helper";

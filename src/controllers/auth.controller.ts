@@ -78,14 +78,27 @@ export const authController = {
      */
     async refreshToken(req: Request, res: Response) {
         try {
-            const { refresh_token } = req.body;
-            const { data, error } = await AuthService.refresh(refresh_token);
-            if (error) throw error;
+            const { refresh_token } = req.body
+            if (!refresh_token) {
+                return res.status(400).json({ error: 'Refresh token required' })
+            }
 
-            res.json({ session: data.session });
+            const { data, error } = await AuthService.refresh(refresh_token)
+            if (error) throw error
 
+            const session = data.session
+
+            res.json({
+                success: true,
+                session_details: {
+                    access_token: session?.access_token,
+                    refresh_token: session?.refresh_token,
+                    expires_at: session?.expires_at
+                }
+            })
         } catch (err: any) {
-            res.status(401).json({ error: err.message });
+            console.error('Token refresh failed:', err)
+            res.status(401).json({ success: false, error: 'Invalid or expired refresh token' })
         }
     },
 
@@ -141,6 +154,34 @@ export const authController = {
     },
 
     /**
+     * Resend registration OTP
+     */
+    async resendRegistrationOTP(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({ error: 'Valid email is required' });
+            }
+
+            const { data: userList } = await AuthRepository.listUsers();
+            const existingUser = userList.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+
+            if (existingUser) {
+                return res.status(400).json({
+                    error: 'User already registered. Please login instead.'
+                });
+            }
+
+            const result = await otpService.resendOTP(email.toLowerCase(), 'registration');
+            res.json(result);
+        } catch (err: any) {
+            console.error('Resend registration OTP failed:', err);
+            res.status(400).json({ error: err.message || 'Failed to resend OTP' });
+        }
+    },
+
+    /**
      * Step 2: Verify OTP and create superadmin
      */
     async verifyAndRegister(req: Request, res: Response) {
@@ -190,14 +231,13 @@ export const authController = {
      */
     async sendLoginOTP(req: Request, res: Response) {
         try {
-            const { email } = req.body;
-            if (!email || typeof email !== 'string') {
-                return res.status(400).json({ error: 'Valid email is required' });
+            const { email, password } = req.body;
+            if (!email || typeof email !== 'string' || !password) {
+                return res.status(400).json({ error: 'Valid email and password are required' });
             }
 
             const normalizedEmail = email.toLowerCase();
 
-            // Check if user exists
             const { data: userList } = await AuthRepository.listUsers();
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
@@ -205,13 +245,51 @@ export const authController = {
                 return res.status(404).json({ error: 'Email not registered' });
             }
 
-            // Send login OTP
+            const { data: authData, error: authError } = await AuthService.login(normalizedEmail, password);
+            if (authError) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
             const result = await otpService.sendOTP(normalizedEmail, 'login');
 
             res.json({ success: true, message: 'Login OTP sent to your email' });
         } catch (err: any) {
             console.error('Send login OTP failed:', err);
             res.status(400).json({ error: err.message || 'Failed to send login OTP' });
+        }
+    },
+
+    /**
+     * Resend login OTP
+     */
+    async resendLoginOTP(req: Request, res: Response) {
+        try {
+            const { email, password } = req.body;
+
+            if (!email || typeof email !== 'string' || !password) {
+                return res.status(400).json({ error: 'Valid email and password are required' });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(404).json({ error: 'Email not registered' });
+            }
+
+            const { data: authData, error: authError } = await AuthService.login(normalizedEmail, password);
+            if (authError) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
+            const result = await otpService.resendOTP(normalizedEmail, 'login');
+            res.json(result);
+        } catch (err: any) {
+            console.error('Resend login OTP failed:', err);
+            res.status(400).json({ error: err.message || 'Failed to resend OTP' });
         }
     },
 
@@ -244,6 +322,7 @@ export const authController = {
              * Send ONLY tokens to UI
              */
             res.json({
+                success: true,
                 session_details: {
                     access_token: session.access_token,
                     refresh_token: session.refresh_token,
@@ -271,7 +350,10 @@ export const authController = {
             });
         } catch (err: any) {
             console.error('Login OTP verification failed:', err);
-            res.status(401).json({ error: err.message || 'Login failed' });
+            res.status(401).json({
+                success: false,
+                error: err.message || 'Login failed'
+            });
         }
     },
 
