@@ -1,174 +1,260 @@
-import { supabase } from '../utils/supabase.client';
-import { 
-  IStage, 
-  ICreateStage, 
-  IUpdateStage, 
-  IStageFilters,
-  IPipelineData 
+import { supabaseAdmin } from '../config';
+import {
+  Stage,
+  CreateStagePayload,
+  UpdateStagePayload,
+  StageFilter,
+  PipelineStage
 } from '../interfaces/stage.interface';
 
-export class StageRepository {
-  private tableName = 'pipeline_stages';
-
-  async create(stageData: ICreateStage): Promise<IStage> {
-    const { data, error } = await supabase
-      .from(this.tableName)
+export const stageRepository = {
+  /**
+   * Create a new stage
+   */
+  async createStage(payload: CreateStagePayload, userId?: string): Promise<Stage> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
       .insert({
-        ...stageData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        name: payload.name,
+        color: payload.color,
+        position: payload.position || await this.getNextPosition(),
+        is_default: payload.is_default || false,
+        created_by: userId
       })
       .select()
       .single();
 
-    if (error) throw error;
-    return data as IStage;
-  }
+    if (error) {
+      throw new Error(`Failed to create stage: ${error.message}`);
+    }
 
-  async findById(id: string): Promise<IStage | null> {
-    const { data, error } = await supabase
-      .from(this.tableName)
+    return data as Stage;
+  },
+
+  /**
+   * Get all stages
+   */
+  async getAllStages(filter: StageFilter = {}): Promise<Stage[]> {
+    let query = supabaseAdmin
+      .from('stages')
+      .select('*')
+      .order('position', { ascending: true });
+
+    // Apply filters
+    if (filter.search) {
+      query = query.ilike('name', `%${filter.search}%`);
+    }
+
+    if (filter.is_default !== undefined) {
+      query = query.eq('is_default', filter.is_default);
+    }
+
+    if (filter.limit) {
+      query = query.limit(filter.limit);
+    }
+
+    if (filter.offset) {
+      query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch stages: ${error.message}`);
+    }
+
+    return data as Stage[];
+  },
+
+  /**
+   * Get stage by ID
+   */
+  async getStageById(id: string): Promise<Stage | null> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      throw new Error(`Failed to fetch stage: ${error.message}`);
     }
-    return data as IStage;
-  }
 
-  async findAll(filters: IStageFilters = {}): Promise<IStage[]> {
-    let query = supabase.from(this.tableName).select('*');
-    
-    // Search by name
-    if (filters.search) {
-      query = query.ilike('name', `%${filters.search}%`);
-    }
-    
-    // Filter by created_by
-    if (filters.created_by) {
-      query = query.eq('created_by', filters.created_by);
-    }
-    
-    // Sorting
-    if (filters.sort_by) {
-      query = query.order(filters.sort_by, { 
-        ascending: filters.order === 'asc' || filters.order === undefined 
-      });
-    } else {
-      query = query.order('position', { ascending: true });
-    }
-    
-    // Pagination
-    if (filters.page && filters.limit) {
-      const from = (filters.page - 1) * filters.limit;
-      const to = from + filters.limit - 1;
-      query = query.range(from, to);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    return data as IStage[];
-  }
+    return data as Stage;
+  },
 
-  async update(id: string, stageData: IUpdateStage): Promise<IStage> {
-    const { data, error } = await supabase
-      .from(this.tableName)
+  /**
+   * Update stage
+   */
+  async updateStage(id: string, payload: UpdateStagePayload): Promise<Stage> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
       .update({
-        ...stageData,
+        ...payload,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
-    return data as IStage;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    // First, check if stage has any leads
-    const { data: leadsData, error: leadsError } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('stage', id)
-      .limit(1);
-
-    if (leadsError) throw leadsError;
-    
-    if (leadsData && leadsData.length > 0) {
-      throw new Error(`Cannot delete stage with ${leadsData.length} leads. Move leads to another stage first.`);
+    if (error) {
+      throw new Error(`Failed to update stage: ${error.message}`);
     }
 
-    // Delete the stage
-    const { error } = await supabase
-      .from(this.tableName)
+    return data as Stage;
+  },
+
+  /**
+   * Delete stage
+   */
+  async deleteStage(id: string): Promise<boolean> {
+    // Check if stage has any deals before deleting
+    const { data: dealsData } = await supabaseAdmin
+      .from('deals')
+      .select('id')
+      .eq('stage_id', id)
+      .limit(1);
+
+    if (dealsData && dealsData.length > 0) {
+      throw new Error('Cannot delete stage with active deals');
+    }
+
+    const { error } = await supabaseAdmin
+      .from('stages')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(`Failed to delete stage: ${error.message}`);
+    }
+
     return true;
-  }
+  },
 
-  async getPipelineStats(userId?: string): Promise<IPipelineData> {
-    // Get all stages
-    const stages = await this.findAll({ created_by: userId });
-    const pipelineData: IPipelineData = {};
+  /**
+   * Get next available position
+   */
+  async getNextPosition(): Promise<number> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
+      .select('position')
+      .order('position', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return 1;
+    }
+
+    return data.position + 1;
+  },
+
+  /**
+   * Reorder stages
+   */
+  async reorderStages(stages: Array<{ id: string; position: number }>): Promise<Stage[]> {
+    // Update in batch
+    const updates = stages.map(stage => 
+      supabaseAdmin
+        .from('stages')
+        .update({ position: stage.position })
+        .eq('id', stage.id)
+        .select()
+        .single()
+    );
+
+    const results = await Promise.all(updates);
     
-    // For each stage, get lead count and total value
-    for (const stage of stages) {
-      let query = supabase
-        .from('leads')
-        .select('budget', { count: 'exact', head: false })
-        .eq('stage', stage.id);
-      
-      if (userId) {
-        query = query.eq('assigned_to', userId);
+    // Check for errors
+    results.forEach((result, index) => {
+      if (result.error) {
+        throw new Error(`Failed to update stage ${stages[index].id}: ${result.error.message}`);
       }
-      
-      const { data: leads, count, error } = await query;
-      
-      if (error) throw error;
-      
-      const totalValue = leads?.reduce((sum, lead) => sum + (lead.budget || 0), 0) || 0;
-      
-      pipelineData[stage.id] = {
-        count: count || 0,
+    });
+
+    // Return updated stages
+    return results.map(result => result.data as Stage);
+  },
+
+  /**
+   * Get pipeline stages with deal counts
+   */
+  async getPipelineStages(): Promise<PipelineStage[]> {
+    // Using a view or subquery to get deal counts
+    const { data: stages, error: stagesError } = await supabaseAdmin
+      .from('stages')
+      .select('*')
+      .order('position', { ascending: true });
+
+    if (stagesError) {
+      throw new Error(`Failed to fetch stages: ${stagesError.message}`);
+    }
+
+    // Get deal counts for each stage
+    const pipelineStages: PipelineStage[] = [];
+
+    for (const stage of stages) {
+      const { data: deals, error: dealsError } = await supabaseAdmin
+        .from('deals')
+        .select('value')
+        .eq('stage_id', stage.id);
+
+      if (dealsError) {
+        console.error(`Failed to fetch deals for stage ${stage.id}:`, dealsError.message);
+        continue;
+      }
+
+      const totalValue = deals?.reduce((sum, deal) => sum + (deal.value || 0), 0) || 0;
+
+      pipelineStages.push({
+        ...stage,
+        deal_count: deals?.length || 0,
         total_value: totalValue
-      };
+      });
     }
-    
-    return pipelineData;
-  }
 
-  async count(filters: IStageFilters = {}): Promise<number> {
-    let query = supabase.from(this.tableName).select('*', { count: 'exact', head: true });
-    
-    if (filters.search) {
-      query = query.ilike('name', `%${filters.search}%`);
-    }
-    
-    if (filters.created_by) {
-      query = query.eq('created_by', filters.created_by);
-    }
-    
-    const { count, error } = await query;
-    
-    if (error) throw error;
-    return count || 0;
-  }
+    return pipelineStages;
+  },
 
-  async getDefaultStages(): Promise<IStage[]> {
-    const { data, error } = await supabase
-      .from(this.tableName)
+  /**
+   * Get default stages
+   */
+  async getDefaultStages(): Promise<Stage[]> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
       .select('*')
       .eq('is_default', true)
       .order('position', { ascending: true });
 
-    if (error) throw error;
-    return data as IStage[];
+    if (error) {
+      throw new Error(`Failed to fetch default stages: ${error.message}`);
+    }
+
+    return data as Stage[];
+  },
+
+  /**
+   * Check if stage name already exists
+   */
+  async stageNameExists(name: string, excludeId?: string): Promise<boolean> {
+    let query = supabaseAdmin
+      .from('stages')
+      .select('id')
+      .ilike('name', name);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query.limit(1);
+
+    if (error) {
+      throw new Error(`Failed to check stage name: ${error.message}`);
+    }
+
+    return data && data.length > 0;
   }
-}
+};

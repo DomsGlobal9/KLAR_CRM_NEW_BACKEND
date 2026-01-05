@@ -1,27 +1,23 @@
-import { Router } from 'express';
-import { StageController } from '../controllers/stage.controller';
-import { validateStage, validateUpdateStage } from '../middlewares/validation.middleware';
-import { authenticate } from '../middlewares/auth.middleware';
+import express from 'express';
+import { stageController } from '../controllers/stage.controller';
+import { authenticate } from '../middleware/auth.middleware';
 
-const router = Router();
-const stageController = new StageController();
+const router = express.Router();
 
-// Public routes (if needed)
-router.get('/public/default-stages', stageController.initializeDefaultStages);
-
-// Protected routes (require authentication)
-router.use(authenticate);
+// Apply authentication middleware to all routes
+// router.use(authenticate);
 
 // Stage CRUD operations
-router.post('/', validateStage, stageController.createStage);
+router.post('/', stageController.createStage);
 router.get('/', stageController.getAllStages);
-router.get('/pipeline-data', stageController.getPipelineData);
-router.get('/user/:userId', stageController.getStagesByUser);
-router.get('/:id', stageController.getStage);
-router.put('/:id', validateUpdateStage, stageController.updateStage);
+router.get('/pipeline', stageController.getPipelineStages);
+router.get('/default', stageController.getDefaultStages);
+router.get('/initialize', stageController.initializeDefaultStages);
+router.get('/:id', stageController.getStageById);
+router.put('/:id', stageController.updateStage);
 router.delete('/:id', stageController.deleteStage);
 
-// Initialize default stages for user
-router.post('/initialize-default', stageController.initializeDefaultStages);
+// Special operations
+router.patch('/reorder', stageController.reorderStages);
 
 export default router;

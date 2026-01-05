@@ -1,167 +1,208 @@
 import { Request, Response } from 'express';
-import { StageService } from '../services/stage.service';
-import { 
-  ICreateStage, 
-  IUpdateStage, 
-  IStageFilters 
+import { stageService } from '../services/stage.service';
+import {
+  CreateStagePayload,
+  UpdateStagePayload,
+  StageFilter,
+  ReorderStagesPayload
 } from '../interfaces/stage.interface';
-import { sendResponse } from '../utils/response.utils';
 
-export class StageController {
-  private stageService: StageService;
-
-  constructor() {
-    this.stageService = new StageService();
-  }
-
-  createStage = async (req: Request, res: Response): Promise<void> => {
+export const stageController = {
+  /**
+   * Create a new stage
+   */
+  async createStage(req: Request, res: Response) {
     try {
-      const stageData: ICreateStage = {
-        ...req.body,
-        created_by: req.user?.id || req.body.created_by
-      };
-      
-      const result = await this.stageService.createStage(stageData);
-      sendResponse(res, result.success ? 201 : 400, result);
+      const payload: CreateStagePayload = req.body;
+      const userId = (req as any).user?.id; // Assuming authentication middleware
+
+      const stage = await stageService.createStage(payload, userId);
+
+      res.status(201).json({
+        success: true,
+        message: 'Stage created successfully',
+        data: stage
+      });
     } catch (error: any) {
-      sendResponse(res, 500, {
+      res.status(400).json({
         success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
+        error: error.message
       });
     }
-  };
+  },
 
-  getStage = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * Get all stages
+   */
+  async getAllStages(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const result = await this.stageService.getStageById(id);
-      sendResponse(res, result.success ? 200 : 404, result);
-    } catch (error: any) {
-      sendResponse(res, 500, {
-        success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
-      });
-    }
-  };
-
-  getAllStages = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const filters: IStageFilters = {
+      const filter: StageFilter = {
         search: req.query.search as string,
-        sort_by: req.query.sort_by as 'name' | 'position' | 'created_at',
-        order: req.query.order as 'asc' | 'desc',
-        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        is_default: req.query.is_default !== undefined ? req.query.is_default === 'true' : undefined,
         limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-        created_by: req.user?.id || req.query.created_by as string
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
       };
-      
-      const result = await this.stageService.getAllStages(filters);
-      sendResponse(res, result.success ? 200 : 400, result);
+
+      const stages = await stageService.getAllStages(filter);
+
+      res.json({
+        success: true,
+        data: stages,
+        count: stages.length
+      });
     } catch (error: any) {
-      sendResponse(res, 500, {
+      res.status(400).json({
         success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
+        error: error.message
       });
     }
-  };
+  },
 
-  updateStage = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * Get stage by ID
+   */
+  async getStageById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const stageData: IUpdateStage = req.body;
-      
-      const result = await this.stageService.updateStage(id, stageData);
-      sendResponse(res, result.success ? 200 : 400, result);
+      const stage = await stageService.getStageById(id);
+
+      res.json({
+        success: true,
+        data: stage
+      });
     } catch (error: any) {
-      sendResponse(res, 500, {
+      res.status(404).json({
         success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
+        error: error.message
       });
     }
-  };
+  },
 
-  deleteStage = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * Update stage
+   */
+  async updateStage(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await this.stageService.deleteStage(id);
-      sendResponse(res, result.success ? 200 : 400, result);
-    } catch (error: any) {
-      sendResponse(res, 500, {
-        success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
-      });
-    }
-  };
+      const payload: UpdateStagePayload = req.body;
 
-  getPipelineData = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const userId = req.user?.id || req.query.user_id as string;
-      const result = await this.stageService.getPipelineData(userId);
-      sendResponse(res, result.success ? 200 : 400, result);
-    } catch (error: any) {
-      sendResponse(res, 500, {
-        success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
-      });
-    }
-  };
+      const stage = await stageService.updateStage(id, payload);
 
-  initializeDefaultStages = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const userId = req.user?.id || req.body.user_id;
-      
-      if (!userId) {
-        sendResponse(res, 400, {
-          success: false,
-          error: 'VALIDATION_ERROR',
-          message: 'User ID is required'
-        });
-        return;
-      }
-      
-      const result = await this.stageService.initializeDefaultStages(userId);
-      sendResponse(res, result.success ? 201 : 400, result);
+      res.json({
+        success: true,
+        message: 'Stage updated successfully',
+        data: stage
+      });
     } catch (error: any) {
-      sendResponse(res, 500, {
+      res.status(400).json({
         success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
+        error: error.message
       });
     }
-  };
+  },
 
-  getStagesByUser = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * Delete stage
+   */
+  async deleteStage(req: Request, res: Response) {
     try {
-      const userId = req.user?.id || req.params.userId;
-      
-      if (!userId) {
-        sendResponse(res, 400, {
-          success: false,
-          error: 'VALIDATION_ERROR',
-          message: 'User ID is required'
-        });
-        return;
-      }
-      
-      const filters: IStageFilters = {
-        ...req.query,
-        created_by: userId
-      };
-      
-      const result = await this.stageService.getAllStages(filters);
-      sendResponse(res, result.success ? 200 : 400, result);
+      const { id } = req.params;
+
+      await stageService.deleteStage(id);
+
+      res.json({
+        success: true,
+        message: 'Stage deleted successfully'
+      });
     } catch (error: any) {
-      sendResponse(res, 500, {
+      res.status(400).json({
         success: false,
-        error: 'SERVER_ERROR',
-        message: error.message || 'Internal server error'
+        error: error.message
       });
     }
-  };
-}
+  },
+
+  /**
+   * Reorder stages
+   */
+  async reorderStages(req: Request, res: Response) {
+    try {
+      const payload: ReorderStagesPayload = req.body;
+
+      const stages = await stageService.reorderStages(payload);
+
+      res.json({
+        success: true,
+        message: 'Stages reordered successfully',
+        data: stages
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Get pipeline stages with statistics
+   */
+  async getPipelineStages(req: Request, res: Response) {
+    try {
+      const stages = await stageService.getPipelineStages();
+
+      res.json({
+        success: true,
+        data: stages,
+        count: stages.length
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Get default stages
+   */
+  async getDefaultStages(req: Request, res: Response) {
+    try {
+      const stages = await stageService.getDefaultStages();
+
+      res.json({
+        success: true,
+        data: stages,
+        count: stages.length
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Initialize default stages
+   */
+  async initializeDefaultStages(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+      const stages = await stageService.initializeDefaultStages(userId);
+
+      res.json({
+        success: true,
+        message: 'Default stages initialized',
+        data: stages,
+        count: stages.length
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+};
