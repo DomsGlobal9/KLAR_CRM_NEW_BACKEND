@@ -142,6 +142,7 @@ export const teamMemberController = {
             });
 
             res.status(201).json({
+                success: true,
                 message: 'Team member created successfully',
                 user: {
                     id: user.id,
