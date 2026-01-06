@@ -13,9 +13,8 @@ export const teamController = {
      */
     async create(req: AuthRequest, res: Response) {
         try {
-            console.log("Requester for team creating", req.user);
             console.log("Requesting data we get", req.body);
-            const team = await teamService.createTeam(req.body, req.user);
+            const team = await teamService.createTeam(req.body);
 
             await createAuditLog({
                 user_id: req.user?.id,
@@ -38,9 +37,26 @@ export const teamController = {
     async list(req: AuthRequest, res: Response) {
         try {
             const teams = await teamService.listTeams();
-            res.json({ teams });
-        } catch (err: any) {
-            res.status(500).json({ error: err.message });
+
+            if (!teams || teams.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No teams found'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: teams
+            });
+        } catch (error: any) {
+            console.error('Error fetching teams:', error);
+
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch teams',
+                error: error.message
+            });
         }
     },
 

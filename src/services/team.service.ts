@@ -8,10 +8,7 @@ export const teamService = {
      * @param requester 
      * @returns 
      */
-    async createTeam(payload: { name: string; description?: string }, requester: any) {
-        if (requester?.role_name !== 'superadmin') {
-            throw new Error('Unauthorized: Only superadmin can create teams');
-        }
+    async createTeam(payload: { name: string; description?: string }) {
         return teamRepository.createTeam(payload.name, payload.description);
     },
 
