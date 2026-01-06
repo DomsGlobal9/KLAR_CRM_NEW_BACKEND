@@ -23,7 +23,9 @@ export const teamController = {
                 entity_id: team.id
             });
 
-            res.status(201).json({ message: 'Team created successfully', team });
+            res.status(201).json({ 
+                success: true,
+                message: 'Team created successfully' });
         } catch (err: any) {
             res.status(400).json({ error: err.message });
         }
