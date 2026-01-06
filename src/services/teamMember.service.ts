@@ -268,6 +268,72 @@ export const teamMemberService = {
     },
 
     /**
+     * Update team member status (activate/deactivate)
+     */
+    async updateTeamMemberStatus(userId: string, isActive: boolean) {
+        // Get the user first
+        const { data, error } = await teamMemberRepository.listUsers();
+        if (error) throw error;
+
+        const user = data.users.find(u => u.id === userId);
+        if (!user) throw new Error('User not found');
+
+        if (user.user_metadata?.role_name === 'superadmin') {
+            throw new Error('Cannot modify superadmin status');
+        }
+
+        // Get current metadata
+        let currentMetadata = user.user_metadata;
+
+        // Handle nested user_metadata if it exists
+        if (currentMetadata?.user_metadata) {
+            currentMetadata = currentMetadata.user_metadata;
+        }
+
+        // Update the status in metadata
+        const newMetadata = {
+            ...currentMetadata,
+            is_active: isActive,
+            status: isActive ? 'active' : 'inactive',
+            updated_at: new Date().toISOString()
+        };
+
+        // Update the user in Supabase
+        const { data: updateData, error: updateError } = await teamMemberRepository.updateUser(userId, {
+            user_metadata: newMetadata
+        });
+
+        if (updateError) throw updateError;
+
+        const updatedUser = updateData.user;
+        let userMetadata = updatedUser.user_metadata;
+
+        // Handle nested metadata
+        if (userMetadata?.user_metadata) {
+            userMetadata = userMetadata.user_metadata;
+        }
+
+        const roleId = userMetadata?.role_id;
+        const teamId = userMetadata?.team_id;
+
+        const role = roleId ? await roleRepository.getById(roleId) : null;
+        const team = teamId ? await teamRepository.getById(teamId) : null;
+
+        return {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            username: userMetadata?.username,
+            created_at: updatedUser.created_at,
+            last_sign_in_at: updatedUser.last_sign_in_at,
+            role: role ? { id: role.id, name: role.name } : null,
+            team: team ? { id: team.id, name: team.name } : null,
+            user_metadata: userMetadata,
+            is_active: isActive,
+            status: isActive ? 'active' : 'inactive'
+        };
+    },
+
+    /**
      * Remove a team member
      */
     async removeTeamMember(userId: string) {
@@ -358,7 +424,7 @@ export const teamMemberService = {
             role_id,
             team_id: team_id || null,
             requested_by,
-            expires_at: Date.now() + 10 * 60 * 1000 
+            expires_at: Date.now() + 10 * 60 * 1000
         });
 
         setTimeout(() => pendingMemberCreations.delete(email), 10 * 60 * 1000);
@@ -371,13 +437,15 @@ export const teamMemberService = {
      */
     async verifyOTPAndCreateMember(payload: {
         email: string;
+        password: string;
         otp_code: string;
         username: string;
         full_name?: string;
         phone?: string | null;
         created_by: string;
     }) {
-        const { email, otp_code, username, full_name, phone } = payload;
+        console.log("The verify otp payload we get", payload);
+        const { email, password, otp_code, username, full_name, phone } = payload;
 
         const isValid = await otpService.verifyOTP(email, otp_code, 'registration');
         if (!isValid) throw new Error('Invalid or expired OTP');
@@ -396,7 +464,7 @@ export const teamMemberService = {
 
         const { data, error } = await teamMemberRepository.createUser({
             email,
-            password: Math.random().toString(36).slice(-12) + "Temp!123",
+            password,
             email_confirm: true,
             user_metadata: {
                 username,
@@ -406,7 +474,8 @@ export const teamMemberService = {
                 full_name: full_name || null,
                 phone: phone || null,
                 email_verified: true,
-                created_by: requested_by
+                created_by: requested_by,
+                status: 'active',
             }
         });
 

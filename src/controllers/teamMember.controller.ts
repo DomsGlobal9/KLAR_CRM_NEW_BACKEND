@@ -67,11 +67,90 @@ export const teamMemberController = {
     },
 
     async update(req: AuthRequest, res: Response) {
-        const user = await teamMemberService.updateTeamMember(
-            req.params.memberId,
-            req.body
-        );
-        res.json(user);
+        try {
+            const { memberId } = req.params;
+
+            if (!memberId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Member ID is required'
+                });
+            }
+
+            if (!req.body || Object.keys(req.body).length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Update data is required'
+                });
+            }
+
+            const user = await teamMemberService.updateTeamMember(
+                memberId,
+                req.body
+            );
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Team member not found'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: user
+            });
+        } catch (error: any) {
+            console.error('Error updating team member:', error);
+
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to update team member',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update team member status (activate/deactivate)
+     */
+    async updateStatus(req: AuthRequest, res: Response) {
+        try {
+            const { memberId } = req.params;
+            const { is_active } = req.body;
+
+            if (typeof is_active !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'is_active must be a boolean value'
+                });
+            }
+
+            const user = await teamMemberService.updateTeamMemberStatus(memberId, is_active);
+
+            // Create audit log for status change
+            await createAuditLog({
+                user_id: req.user?.id,
+                action: is_active ? 'TEAM_MEMBER_ACTIVATED' : 'TEAM_MEMBER_DEACTIVATED',
+                entity_type: 'user',
+                entity_id: memberId,
+                details: `User ${is_active ? 'activated' : 'deactivated'} by ${req.user?.email}`,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: `User ${is_active ? 'activated' : 'deactivated'} successfully`,
+                data: user
+            });
+        } catch (error: any) {
+            console.error('Error updating team member status:', error);
+            return res.status(500).json({
+                success: false,
+                error: error.message || 'Failed to update user status'
+            });
+        }
     },
 
     async remove(req: AuthRequest, res: Response) {
@@ -115,15 +194,18 @@ export const teamMemberController = {
             if (req.user?.role_name !== 'superadmin') {
                 return res.status(403).json({ error: 'Only superadmin can create team members' });
             }
+            const owner = req.user;
 
-            const { email, otp_code, username, full_name, phone } = req.body;
+            console.log("The frontend data we get", req.body);
+            const { email, password, otp_code, username, full_name, phone } = req.body;
 
-            if (!email || !otp_code || !username) {
-                return res.status(400).json({ error: 'Email, OTP, and username are required' });
+            if (!email || !otp_code || !username || !password) {
+                return res.status(400).json({ error: 'Email, Password, OTP, and username are required' });
             }
 
             const user = await teamMemberService.verifyOTPAndCreateMember({
                 email: email.toLowerCase(),
+                password,
                 otp_code,
                 username,
                 full_name,

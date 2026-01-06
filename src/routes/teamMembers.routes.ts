@@ -42,6 +42,11 @@ router.get('/unassigned', teamMemberController.getUnassigned);
 router.put('/:memberId', teamMemberController.update);
 
 /**
+ * Team member status update
+ */
+router.patch('/:memberId/status', teamMemberController.updateStatus);
+
+/**
  * Remove a team member
  */
 router.delete('/:memberId', teamMemberController.remove);
