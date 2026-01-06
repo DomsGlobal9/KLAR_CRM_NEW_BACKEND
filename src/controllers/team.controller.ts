@@ -85,7 +85,7 @@ export const teamController = {
                 entity_id: id
             });
 
-            res.json({ message: 'Team updated successfully', team });
+            res.json({ message: 'Team updated successfully', team, success: true });
         } catch (err: any) {
             res.status(400).json({ error: err.message });
         }
