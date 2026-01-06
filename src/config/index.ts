@@ -1,4 +1,4 @@
-export { envConfig, validateConfig } from "./env.config";
+export { envConfig, validateConfig, isDevelopment } from "./env.config";
 export { corsOptions } from "./cors.config";
 export { mailConfig } from "./mail.config";
 export { 

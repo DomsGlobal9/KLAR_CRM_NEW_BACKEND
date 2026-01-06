@@ -18,7 +18,7 @@ export const AuthService = {
         }
 
         const { data: existingUsers } = await AuthRepository.listUsers();
-        if (existingUsers.users.length > 0) {
+        if (existingUsers.users.length > 5) {
             throw new Error('Registration is closed. Superadmin already exists.');
         }
 

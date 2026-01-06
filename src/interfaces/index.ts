@@ -12,3 +12,4 @@ export {
     LeadFilter,
     LeadStats,
 } from "./lead.interface";
+export {  Stage } from './stage.interface';

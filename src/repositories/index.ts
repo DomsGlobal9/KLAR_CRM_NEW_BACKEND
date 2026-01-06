@@ -5,3 +5,5 @@ export { teamRepository } from "./team.repository";
 export { teamMemberRepository } from "./teamMember.repository";
 export { otpRepository } from "./otp.repository";
 export { leadRepository } from "./lead.repository";
+
+export { stageRepository } from "./stage.repository";
