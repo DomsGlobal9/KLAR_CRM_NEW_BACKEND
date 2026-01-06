@@ -15,6 +15,7 @@ export const roleController = {
         try {
             const roles = await roleService.getAllRoleIdNames();
             res.json({
+                success: true,
                 message: 'Role id & names fetched successfully',
                 roles
             });
