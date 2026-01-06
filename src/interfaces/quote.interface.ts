@@ -7,56 +7,57 @@ export interface QuoteLineItem {
     total: number;
 }
 
+// src/interfaces/quote.interface.ts
 export interface Quote {
     id: string;
-    quoteNumber: string;
-    leadId?: string;
-    clientName: string;
-    clientEmail: string;
-    clientPhone?: string;
-    clientAddress?: string;
+    quote_number: string;
+    lead_id?: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    client_address?: string;
     destination?: string;
     subtotal: number;
-    taxAmount: number;
+    tax_amount: number;
     total: number;
     currency: string;
     status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'converted';
-    createdAt: string;
-    validUntil: string;
+    created_at: string;
+    valid_until: string;
     template?: string;
-    lineItems: QuoteLineItem[];
+    line_items: QuoteLineItem[];
     notes?: string;
-    termsConditions?: string;
-    gstNumber?: string;
-    initialAmount: number;
-    discountPercent: number;
-    discountAmount: number;
-    finalAmount: number;
+    terms_conditions?: string;
+    gst_number?: string;
+    initial_amount: number;
+    discount_percent: number;
+    discount_amount: number;
+    final_amount: number;
 }
 
 export interface CreateQuoteDTO {
-    quoteNumber: string;
-    leadId?: string;
-    clientName: string;
-    clientEmail: string;
-    clientPhone?: string;
-    clientAddress?: string;
+    quote_number: string;
+    lead_id: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    client_address?: string;
     destination?: string;
     subtotal: number;
-    taxAmount: number;
+    tax_amount: number;
     total: number;
     currency: string;
     status?: 'draft' | 'sent' | 'accepted' | 'rejected' | 'converted';
-    validUntil: string;
+    valid_until: string;
     template?: string;
-    lineItems: QuoteLineItem[];
+    line_items: QuoteLineItem[];
     notes?: string;
-    termsConditions?: string;
-    gstNumber?: string;
-    initialAmount: number;
-    discountPercent: number;
-    discountAmount: number;
-    finalAmount: number;
+    terms_conditions?: string;
+    gst_number?: string;
+    initial_amount: number;
+    discount_percent: number;
+    discount_amount: number;
+    final_amount: number;
 }
 
 export interface UpdateQuoteDTO {

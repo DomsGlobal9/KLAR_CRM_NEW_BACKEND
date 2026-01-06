@@ -9,7 +9,7 @@ export const invoiceRepository = {
         const { data, error } = await supabaseAdmin
             .from('invoices')
             .select('*')
-            .order('createdAt', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) {
             throw new Error(`Failed to fetch invoices: ${error.message}`);
@@ -44,11 +44,15 @@ export const invoiceRepository = {
     async create(invoiceData: CreateInvoiceDTO): Promise<Invoice> {
         const invoice: Omit<Invoice, 'id'> = {
             ...invoiceData,
-            invoiceNumber: `INV-${Date.now()}`,
+            invoice_number: `INV-${Date.now()}`,
             status: invoiceData.status || 'draft',
-            createdAt: new Date().toISOString(),
-            dueDate: invoiceData.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            paidAmount: 0
+            created_at: new Date().toISOString(),
+            due_date: invoiceData.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            paid_amount: 0,
+            client_name: '',
+            client_email: '',
+            tax_amount: 0,
+            line_items: []
         };
 
         const { data, error } = await supabaseAdmin
@@ -102,7 +106,7 @@ export const invoiceRepository = {
     async getStats(): Promise<InvoiceStats> {
         const { data: invoices, error } = await supabaseAdmin
             .from('invoices')
-            .select('status, total, paidAmount');
+            .select('status, total, paid_amount');
 
         if (error) {
             throw new Error(`Failed to fetch invoice stats: ${error.message}`);

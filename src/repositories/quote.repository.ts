@@ -9,7 +9,7 @@ export const quoteRepository = {
         const { data, error } = await supabaseAdmin
             .from('quotes')
             .select('*')
-            .order('createdAt', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) {
             throw new Error(`Failed to fetch quotes: ${error.message}`);
@@ -45,8 +45,8 @@ export const quoteRepository = {
         const { data, error } = await supabaseAdmin
             .from('quotes')
             .select('*')
-            .eq('leadId', leadId)
-            .order('createdAt', { ascending: false });
+            .eq('lead_id', leadId)
+            .order('created_at', { ascending: false });
 
         if (error) {
             throw new Error(`Failed to fetch quotes by lead: ${error.message}`);
@@ -62,8 +62,8 @@ export const quoteRepository = {
         const quote: Omit<Quote, 'id'> = {
             ...quoteData,
             status: quoteData.status || 'draft',
-            createdAt: new Date().toISOString(),
-            validUntil: quoteData.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            created_at: new Date().toISOString(),
+            valid_until: quoteData.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         };
 
         const { data, error } = await supabaseAdmin
@@ -133,7 +133,7 @@ export const quoteRepository = {
 
         quotes.forEach(quote => {
             stats.totalAmount += quote.finalAmount || 0;
-            
+
             if (quote.status === 'accepted') {
                 stats.acceptedQuotes += 1;
             } else if (quote.status === 'rejected') {

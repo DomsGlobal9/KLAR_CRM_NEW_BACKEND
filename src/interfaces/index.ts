@@ -12,4 +12,12 @@ export {
     LeadFilter,
     LeadStats,
 } from "./lead.interface";
-export {  Stage } from './stage.interface';
+export {  
+    Stage , 
+    CreateStagePayload ,
+    UpdateStagePayload ,
+    StageFilter ,
+    PipelineStage ,
+    ReorderStagesPayload ,
+    ApiResponse ,
+} from './stage.interface';

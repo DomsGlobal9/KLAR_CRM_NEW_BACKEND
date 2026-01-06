@@ -9,46 +9,46 @@ export interface LineItem {
 
 export interface Invoice {
     id: string;
-    invoiceNumber: string;
-    clientName: string;
-    clientEmail: string;
-    clientPhone?: string;
-    clientAddress?: string;
+    invoice_number: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    client_address?: string;
     subtotal: number;
     discount?: number;
-    taxAmount: number;
+    tax_amount: number;
     total: number;
     currency: string;
     status: 'draft' | 'sent' | 'paid' | 'partial' | 'overdue' | 'cancelled';
-    createdAt: string;
-    dueDate: string;
-    quoteReference?: string;
-    paidAmount: number;
-    paidDate?: string;
-    sentAt?: string;
-    lineItems: LineItem[];
+    created_at: string;
+    due_date: string;
+    quote_reference?: string;
+    paid_amount: number;
+    paid_date?: string;
+    sent_at?: string;
+    line_items: LineItem[];
     notes?: string;
-    termsConditions?: string;
-    gstNumber?: string;
+    terms_conditions?: string;
+    gst_number?: string;
 }
 
 export interface CreateInvoiceDTO {
-    clientName: string;
-    clientEmail: string;
-    clientPhone?: string;
-    clientAddress?: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    client_address?: string;
     subtotal: number;
     discount?: number;
-    taxAmount: number;
+    tax_amount: number;
     total: number;
     currency: string;
     status?: 'draft' | 'sent' | 'paid' | 'partial' | 'overdue' | 'cancelled';
-    dueDate?: string;
-    quoteReference?: string;
-    lineItems: LineItem[];
+    due_date?: string;
+    quote_reference?: string;
+    line_items: LineItem[];
     notes?: string;
-    termsConditions?: string;
-    gstNumber?: string;
+    terms_conditions?: string;
+    gst_number?: string;
 }
 
 export interface UpdateInvoiceDTO {

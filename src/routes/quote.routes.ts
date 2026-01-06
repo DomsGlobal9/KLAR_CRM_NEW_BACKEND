@@ -10,7 +10,7 @@ router.get('/', quoteController.getAllQuotes);
 router.get('/stats/overview', quoteController.getQuoteStats);
 
 // GET /api/quotes/lead/:leadId
-router.get('/lead/:leadId', quoteController.getQuotesByLeadId);
+router.get('/lead/:lead_id', quoteController.getQuotesByLeadId);
 
 // GET /api/quotes/:id
 router.get('/:id', quoteController.getQuoteById);

@@ -4,7 +4,7 @@ import { invoiceController } from '../controllers';
 const router = Router();
 
 // GET /api/invoices
-router.get('/', invoiceController.getAllInvoices);
+router.get('/', invoiceController.getAllInvoices); 
 
 // GET /api/invoices/stats/overview
 router.get('/stats/overview', invoiceController.getInvoiceStats);

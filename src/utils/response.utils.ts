@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { ApiResponse } from '../interfaces/stage.interface';
+import { ApiResponse } from '../interfaces';
 
 export const sendResponse = (
   res: Response,

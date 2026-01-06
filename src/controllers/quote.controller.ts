@@ -34,8 +34,8 @@ export const quoteController = {
 
     async getQuotesByLeadId(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
-            const quotes = await quoteService.getQuotesByLeadId(leadId);
+            const { lead_id } = req.params;
+            const quotes = await quoteService.getQuotesByLeadId(lead_id);
             res.json({ success: true, data: quotes });
         } catch (error: any) {
             if (error.message === 'Lead not found') {
@@ -51,7 +51,16 @@ export const quoteController = {
 
     async createQuote(req: Request, res: Response) {
         try {
+            console.log('Request body for creating quote:', req.body);
             const quoteData: CreateQuoteDTO = req.body;
+            if (!quoteData.lead_id) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Lead ID is required' 
+                });
+            }
+
+            console.log('Creating quote with data:', quoteData);
             const quote = await quoteService.createQuote(quoteData);
             res.status(201).json({ success: true, data: quote });
         } catch (error: any) {
