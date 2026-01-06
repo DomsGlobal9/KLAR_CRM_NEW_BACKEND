@@ -15,9 +15,7 @@ export const leadController = {
 
             const lead = await leadService.createLead(payload);
 
-            // Create audit log
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_CREATED',
                 entity_type: 'lead',
                 entity_id: lead.id,
