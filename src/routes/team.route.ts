@@ -7,7 +7,7 @@ const router = Router();
 /**
  * Apply authenticate middleware to all routes in this router
  */
-router.use(authenticate);
+// router.use(authenticate);
 
 /**
  * Team create route

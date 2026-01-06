@@ -30,9 +30,31 @@ export const teamMemberController = {
     },
 
     async getAll(req: AuthRequest, res: Response) {
-        const users = await teamMemberService.getAllTeamMembers();
-        res.json(users);
+        try {
+            const users = await teamMemberService.getAllTeamMembers();
+
+            if (!users || users.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No team members found'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: users
+            });
+        } catch (error: any) {
+            console.error('Error fetching team members:', error);
+
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch team members',
+                error: error.message
+            });
+        }
     },
+
 
     async getByTeam(req: AuthRequest, res: Response) {
         const users = await teamMemberService.getMembersByTeam(req.params.teamId);
