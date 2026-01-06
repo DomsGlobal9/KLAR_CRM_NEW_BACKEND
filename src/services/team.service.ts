@@ -27,10 +27,13 @@ export const teamService = {
      * @param requester 
      * @returns 
      */
-    async updateTeam(id: string, payload: { name?: string; description?: string }, requester: any) {
-        if (requester?.role_name !== 'superadmin') {
-            throw new Error('Unauthorized: Only superadmin can update teams');
-        }
+    async updateTeam(
+        id: string, 
+        payload: { 
+            name?: string; 
+            description?: string;
+            is_active?: boolean;
+        }) {
         return teamRepository.updateTeam(id, payload);
     },
 

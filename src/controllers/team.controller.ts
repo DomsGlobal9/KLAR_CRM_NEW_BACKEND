@@ -23,9 +23,10 @@ export const teamController = {
                 entity_id: team.id
             });
 
-            res.status(201).json({ 
+            res.status(201).json({
                 success: true,
-                message: 'Team created successfully' });
+                message: 'Team created successfully'
+            });
         } catch (err: any) {
             res.status(400).json({ error: err.message });
         }
@@ -70,7 +71,12 @@ export const teamController = {
     async update(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            const team = await teamService.updateTeam(id, req.body, req.user);
+            const { name, description, is_active } = req.body;
+            const team = await teamService.updateTeam(id, {
+                name,
+                description,
+                is_active
+            });
 
             await createAuditLog({
                 user_id: req.user?.id,

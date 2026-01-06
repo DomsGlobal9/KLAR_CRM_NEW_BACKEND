@@ -80,7 +80,7 @@ export const teamRepository = {
      * @param updates 
      * @returns 
      */
-    async updateTeam(id: string, updates: { name?: string; description?: string }) {
+    async updateTeam(id: string, updates: { name?: string; description?: string; is_active?: boolean }) {
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)
