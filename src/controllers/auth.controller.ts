@@ -84,9 +84,13 @@ export const authController = {
             }
 
             const { data, error } = await AuthService.refresh(refresh_token)
-            if (error) throw error
+            if (error) {
+                console.error('Supabase refresh session error:', error);
+                throw error;
+            }
 
             const session = data.session
+            console.log('Supabase refresh session success, session:', session ? 'Found' : 'Not Found');
 
             res.json({
                 success: true,
@@ -245,7 +249,7 @@ export const authController = {
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered' });
             }
-            
+
             const { data: authData, error: authError } = await AuthService.login(normalizedEmail, password);
             console.log("######## The auth data we get", authData);
             if (authError) {

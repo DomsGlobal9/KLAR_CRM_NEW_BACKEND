@@ -117,7 +117,7 @@ export const quoteRepository = {
     async getStats(): Promise<QuoteStats> {
         const { data: quotes, error } = await supabaseAdmin
             .from('quotes')
-            .select('status, finalAmount');
+            .select('status, final_amount');
 
         if (error) {
             throw new Error(`Failed to fetch quote stats: ${error.message}`);
@@ -132,7 +132,7 @@ export const quoteRepository = {
         };
 
         quotes.forEach(quote => {
-            stats.totalAmount += quote.finalAmount || 0;
+            stats.totalAmount += quote.final_amount || 0;
 
             if (quote.status === 'accepted') {
                 stats.acceptedQuotes += 1;
