@@ -41,3 +41,9 @@ export interface ReorderStagesPayload {
     position: number;
   }>;
 }
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+}

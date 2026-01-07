@@ -3,3 +3,7 @@ export { emailController } from "./email.controller";
 export { authController } from "./auth.controller";
 export { roleController } from "./role.controller";
 export { leadController } from "./lead.controller";
+export { invoiceController } from "./invoice.controller";
+export { quoteController } from "./quote.controller";
+export { teamController } from "./team.controller";
+export { teamMemberController } from "./teamMember.controller";

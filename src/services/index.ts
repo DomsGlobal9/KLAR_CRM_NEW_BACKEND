@@ -10,3 +10,7 @@ export {
 export { otpService } from "./otp.service";
 export { leadService } from "./lead.service";
 export { stageService } from "./stage.service";
+export { invoiceService } from "./invoice.service";
+export { quoteService } from "./quote.service";
+export { roleService } from "./role.service";
+export { teamService } from "./team.service";

@@ -58,7 +58,7 @@ export const stageController = {
         // No other fields like position, is_default, created_at, etc.
       }));
 
-      if (formattedData.length === 0) {
+      if (formattedData.length === 0) { 
         throw new Error('No stages found');
       }
 
