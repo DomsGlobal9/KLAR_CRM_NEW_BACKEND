@@ -7,11 +7,38 @@ const router = express.Router();
 router.get('/health', serviceController.healthCheck);
 
 // Service routes
+
+
+ /**
+  * API for create service
+  */
 router.post('/', serviceController.createService);
+
+/**
+ * API for get all services
+ */
 router.get('/', serviceController.getAllServices);
+
+
+/**
+ * API for get all services with relations
+ */
 router.get('/with-relations', serviceController.getAllServicesWithRelations);
+
+
+/**
+ * Api for get Services by ID
+ */
 router.get('/:id', serviceController.getServiceById);
+
+/**
+ * API for get service with relations
+ */
 router.get('/:id/with-relations', serviceController.getServiceWithRelations);
+
+/**
+ * API for put Update Service
+ */
 router.put('/:id', serviceController.updateService);
 router.delete('/:id', serviceController.deleteService);
 router.patch('/:id/toggle-status', serviceController.toggleServiceStatus);
