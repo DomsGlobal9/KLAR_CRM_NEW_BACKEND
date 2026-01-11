@@ -1,0 +1,586 @@
+import { Request, Response } from 'express';
+import { serviceService } from '../services';
+import {
+    ICreateServiceDTO,
+    IUpdateServiceDTO,
+    ICreateSubServiceCategoryDTO,
+    IUpdateSubServiceCategoryDTO,
+    ICreateSubServiceDTO,
+    IUpdateSubServiceDTO,
+    IServiceFilter,
+    ISubServiceCategoryFilter,
+    ISubServiceFilter
+} from '../interfaces/service.interface';
+
+export const serviceController = {
+    // ============ Service Controllers ============
+
+    /**
+     * Create a new service
+     */
+    async createService(req: Request, res: Response) {
+        try {
+            const payload: ICreateServiceDTO = req.body;
+            const service = await serviceService.createService(payload);
+
+            res.status(201).json({
+                success: true,
+                message: 'Service created successfully',
+                data: service
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Failed to create service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get service by ID
+     */
+    async getServiceById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const service = await serviceService.getServiceById(id);
+
+            if (!service) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Service not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: service
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get service by ID with relations
+     */
+    async getServiceWithRelations(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const service = await serviceService.getServiceWithRelations(id);
+
+            if (!service) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Service not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: service
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch service with relations',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get all services
+     */
+    async getAllServices(req: Request, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                search: req.query.search as string,
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const services = await serviceService.getAllServices(filter);
+
+            res.status(200).json({
+                success: true,
+                data: services,
+                count: services.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch services',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get all services with relations
+     */
+    async getAllServicesWithRelations(req: Request, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                search: req.query.search as string,
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const services = await serviceService.getAllServicesWithRelations(filter);
+
+            res.status(200).json({
+                success: true,
+                data: services,
+                count: services.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch services with relations',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update service
+     */
+    async updateService(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const payload: IUpdateServiceDTO = req.body;
+
+            const service = await serviceService.updateService(id, payload);
+
+            res.status(200).json({
+                success: true,
+                message: 'Service updated successfully',
+                data: service
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 400;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to update service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Delete service
+     */
+    async deleteService(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            await serviceService.deleteService(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Service deleted successfully'
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to delete service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Toggle service status
+     */
+    async toggleServiceStatus(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { is_active } = req.body;
+
+            if (typeof is_active !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'is_active must be a boolean value'
+                });
+            }
+
+            const service = await serviceService.toggleServiceStatus(id, is_active);
+
+            res.status(200).json({
+                success: true,
+                message: `Service ${is_active ? 'activated' : 'deactivated'} successfully`,
+                data: service
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to toggle service status',
+                error: error.message
+            });
+        }
+    },
+
+    // ============ Sub-Service Category Controllers ============
+
+    /**
+     * Create sub-service category
+     */
+    async createSubServiceCategory(req: Request, res: Response) {
+        try {
+            const payload: ICreateSubServiceCategoryDTO = req.body;
+            const category = await serviceService.createSubServiceCategory(payload);
+
+            res.status(201).json({
+                success: true,
+                message: 'Sub-service category created successfully',
+                data: category
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Failed to create sub-service category',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get sub-service category by ID
+     */
+    async getSubServiceCategoryById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const category = await serviceService.getSubServiceCategoryById(id);
+
+            if (!category) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Sub-service category not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: category
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch sub-service category',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get sub-service categories by service ID
+     */
+    async getSubServiceCategoriesByServiceId(req: Request, res: Response) {
+        try {
+            const { serviceId } = req.params;
+            const filter: ISubServiceCategoryFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const categories = await serviceService.getSubServiceCategoriesByServiceId(serviceId, filter);
+
+            res.status(200).json({
+                success: true,
+                data: categories,
+                count: categories.length
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to fetch sub-service categories',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update sub-service category
+     */
+    async updateSubServiceCategory(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const payload: IUpdateSubServiceCategoryDTO = req.body;
+
+            const category = await serviceService.updateSubServiceCategory(id, payload);
+
+            res.status(200).json({
+                success: true,
+                message: 'Sub-service category updated successfully',
+                data: category
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 400;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to update sub-service category',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Delete sub-service category
+     */
+    async deleteSubServiceCategory(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            await serviceService.deleteSubServiceCategory(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Sub-service category deleted successfully'
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to delete sub-service category',
+                error: error.message
+            });
+        }
+    },
+
+    // ============ Sub-Service Controllers ============
+
+    /**
+     * Create sub-service
+     */
+    async createSubService(req: Request, res: Response) {
+        try {
+            const payload: ICreateSubServiceDTO = req.body;
+            const subService = await serviceService.createSubService(payload);
+
+            res.status(201).json({
+                success: true,
+                message: 'Sub-service created successfully',
+                data: subService
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Failed to create sub-service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get sub-service by ID
+     */
+    async getSubServiceById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const subService = await serviceService.getSubServiceById(id);
+
+            if (!subService) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Sub-service not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: subService
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch sub-service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get sub-services by category ID
+     */
+    async getSubServicesByCategoryId(req: Request, res: Response) {
+        try {
+            const { categoryId } = req.params;
+            const filter: ISubServiceFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const subServices = await serviceService.getSubServicesByCategoryId(categoryId, filter);
+
+            res.status(200).json({
+                success: true,
+                data: subServices,
+                count: subServices.length
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to fetch sub-services',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get sub-services by service ID
+     */
+    async getSubServicesByServiceId(req: Request, res: Response) {
+        try {
+            const { serviceId } = req.params;
+            const filter: ISubServiceFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const subServices = await serviceService.getSubServicesByServiceId(serviceId, filter);
+
+            res.status(200).json({
+                success: true,
+                data: subServices,
+                count: subServices.length
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to fetch sub-services',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update sub-service
+     */
+    async updateSubService(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const payload: IUpdateSubServiceDTO = req.body;
+
+            const subService = await serviceService.updateSubService(id, payload);
+
+            res.status(200).json({
+                success: true,
+                message: 'Sub-service updated successfully',
+                data: subService
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 400;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to update sub-service',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Delete sub-service
+     */
+    async deleteSubService(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            await serviceService.deleteSubService(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Sub-service deleted successfully'
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to delete sub-service',
+                error: error.message
+            });
+        }
+    },
+
+    // ============ Helper Controllers ============
+
+    /**
+     * Get complete service hierarchy
+     */
+    async getServiceHierarchy(req: Request, res: Response) {
+        try {
+            const hierarchy = await serviceService.getServiceHierarchy();
+
+            res.status(200).json({
+                success: true,
+                data: hierarchy,
+                count: hierarchy.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch service hierarchy',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Search across services, categories, and sub-services
+     */
+    async searchServiceHierarchy(req: Request, res: Response) {
+        try {
+            const { q } = req.query;
+
+            if (!q || typeof q !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Search query (q) is required'
+                });
+            }
+
+            const results = await serviceService.searchServiceHierarchy(q);
+
+            res.status(200).json({
+                success: true,
+                data: results,
+                summary: {
+                    services: results.services.length,
+                    categories: results.categories.length,
+                    sub_services: results.sub_services.length
+                }
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to search service hierarchy',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Health check endpoint
+     */
+    async healthCheck(req: Request, res: Response) {
+        res.status(200).json({
+            success: true,
+            message: 'Service controller is working properly',
+            timestamp: new Date().toISOString()
+        });
+    }
+};

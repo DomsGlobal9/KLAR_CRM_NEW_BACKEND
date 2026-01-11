@@ -1,0 +1,38 @@
+import express from 'express';
+import { serviceController } from '../controllers/service.controller';
+
+const router = express.Router();
+
+// Health check
+router.get('/health', serviceController.healthCheck);
+
+// Service routes
+router.post('/', serviceController.createService);
+router.get('/', serviceController.getAllServices);
+router.get('/with-relations', serviceController.getAllServicesWithRelations);
+router.get('/:id', serviceController.getServiceById);
+router.get('/:id/with-relations', serviceController.getServiceWithRelations);
+router.put('/:id', serviceController.updateService);
+router.delete('/:id', serviceController.deleteService);
+router.patch('/:id/toggle-status', serviceController.toggleServiceStatus);
+
+// Sub-service category routes
+router.post('/sub-service-categories', serviceController.createSubServiceCategory);
+router.get('/sub-service-categories/:id', serviceController.getSubServiceCategoryById);
+router.get('/:serviceId/sub-service-categories', serviceController.getSubServiceCategoriesByServiceId);
+router.put('/sub-service-categories/:id', serviceController.updateSubServiceCategory);
+router.delete('/sub-service-categories/:id', serviceController.deleteSubServiceCategory);
+
+// Sub-service routes
+router.post('/sub-services', serviceController.createSubService);
+router.get('/sub-services/:id', serviceController.getSubServiceById);
+router.get('/sub-service-categories/:categoryId/sub-services', serviceController.getSubServicesByCategoryId);
+router.get('/:serviceId/sub-services', serviceController.getSubServicesByServiceId);
+router.put('/sub-services/:id', serviceController.updateSubService);
+router.delete('/sub-services/:id', serviceController.deleteSubService);
+
+// Helper routes
+router.get('/hierarchy', serviceController.getServiceHierarchy);
+router.get('/search', serviceController.searchServiceHierarchy);
+
+export default router;

@@ -7,6 +7,5 @@ export { otpRepository } from "./otp.repository";
 export { leadRepository } from "./lead.repository";
 export { invoiceRepository } from "./invoice.repository";
 export { quoteRepository } from "./quote.repository";
-
-
+export { serviceRepository } from "./service.repository";
 export { stageRepository } from "./stage.repository";

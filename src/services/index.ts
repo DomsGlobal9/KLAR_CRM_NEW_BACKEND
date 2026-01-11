@@ -14,3 +14,4 @@ export { invoiceService } from "./invoice.service";
 export { quoteService } from "./quote.service";
 export { roleService } from "./role.service";
 export { teamService } from "./team.service";
+export { serviceService } from "./service.service";

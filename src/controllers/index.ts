@@ -7,3 +7,4 @@ export { invoiceController } from "./invoice.controller";
 export { quoteController } from "./quote.controller";
 export { teamController } from "./team.controller";
 export { teamMemberController } from "./teamMember.controller";
+export { serviceController } from "./service.controller";
