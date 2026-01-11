@@ -6,6 +6,11 @@ const router = express.Router();
 // Health check
 router.get('/health', serviceController.healthCheck);
 
+/**
+ * Get all services with only id and name (for UI dropdowns)
+ */
+router.get('/services-minimal', serviceController.getAllServicesMinimal);
+
 // Service routes
 router.post('/', serviceController.createService);
 router.get('/', serviceController.getAllServices);

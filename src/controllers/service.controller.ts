@@ -122,6 +122,40 @@ export const serviceController = {
     },
 
     /**
+     * Get all services with only id and name
+     */
+    async getAllServicesMinimal(req: Request, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : true,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const services = await serviceService.getAllServices(filter);
+
+            const minimalServices = services.map(service => ({
+                id: service.id,
+                name: service.name,
+                code: service.code,
+                is_active: service.is_active
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: minimalServices,
+                count: minimalServices.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch services',
+                error: error.message
+            });
+        }
+    },
+
+    /**
      * Get all services with relations
      */
     async getAllServicesWithRelations(req: Request, res: Response) {
