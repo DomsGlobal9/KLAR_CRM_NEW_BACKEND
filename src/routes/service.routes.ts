@@ -11,12 +11,19 @@ router.get('/health', serviceController.healthCheck);
  */
 router.get('/services-minimal', serviceController.getAllServicesMinimal);
 
-// Service routes
+router.get('/services-hierarchy', serviceController.getServicesHierarchyMinimal);
+
+/**
+ * Get service with all categories and sub-services
+ */
+router.get('/:serviceId/full-details', serviceController.getServiceCategoriesAndSubServices);
+
+// ***************************Service routes********************************
 
 
- /**
-  * API for create service
-  */
+/**
+ * API for create service
+ */
 router.post('/', serviceController.createService);
 
 /**

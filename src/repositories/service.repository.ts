@@ -18,7 +18,7 @@ import {
 } from '../interfaces/service.interface';
 
 export const serviceRepository = {
-    
+
     // ============ IService CRUD ============
 
     /**
@@ -627,5 +627,149 @@ export const serviceRepository = {
         }
 
         return (data?.length || 0) > 0;
-    }
+    },
+
+    /**
+     * Get all services with optional sub-categories
+     */
+    async getAllServicesWithSubCategories(filter: IServiceFilter = {}): Promise<IServiceWithRelations[]> {
+        let query = supabaseAdmin
+            .from('services')
+            .select('*')
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
+
+        if (filter.search) {
+            query = query.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+        }
+
+        if (filter.is_active !== undefined) {
+            query = query.eq('is_active', filter.is_active);
+        }
+
+        if (filter.limit) {
+            query = query.limit(filter.limit);
+        }
+
+        if (filter.offset) {
+            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data: services, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to fetch services: ${error.message}`);
+        }
+
+        const servicesWithRelations = await Promise.all(
+            (services || []).map(async (service) => {
+                const { data: categoriesData } = await supabaseAdmin
+                    .from('sub_service_categories')
+                    .select('*')
+                    .eq('service_id', service.id)
+                    .eq('is_active', true)
+                    .order('display_order', { ascending: true });
+
+                const sub_service_categories = (categoriesData || []).map(cat => ({
+                    ...cat,
+                    sub_services: []
+                })) as ISubServiceCategoryWithRelations[];
+
+                return {
+                    ...service,
+                    sub_service_categories
+                } as IServiceWithRelations;
+            })
+        );
+
+        return servicesWithRelations;
+    },
+
+    /**
+     * Get all services with optional sub-categories and sub-services
+     */
+    async getAllServicesWithRelationsMinimal(
+        filter: IServiceFilter = {},
+        includeSubCategories: boolean = false,
+        includeSubServices: boolean = false
+    ): Promise<IServiceWithRelations[]> {
+        let query = supabaseAdmin
+            .from('services')
+            .select('*')
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
+
+        if (filter.search) {
+            query = query.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+        }
+
+        if (filter.is_active !== undefined) {
+            query = query.eq('is_active', filter.is_active);
+        }
+
+        if (filter.limit) {
+            query = query.limit(filter.limit);
+        }
+
+        if (filter.offset) {
+            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data: services, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to fetch services: ${error.message}`);
+        }
+
+        const servicesWithRelations = await Promise.all(
+            (services || []).map(async (service) => {
+                let sub_service_categories: ISubServiceCategoryWithRelations[] = [];
+
+                if (includeSubCategories) {
+
+                    const { data: categoriesData } = await supabaseAdmin
+                        .from('sub_service_categories')
+                        .select('*')
+                        .eq('service_id', service.id)
+                        .eq('is_active', true)
+                        .order('display_order', { ascending: true });
+
+                    if (categoriesData && categoriesData.length > 0) {
+
+                        if (includeSubServices) {
+                            const categoriesWithSubServices = await Promise.all(
+                                categoriesData.map(async (category) => {
+                                    const { data: subServicesData } = await supabaseAdmin
+                                        .from('sub_services')
+                                        .select('*')
+                                        .eq('sub_service_category_id', category.id)
+                                        .eq('is_active', true)
+                                        .order('display_order', { ascending: true });
+
+                                    return {
+                                        ...category,
+                                        sub_services: subServicesData || []
+                                    };
+                                })
+                            );
+                            sub_service_categories = categoriesWithSubServices;
+                        } else {
+
+                            sub_service_categories = categoriesData.map(cat => ({
+                                ...cat,
+                                sub_services: []
+                            }));
+                        }
+                    }
+                }
+
+                return {
+                    ...service,
+                    sub_service_categories
+                } as IServiceWithRelations;
+            })
+        );
+
+        return servicesWithRelations;
+    },
 };

@@ -9,8 +9,9 @@ import {
     IUpdateSubServiceDTO,
     IServiceFilter,
     ISubServiceCategoryFilter,
-    ISubServiceFilter
-} from '../interfaces/service.interface';
+    ISubServiceFilter,
+    IService
+} from '../interfaces';
 
 export const serviceController = {
     // ============ Service Controllers ============
@@ -122,12 +123,13 @@ export const serviceController = {
     },
 
     /**
-     * Get all services with only id and name
+     * Get all services with only id and name (for UI dropdowns)
      */
     async getAllServicesMinimal(req: Request, res: Response) {
         try {
             const filter: IServiceFilter = {
-                is_active: req.query.is_active ? req.query.is_active === 'true' : true,
+                search: req.query.search as string,
+                is_active: req.query.is_active !== undefined ? req.query.is_active === 'true' : true,
                 limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
@@ -138,7 +140,10 @@ export const serviceController = {
                 id: service.id,
                 name: service.name,
                 code: service.code,
-                is_active: service.is_active
+                is_active: service.is_active,
+                description: service.description,
+                icon: service.icon,
+                display_order: service.display_order
             }));
 
             res.status(200).json({
@@ -150,6 +155,207 @@ export const serviceController = {
             res.status(500).json({
                 success: false,
                 message: 'Failed to fetch services',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get service by ID with its categories and sub-services
+     * This is called when user clicks on a service in UI
+     */
+    async getServiceCategoriesAndSubServices(req: Request, res: Response) {
+        try {
+            const { serviceId } = req.params;
+
+            const service = await serviceService.getServiceById(serviceId);
+
+            if (!service) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Service not found'
+                });
+            }
+
+            const categoriesFilter: ISubServiceCategoryFilter = {
+                is_active: req.query.categories_active ? req.query.categories_active === 'true' : true,
+                limit: req.query.categories_limit ? parseInt(req.query.categories_limit as string) : undefined,
+                offset: req.query.categories_offset ? parseInt(req.query.categories_offset as string) : undefined
+            };
+
+            const categories = await serviceService.getSubServiceCategoriesByServiceId(
+                serviceId,
+                categoriesFilter
+            );
+
+            const categoriesWithSubServices = await Promise.all(
+                categories.map(async (category) => {
+                    const subServicesFilter: ISubServiceFilter = {
+                        is_active: req.query.sub_services_active ? req.query.sub_services_active === 'true' : true,
+                        limit: req.query.sub_services_limit ? parseInt(req.query.sub_services_limit as string) : undefined,
+                        offset: req.query.sub_services_offset ? parseInt(req.query.sub_services_offset as string) : undefined
+                    };
+
+                    const subServices = await serviceService.getSubServicesByCategoryId(
+                        category.id,
+                        subServicesFilter
+                    );
+
+                    return {
+                        category: {
+                            id: category.id,
+                            name: category.name,
+                            code: category.code,
+                            description: category.description,
+                            input_type: category.input_type,
+                            is_required: category.is_required,
+                            display_order: category.display_order,
+                            is_active: category.is_active
+                        },
+                        sub_services: subServices.map(sub => ({
+                            id: sub.id,
+                            name: sub.name,
+                            code: sub.code,
+                            description: sub.description,
+                            icon: sub.icon,
+                            display_order: sub.display_order,
+                            is_active: sub.is_active,
+                            metadata: sub.metadata
+                        }))
+                    };
+                })
+            );
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    service: {
+                        id: service.id,
+                        name: service.name,
+                        code: service.code,
+                        description: service.description,
+                        icon: service.icon,
+                        is_active: service.is_active
+                    },
+                    categories: categoriesWithSubServices,
+                    counts: {
+                        categories: categoriesWithSubServices.length,
+                        sub_services: categoriesWithSubServices.reduce(
+                            (total, cat) => total + cat.sub_services.length, 0
+                        )
+                    }
+                }
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch service details',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get all services with hierarchical structure
+     */
+    async getServicesHierarchyMinimal(req: Request, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : true,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
+                search: req.query.search as string
+            };
+
+            const includeSubCategories = req.query.sub_categories === 'true';
+            const includeSubServices = req.query.sub_services === 'true';
+
+            const shouldIncludeSubCategories = includeSubCategories || includeSubServices;
+
+            if (shouldIncludeSubCategories) {
+                const services = await serviceService.getAllServicesWithRelationsMinimal(
+                    filter,
+                    true,
+                    includeSubServices
+                );
+
+                const hierarchy = services.map(service => {
+                    const hierarchyData: any = {
+                        service: {
+                            id: service.id,
+                            name: service.name,
+                            code: service.code,
+                            is_active: service.is_active
+                        }
+                    };
+
+                    if (includeSubCategories && service.sub_service_categories.length > 0) {
+                        hierarchyData.categories = service.sub_service_categories.map(category => {
+                            const categoryHierarchy: any = {
+                                category: {
+                                    id: category.id,
+                                    name: category.name,
+                                    code: category.code,
+                                    is_active: category.is_active,
+                                    input_type: category.input_type,
+                                    is_required: category.is_required,
+                                    display_order: category.display_order
+                                }
+                            };
+
+                            if (includeSubServices && category.sub_services && category.sub_services.length > 0) {
+                                categoryHierarchy.sub_services = category.sub_services.map(subService => ({
+                                    id: subService.id,
+                                    name: subService.name,
+                                    code: subService.code,
+                                    description: subService.description,
+                                    icon: subService.icon,
+                                    is_active: subService.is_active,
+                                    display_order: subService.display_order,
+                                    metadata: subService.metadata
+                                }));
+                            }
+
+                            return categoryHierarchy;
+                        });
+                    }
+
+                    return hierarchyData;
+                });
+
+                return res.status(200).json({
+                    success: true,
+                    data: hierarchy,
+                    count: hierarchy.length,
+                    metadata: {
+                        includes_sub_categories: includeSubCategories,
+                        includes_sub_services: includeSubServices
+                    }
+                });
+            } else {
+                const services = await serviceService.getAllServices(filter);
+
+                const minimalServices = services.map(service => ({
+                    id: service.id,
+                    name: service.name,
+                    code: service.code,
+                    is_active: service.is_active
+                }));
+
+                res.status(200).json({
+                    success: true,
+                    data: minimalServices,
+                    count: minimalServices.length,
+                    metadata: {
+                        includes_sub_categories: false,
+                        includes_sub_services: false
+                    }
+                });
+            }
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch services hierarchy',
                 error: error.message
             });
         }

@@ -25,30 +25,25 @@ export const serviceService = {
      * Create a new service with validation
      */
     async createService(payload: ICreateServiceDTO): Promise<IService> {
-        // Validate required fields
         if (!payload.name || !payload.code) {
             throw new Error('IService name and code are required');
         }
 
-        // Check if code already exists
         const codeExists = await serviceRepository.serviceCodeExists(payload.code);
         if (codeExists) {
             throw new Error(`IService with code "${payload.code}" already exists`);
         }
 
-        // Check if name already exists
         const nameExists = await serviceRepository.serviceNameExists(payload.name);
         if (nameExists) {
             throw new Error(`IService with name "${payload.name}" already exists`);
         }
 
-        // Validate code format (alphanumeric, dashes, underscores)
         const codeRegex = /^[a-zA-Z0-9_-]+$/;
         if (!codeRegex.test(payload.code)) {
             throw new Error('IService code can only contain letters, numbers, dashes, and underscores');
         }
 
-        // Validate display_order
         if (payload.display_order !== undefined && payload.display_order < 1) {
             throw new Error('Display order must be a positive number');
         }
@@ -88,27 +83,23 @@ export const serviceService = {
      * Update service with validation
      */
     async updateService(id: string, payload: IUpdateServiceDTO): Promise<IService> {
-        // Check if service exists
         const existingService = await serviceRepository.getServiceById(id);
         if (!existingService) {
             throw new Error('IService not found');
         }
 
-        // Check if new code conflicts
         if (payload.code && payload.code !== existingService.code) {
             const codeExists = await serviceRepository.serviceCodeExists(payload.code, id);
             if (codeExists) {
                 throw new Error(`IService with code "${payload.code}" already exists`);
             }
 
-            // Validate code format
             const codeRegex = /^[a-zA-Z0-9_-]+$/;
             if (!codeRegex.test(payload.code)) {
                 throw new Error('IService code can only contain letters, numbers, dashes, and underscores');
             }
         }
 
-        // Check if new name conflicts
         if (payload.name && payload.name !== existingService.name) {
             const nameExists = await serviceRepository.serviceNameExists(payload.name, id);
             if (nameExists) {
@@ -116,7 +107,6 @@ export const serviceService = {
             }
         }
 
-        // Validate display_order
         if (payload.display_order !== undefined && payload.display_order < 1) {
             throw new Error('Display order must be a positive number');
         }
@@ -128,7 +118,6 @@ export const serviceService = {
      * Delete service
      */
     async deleteService(id: string): Promise<boolean> {
-        // Check if service exists
         const existingService = await serviceRepository.getServiceById(id);
         if (!existingService) {
             throw new Error('IService not found');
@@ -155,36 +144,30 @@ export const serviceService = {
      * Create sub-service category with validation
      */
     async createSubServiceCategory(payload: ICreateSubServiceCategoryDTO): Promise<ISubServiceCategory> {
-        // Validate required fields
         if (!payload.service_id || !payload.name || !payload.code) {
             throw new Error('IService ID, category name and code are required');
         }
 
-        // Check if service exists
         const serviceExists = await serviceRepository.getServiceById(payload.service_id);
         if (!serviceExists) {
             throw new Error('IService not found');
         }
 
-        // Check if category code already exists
         const codeExists = await serviceRepository.categoryCodeExists(payload.code);
         if (codeExists) {
             throw new Error(`Category with code "${payload.code}" already exists`);
         }
 
-        // Validate code format
         const codeRegex = /^[a-zA-Z0-9_-]+$/;
         if (!codeRegex.test(payload.code)) {
             throw new Error('Category code can only contain letters, numbers, dashes, and underscores');
         }
 
-        // Validate input_type
         const validInputTypes = ['select', 'multi_select', 'radio', 'checkbox', 'text', 'number'];
         if (payload.input_type && !validInputTypes.includes(payload.input_type)) {
             throw new Error(`Invalid input type. Must be one of: ${validInputTypes.join(', ')}`);
         }
 
-        // Validate display_order
         if (payload.display_order !== undefined && payload.display_order < 1) {
             throw new Error('Display order must be a positive number');
         }
@@ -206,7 +189,6 @@ export const serviceService = {
         serviceId: string,
         filter: ISubServiceCategoryFilter = {}
     ): Promise<ISubServiceCategoryWithRelations[]> {
-        // Check if service exists
         const serviceExists = await serviceRepository.getServiceById(serviceId);
         if (!serviceExists) {
             throw new Error('IService not found');
@@ -219,20 +201,17 @@ export const serviceService = {
      * Update sub-service category
      */
     async updateSubServiceCategory(id: string, payload: IUpdateSubServiceCategoryDTO): Promise<ISubServiceCategory> {
-        // Check if category exists
         const existingCategory = await serviceRepository.getSubServiceCategoryById(id);
         if (!existingCategory) {
             throw new Error('Sub-service category not found');
         }
 
-        // Check if new code conflicts
         if (payload.code && payload.code !== existingCategory.code) {
             const codeExists = await serviceRepository.categoryCodeExists(payload.code, id);
             if (codeExists) {
                 throw new Error(`Category with code "${payload.code}" already exists`);
             }
 
-            // Validate code format
             const codeRegex = /^[a-zA-Z0-9_-]+$/;
             if (!codeRegex.test(payload.code)) {
                 throw new Error('Category code can only contain letters, numbers, dashes, and underscores');
@@ -273,24 +252,20 @@ export const serviceService = {
      * Create sub-service with validation
      */
     async createSubService(payload: ICreateSubServiceDTO): Promise<ISubService> {
-        // Validate required fields
         if (!payload.sub_service_category_id || !payload.name || !payload.code) {
             throw new Error('Category ID, sub-service name and code are required');
         }
 
-        // Check if category exists
         const categoryExists = await serviceRepository.getSubServiceCategoryById(payload.sub_service_category_id);
         if (!categoryExists) {
             throw new Error('Sub-service category not found');
         }
 
-        // Check if sub-service code already exists
         const codeExists = await serviceRepository.subServiceCodeExists(payload.code);
         if (codeExists) {
             throw new Error(`Sub-service with code "${payload.code}" already exists`);
         }
 
-        // Validate code format
         const codeRegex = /^[a-zA-Z0-9_-]+$/;
         if (!codeRegex.test(payload.code)) {
             throw new Error('Sub-service code can only contain letters, numbers, dashes, and underscores');
@@ -318,7 +293,6 @@ export const serviceService = {
         categoryId: string,
         filter: ISubServiceFilter = {}
     ): Promise<ISubService[]> {
-        // Check if category exists
         const categoryExists = await serviceRepository.getSubServiceCategoryById(categoryId);
         if (!categoryExists) {
             throw new Error('Sub-service category not found');
@@ -334,7 +308,6 @@ export const serviceService = {
         serviceId: string,
         filter: ISubServiceFilter = {}
     ): Promise<ISubServiceWithRelations[]> {
-        // Check if service exists
         const serviceExists = await serviceRepository.getServiceById(serviceId);
         if (!serviceExists) {
             throw new Error('IService not found');
@@ -470,5 +443,27 @@ export const serviceService = {
             categories,
             sub_services
         };
-    }
+    },
+
+    /**
+     * Get all services with optional sub-categories
+     */
+    async getAllServicesWithSubCategories(filter: IServiceFilter = {}): Promise<IServiceWithRelations[]> {
+        return await serviceRepository.getAllServicesWithSubCategories(filter);
+    },
+
+    /**
+     * Get all services with optional sub-categories and sub-services
+     */
+    async getAllServicesWithRelationsMinimal(
+        filter: IServiceFilter = {},
+        includeSubCategories: boolean = false,
+        includeSubServices: boolean = false
+    ): Promise<IServiceWithRelations[]> {
+        return await serviceRepository.getAllServicesWithRelationsMinimal(
+            filter,
+            includeSubCategories,
+            includeSubServices
+        );
+    },
 };
