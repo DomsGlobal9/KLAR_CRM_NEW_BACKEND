@@ -53,3 +53,15 @@ export {
     ISubServiceCategoryFilter,
     ISubServiceFilter,
 } from "./service.interface";
+export {
+    IItinerary,
+    IItineraryService,
+    IItineraryServiceOption,
+    IItineraryWithRelations,
+    ICreateItineraryDTO,
+    IUpdateItineraryDTO,
+    IItineraryFilter,
+    IAddServiceToItineraryDTO,
+    IUpdateItineraryServiceDTO,
+    IUpdateItineraryOptionDTO
+} from "./itinerary.interface";

@@ -64,6 +64,44 @@ export const serviceRepository = {
     },
 
     /**
+     * Get only categories only by service id
+     * @param serviceId 
+     * @param filter 
+     * @returns 
+     */
+    async getSubServiceCategoriesOnlyByServiceId(
+        serviceId: string,
+        filter: ISubServiceCategoryFilter = {}
+    ): Promise<ISubServiceCategory[]> {
+        let query = supabaseAdmin
+            .from('sub_service_categories')
+            .select('*')
+            .eq('service_id', serviceId)
+            .order('display_order', { ascending: true });
+
+        // Apply filters
+        if (filter.is_active !== undefined) {
+            query = query.eq('is_active', filter.is_active);
+        }
+
+        // Apply pagination
+        if (filter.limit !== undefined) {
+            query = query.limit(filter.limit);
+        }
+        if (filter.offset !== undefined) {
+            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to fetch sub-service categories: ${error.message}`);
+        }
+
+        return data as ISubServiceCategory[];
+    },
+
+    /**
      * Get service by ID with relations
      */
     async getServiceWithRelations(id: string): Promise<IServiceWithRelations | null> {

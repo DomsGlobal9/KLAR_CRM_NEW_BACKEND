@@ -551,6 +551,37 @@ export const serviceController = {
     },
 
     /**
+     * Get sub service category
+     * @param req 
+     * @param res 
+     */
+    async getSubServiceCategoriesOnlyByServiceId(req: Request, res: Response) {
+        try {
+            const { serviceId } = req.params;
+            const filter: ISubServiceCategoryFilter = {
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const categories = await serviceService.getSubServiceCategoriesOnlyByServiceId(serviceId, filter);
+
+            res.status(200).json({
+                success: true,
+                data: categories,
+                count: categories.length
+            });
+        } catch (error: any) {
+            const status = error.message.includes('not found') ? 404 : 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Failed to fetch sub-service categories',
+                error: error.message
+            });
+        }
+    },
+
+    /**
      * Update sub-service category
      */
     async updateSubServiceCategory(req: Request, res: Response) {

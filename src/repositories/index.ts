@@ -9,3 +9,4 @@ export { invoiceRepository } from "./invoice.repository";
 export { quoteRepository } from "./quote.repository";
 export { serviceRepository } from "./service.repository";
 export { stageRepository } from "./stage.repository";
+export { itineraryRepository } from "./itinerary.repository";

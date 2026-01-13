@@ -59,6 +59,7 @@ router.patch('/:id/toggle-status', serviceController.toggleServiceStatus);
 router.post('/sub-service-categories', serviceController.createSubServiceCategory);
 router.get('/sub-service-categories/:id', serviceController.getSubServiceCategoryById);
 router.get('/:serviceId/sub-service-categories', serviceController.getSubServiceCategoriesByServiceId);
+router.get('/:serviceId/sub-service-categories-only', serviceController.getSubServiceCategoriesOnlyByServiceId);
 router.put('/sub-service-categories/:id', serviceController.updateSubServiceCategory);
 router.delete('/sub-service-categories/:id', serviceController.deleteSubServiceCategory);
 

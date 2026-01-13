@@ -198,6 +198,25 @@ export const serviceService = {
     },
 
     /**
+     * Get service category only by service id
+     * @param serviceId 
+     * @param filter 
+     * @returns 
+     */
+    async getSubServiceCategoriesOnlyByServiceId(
+        serviceId: string,
+        filter: ISubServiceCategoryFilter = {}
+    ): Promise<ISubServiceCategory[]> {
+        // Optional: Check if service exists
+        const serviceExists = await serviceRepository.getServiceById(serviceId);
+        if (!serviceExists) {
+            throw new Error('Service not found');
+        }
+
+        return await serviceRepository.getSubServiceCategoriesOnlyByServiceId(serviceId, filter);
+    },
+
+    /**
      * Update sub-service category
      */
     async updateSubServiceCategory(id: string, payload: IUpdateSubServiceCategoryDTO): Promise<ISubServiceCategory> {

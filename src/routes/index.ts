@@ -10,6 +10,7 @@ import stageRoutes from './stage.routes';
 import invoiceRoutes from './invoice.routes';
 import quoteRoutes from './quote.routes';
 import serviceRoutes from './service.routes';
+import itenaryRoutes from './itinerary.routes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
+router.use('/itenary', itenaryRoutes);
 
 export default router;
