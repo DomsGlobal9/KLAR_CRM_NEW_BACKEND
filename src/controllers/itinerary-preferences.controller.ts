@@ -634,6 +634,7 @@ export const itineraryPreferencesController = {
     async getAllItineraries(req: Request, res: Response) {
         console.log("Enter into function to get all details");
         try {
+            console.log("Enter into try section");
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 50;
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
