@@ -115,6 +115,9 @@ export const itineraryPreferencesController = {
     async savePreferences(req: Request, res: Response) {
         try {
             const formData: IFrontendFormData = req.body;
+            console.log("@@@@@@@@@@@@@@@\nthe frontend data we get: ",req.body);
+            console.log("@@@@@@@@@@@@@@@\nthe converted form data we get: ",formData);
+
 
             if (!formData) {
                 return res.status(400).json({
