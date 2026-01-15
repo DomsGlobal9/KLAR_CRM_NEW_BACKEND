@@ -30,6 +30,6 @@ router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
 router.use('/itenary', itenaryRoutes);
-router.use('/itenary-preference', itenaryUserPreference);
+router.use('/itinerary-preferences', itenaryUserPreference);
 
 export default router;

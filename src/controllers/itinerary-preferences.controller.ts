@@ -6,6 +6,7 @@ import {
     calculateFormStats,
     formatFormDataForDisplay
 } from '../helpers';
+import { normalizeFrontendPayload } from '../adapters';
 
 export const itineraryPreferencesController = {
 
@@ -114,40 +115,41 @@ export const itineraryPreferencesController = {
      */
     async savePreferences(req: Request, res: Response) {
         try {
-            const formData: IFrontendFormData = req.body;
-            console.log("@@@@@@@@@@@@@@@\nthe frontend data we get: ",req.body);
-            console.log("@@@@@@@@@@@@@@@\nthe converted form data we get: ",formData);
+            const payload = req.body;
 
+            // Defensive mapping – never trust frontend shape
+            const formData = normalizeFrontendPayload(req.body);
 
-            if (!formData) {
+            // Early exit if core identifier missing
+            if (!formData.itineraryData?.id) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Request body is required'
+                    message: 'Itinerary ID is required (itinerary_id or itineraryData.id)',
+                    receivedKeys: Object.keys(payload)
                 });
             }
 
-            console.log('📥 Received form data for itinerary:', formData.itineraryData?.id);
-            console.log('✈️ Flight options:', formData.flightOptions?.length || 0);
-            console.log('🏨 Hotel options:', formData.hotelOptions?.length || 0);
-            console.log('🛂 Visa options:', formData.visaOptions?.length || 0);
+            console.log('→ Remapped formData structure:', {
+                itineraryId: formData.itineraryData.id,
+                flightCount: formData.flightOptions.length,
+                hotelCount: formData.hotelOptions.length,
+                visaCount: formData.visaOptions.length,
+            });
 
-            // Use validateFormData at controller level for immediate feedback
+            // Now validation & save can proceed normally
             const validation = validateFormData(formData);
             if (!validation.isValid) {
                 return res.status(400).json({
                     success: false,
-                    message: `Validation failed: ${validation.errors.join(', ')}`,
-                    validation
+                    message: 'Validation failed',
+                    errors: validation.errors,
+                    warnings: validation.warnings
                 });
             }
 
-            // Calculate stats for logging
             const stats = calculateFormStats(formData);
-            console.log('📊 Form statistics:', stats);
+            const formatted = formatFormDataForDisplay(formData);
 
-            // Format for debugging
-            const formattedData = formatFormDataForDisplay(formData);
-            console.log('📋 Formatted data for debugging:', JSON.stringify(formattedData, null, 2));
 
             const result = await itineraryPreferencesService.savePreferences(formData);
 

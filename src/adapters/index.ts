@@ -1,0 +1,1 @@
+export { normalizeFrontendPayload } from "./preferences.adapter";
