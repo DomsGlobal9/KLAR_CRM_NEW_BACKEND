@@ -88,6 +88,36 @@ router.get('/all-related/:id', itineraryPreferencesController.getAllRelatedDetai
 
 
 
+/**
+ * @route   GET /api/itinerary-preferences/admin/all-itineraries
+ * @desc    Get all itineraries with preferences (admin/analytics endpoint)
+ * @access  Private (Admin only)
+ */
+router.get('/all-itineraries', itineraryPreferencesController.getAllItineraries);
+
+/**
+ * @route   GET /api/itinerary-preferences/admin/summary
+ * @desc    Get summary statistics of all itineraries
+ * @access  Private (Admin only)
+ */
+router.get('/summary', itineraryPreferencesController.getAllItinerariesSummary);
+
+/**
+ * @route   GET /api/itinerary-preferences/admin/recent
+ * @desc    Get recent itineraries (paginated)
+ * @access  Private (Admin only)
+ */
+router.get('/recent', itineraryPreferencesController.getRecentItineraries);
+
+/**
+ * @route   GET /api/itinerary-preferences/admin/by-date-range
+ * @desc    Get itineraries within a date range
+ * @access  Private (Admin only)
+ */
+router.get('/admin/by-date-range', itineraryPreferencesController.getItinerariesByDateRange);
+
+
+
 
 
 export default router;

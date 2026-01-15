@@ -119,7 +119,7 @@ export const leadController = {
     async getLeadById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const lead = await leadService.getLeadById(id);
+            const lead = await leadService.getLeadById(id as string);
 
             res.json({
                 success: true,
@@ -141,14 +141,14 @@ export const leadController = {
             const { id } = req.params;
             const payload: UpdateLeadPayload = req.body;
 
-            const lead = await leadService.updateLead(id, payload);
+            const lead = await leadService.updateLead(id as string, payload);
 
             // Create audit log
             await createLeadAuditLog({
                 // user_id: req.user?.id,
                 action: 'LEAD_UPDATED',
                 entity_type: 'lead',
-                entity_id: id,
+                entity_id: id as string,
                 details: `Lead updated: ${lead.name}`,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
@@ -174,14 +174,14 @@ export const leadController = {
         try {
             const { id } = req.params;
 
-            await leadService.deleteLead(id);
+            await leadService.deleteLead(id as string);
 
             // Create audit log
             await createLeadAuditLog({
                 // user_id: req.user?.id,
                 action: 'LEAD_DELETED',
                 entity_type: 'lead',
-                entity_id: id,
+                entity_id: id as string,
                 details: 'Lead deleted',
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
@@ -233,14 +233,14 @@ export const leadController = {
                 });
             }
 
-            const lead = await leadService.updateLeadStage(id, stage);
+            const lead = await leadService.updateLeadStage(id as string, stage);
 
             // Create audit log
             await createLeadAuditLog({
                 // user_id: req.user?.id,
                 action: 'LEAD_STAGE_UPDATED',
                 entity_type: 'lead',
-                entity_id: id,
+                entity_id: id as string,
                 details: `Lead moved to ${stage} stage`,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
@@ -274,14 +274,14 @@ export const leadController = {
                 });
             }
 
-            const lead = await leadService.assignLead(id, assigned_to);
+            const lead = await leadService.assignLead(id as string, assigned_to);
 
             // Create audit log
             await createLeadAuditLog({
                 // user_id: req.user?.id,
                 action: 'LEAD_ASSIGNED',
                 entity_type: 'lead',
-                entity_id: id,
+                entity_id: id as string,
                 details: `Lead assigned to ${assigned_to}`,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],

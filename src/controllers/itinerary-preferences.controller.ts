@@ -4,7 +4,9 @@ import {
     IUpdatePreferenceData,
     IFrontendFormData,
     IAllRelatedDetailsResponse,
-    IAllRelatedDetailsByIdsResponse
+    IAllRelatedDetailsByIdsResponse,
+    IDateRangeParams,
+    IPaginationParams
 } from '../interfaces';
 import {
     validateFormData,
@@ -30,7 +32,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferencesWithSummary(itineraryId);
+            const result = await itineraryPreferencesService.getPreferencesWithSummary(itineraryId as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -99,8 +101,8 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferences(itineraryId);
-            // console.log("&&&&&&&&&&&&&&&&&&&&&&\nThe result we get in controller for last response", result);
+            const result = await itineraryPreferencesService.getPreferences(itineraryId as string);
+            
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -241,7 +243,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.updatePreferences(itineraryId, updateData);
+            const result = await itineraryPreferencesService.updatePreferences(itineraryId as string, updateData);
 
             if (!result.success) {
                 return res.status(400).json(result);
@@ -274,7 +276,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.deletePreferences(itineraryId);
+            const result = await itineraryPreferencesService.deletePreferences(itineraryId as string);
 
             if (!result.success) {
                 return res.status(400).json(result);
@@ -304,7 +306,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.checkPreferencesExist(itineraryId);
+            const result = await itineraryPreferencesService.checkPreferencesExist(itineraryId as string);
 
             return res.status(200).json(result);
         } catch (error) {
@@ -330,7 +332,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferences(itineraryId);
+            const result = await itineraryPreferencesService.getPreferences(itineraryId as string);
 
             if (!result.success || !result.data) {
                 return res.status(404).json(result);
@@ -412,7 +414,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getFlightPreferenceById(id);
+            const result = await itineraryPreferencesService.getFlightPreferenceById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -442,7 +444,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getHotelPreferenceById(id);
+            const result = await itineraryPreferencesService.getHotelPreferenceById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -472,7 +474,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getVisaPreferenceById(id);
+            const result = await itineraryPreferencesService.getVisaPreferenceById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -502,7 +504,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getUserPreferencesSummaryById(id);
+            const result = await itineraryPreferencesService.getUserPreferencesSummaryById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -532,7 +534,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferenceById(id);
+            const result = await itineraryPreferencesService.getPreferenceById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -608,7 +610,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.getAllRelatedDetailsById(id);
+            const result = await itineraryPreferencesService.getAllRelatedDetailsById(id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -617,6 +619,122 @@ export const itineraryPreferencesController = {
             return res.status(200).json(result);
         } catch (error) {
             console.error('Error in getAllRelatedDetailsById controller:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+
+
+    /**
+     * Get all itineraries with preferences (admin endpoint)
+     */
+    async getAllItineraries(req: Request, res: Response) {
+        console.log("Enter into function to get all details");
+        try {
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 50;
+            const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
+
+            const ALLOWED_SORT_FIELDS = [
+                'created_at',
+                'updated_at',
+                'last_updated'
+            ] as const;
+
+            type SortByField = typeof ALLOWED_SORT_FIELDS[number];
+
+            const rawSortBy = req.query.sort_by as string | undefined;
+
+            const sortBy: SortByField =
+                ALLOWED_SORT_FIELDS.includes(rawSortBy as SortByField)
+                    ? (rawSortBy as SortByField)
+                    : 'updated_at';
+
+            const paginationParams: IPaginationParams = {
+                page: Math.max(1, page),
+                limit: Math.min(Math.max(1, limit), 100),
+                sort_by: sortBy,
+                sort_order: sortOrder
+            };
+
+            const result = await itineraryPreferencesService.getAllItineraries(paginationParams);
+            console.log("&&&&&&&&&&&&&&&&&&&\nThe data we get from service", result);
+
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Error in getAllItineraries controller:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+
+    /**
+     * Get summary statistics of all itineraries
+     */
+    async getAllItinerariesSummary(req: Request, res: Response) {
+        try {
+            const result = await itineraryPreferencesService.getAllItinerariesSummary();
+
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Error in getAllItinerariesSummary controller:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Get recent itineraries (paginated)
+     */
+    async getRecentItineraries(req: Request, res: Response) {
+        try {
+            const limit = parseInt(req.query.limit as string) || 10;
+
+            const result = await itineraryPreferencesService.getRecentItineraries(limit);
+
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Error in getRecentItineraries controller:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Get itineraries within a date range
+     */
+    async getItinerariesByDateRange(req: Request, res: Response) {
+        try {
+            const { start_date, end_date, field } = req.query;
+
+            if (!start_date || !end_date) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'start_date and end_date are required'
+                });
+            }
+
+            const dateRangeParams: IDateRangeParams = {
+                start_date: start_date as string,
+                end_date: end_date as string,
+                field: (field as 'created_at' | 'updated_at' | 'last_updated') || 'updated_at'
+            };
+
+            const result = await itineraryPreferencesService.getItinerariesByDateRange(dateRangeParams);
+
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Error in getItinerariesByDateRange controller:', error);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'

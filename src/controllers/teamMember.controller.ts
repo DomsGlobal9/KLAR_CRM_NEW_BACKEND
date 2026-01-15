@@ -57,7 +57,7 @@ export const teamMemberController = {
 
 
     async getByTeam(req: AuthRequest, res: Response) {
-        const users = await teamMemberService.getMembersByTeam(req.params.teamId);
+        const users = await teamMemberService.getMembersByTeam(req.params.teamId as string);
         res.json(users);
     },
 
@@ -85,7 +85,7 @@ export const teamMemberController = {
             }
 
             const user = await teamMemberService.updateTeamMember(
-                memberId,
+                memberId as string,
                 req.body
             );
 
@@ -126,7 +126,7 @@ export const teamMemberController = {
                 });
             }
 
-            const user = await teamMemberService.updateTeamMemberStatus(memberId, is_active);
+            const user = await teamMemberService.updateTeamMemberStatus(memberId as string, is_active);
 
             // Create audit log for status change
             await createAuditLog({
@@ -154,7 +154,7 @@ export const teamMemberController = {
     },
 
     async remove(req: AuthRequest, res: Response) {
-        await teamMemberService.removeTeamMember(req.params.memberId);
+        await teamMemberService.removeTeamMember(req.params.memberId as string);
         res.json({ message: 'Member removed' });
     },
 

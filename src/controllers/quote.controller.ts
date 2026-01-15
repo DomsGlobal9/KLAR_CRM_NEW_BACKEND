@@ -18,7 +18,7 @@ export const quoteController = {
     async getQuoteById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const quote = await quoteService.getQuoteById(id);
+            const quote = await quoteService.getQuoteById(id as string);
             res.json({ success: true, data: quote });
         } catch (error: any) {
             if (error.message === 'Quote not found') {
@@ -35,7 +35,7 @@ export const quoteController = {
     async getQuotesByLeadId(req: Request, res: Response) {
         try {
             const { lead_id } = req.params;
-            const quotes = await quoteService.getQuotesByLeadId(lead_id);
+            const quotes = await quoteService.getQuotesByLeadId(lead_id as string);
             res.json({ success: true, data: quotes });
         } catch (error: any) {
             if (error.message === 'Lead not found') {
@@ -75,7 +75,7 @@ export const quoteController = {
         try {
             const { id } = req.params;
             const updateData: UpdateQuoteDTO = req.body;
-            const quote = await quoteService.updateQuote(id, updateData);
+            const quote = await quoteService.updateQuote(id as string, updateData);
             res.json({ success: true, data: quote });
         } catch (error: any) {
             if (error.message === 'Quote not found') {
@@ -92,7 +92,7 @@ export const quoteController = {
     async deleteQuote(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const result = await quoteService.deleteQuote(id);
+            const result = await quoteService.deleteQuote(id as string);
             res.json(result);
         } catch (error: any) {
             if (error.message === 'Quote not found') {
@@ -121,7 +121,7 @@ export const quoteController = {
     async convertToInvoice(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const invoice = await quoteService.convertQuoteToInvoice(id);
+            const invoice = await quoteService.convertQuoteToInvoice(id as string);
             res.json({ 
                 success: true, 
                 data: invoice, 
@@ -144,7 +144,7 @@ export const quoteController = {
     async markAsAccepted(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const quote = await quoteService.markQuoteAsAccepted(id);
+            const quote = await quoteService.markQuoteAsAccepted(id as string);
             res.json({ success: true, data: quote, message: 'Quote marked as accepted' });
         } catch (error: any) {
             if (error.message === 'Quote not found') {
@@ -161,7 +161,7 @@ export const quoteController = {
     async markAsRejected(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const quote = await quoteService.markQuoteAsRejected(id);
+            const quote = await quoteService.markQuoteAsRejected(id as string);
             res.json({ success: true, data: quote, message: 'Quote marked as rejected' });
         } catch (error: any) {
             if (error.message === 'Quote not found') {
@@ -178,7 +178,7 @@ export const quoteController = {
     async markAsSent(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const quote = await quoteService.markQuoteAsSent(id);
+            const quote = await quoteService.markQuoteAsSent(id as string);
             res.json({ success: true, data: quote, message: 'Quote marked as sent' });
         } catch (error: any) {
             if (error.message === 'Quote not found') {

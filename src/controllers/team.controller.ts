@@ -72,7 +72,7 @@ export const teamController = {
         try {
             const { id } = req.params;
             const { name, description, is_active } = req.body;
-            const team = await teamService.updateTeam(id, {
+            const team = await teamService.updateTeam(id as string, {
                 name,
                 description,
                 is_active
@@ -99,7 +99,7 @@ export const teamController = {
     async delete(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            await teamService.deleteTeam(id, req.user);
+            await teamService.deleteTeam(id as string, req.user);
 
             await createAuditLog({
                 user_id: req.user?.id,

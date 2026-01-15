@@ -116,10 +116,10 @@ export interface IAllRelatedDetailsResponse {
     success: boolean;
     type?: 'flight' | 'hotel' | 'visa' | 'summary' | 'itinerary';
     data?: {
-        
+
         preference?: IFlightPreference | IHotelPreference | IVisaPreference | IUserPreferencesSummary;
 
-        
+
         itinerary?: {
             id: string;
             flight_preferences?: IFlightPreference[];
@@ -128,7 +128,7 @@ export interface IAllRelatedDetailsResponse {
             user_preferences_summary?: IUserPreferencesSummary | null;
         };
 
-        
+
         summary: {
             preference_type: string;
             itinerary_id?: string;
@@ -158,4 +158,57 @@ export interface IAllRelatedDetailsByIdsResponse {
         unique_itineraries_count: number;
     };
     message?: string;
+}
+
+
+export interface IAllItinerariesResponse {
+    success: boolean;
+    data: {
+        itineraries: IItineraryPreferencesResponse[];
+        total_count: number;
+        pagination?: {
+            page: number;
+            limit: number;
+            total_pages: number;
+        };
+    };
+    summary?: {
+        total_itineraries: number;
+        total_flight_preferences: number;
+        total_hotel_preferences: number;
+        total_visa_preferences: number;
+        itineraries_with_flight_prefs: number;
+        itineraries_with_hotel_prefs: number;
+        itineraries_with_visa_prefs: number;
+        complete_itineraries: number; 
+    };
+    message?: string;
+}
+
+export interface IPaginationParams {
+    page?: number;
+    limit?: number;
+    sort_by?: 'created_at' | 'updated_at' | 'last_updated';
+    sort_order?: 'asc' | 'desc';
+}
+
+export interface IDateRangeParams {
+    start_date: string;
+    end_date: string;
+    field?: 'created_at' | 'updated_at' | 'last_updated';
+}
+
+export interface IItinerarySummary {
+    itinerary_id: string;
+    flight_preferences_count: number;
+    hotel_preferences_count: number;
+    visa_preferences_count: number;
+    has_all_preferences: boolean;
+    last_updated: string;
+    created_at: string;
+    user_summary?: {
+        flight_preferences_added: boolean;
+        hotel_preferences_added: boolean;
+        visa_preferences_added: boolean;
+    };
 }

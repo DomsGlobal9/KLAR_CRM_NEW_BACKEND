@@ -75,5 +75,9 @@ export {
     IUpdatePreferenceData,
     IFrontendFormData,
     IAllRelatedDetailsResponse,
-    IAllRelatedDetailsByIdsResponse
+    IAllRelatedDetailsByIdsResponse,
+    IAllItinerariesResponse,
+    IPaginationParams,
+    IDateRangeParams,
+    IItinerarySummary,
 } from "./itinerary-preferences.interface";

@@ -3,6 +3,7 @@ import { invoiceService } from '../services';
 import { CreateInvoiceDTO, UpdateInvoiceDTO } from '../interfaces/invoice.interface';
 
 export const invoiceController = {
+
     async getAllInvoices(req: Request, res: Response) {
         try {
             const invoices = await invoiceService.getAllInvoices();
@@ -18,7 +19,7 @@ export const invoiceController = {
     async getInvoiceById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const invoice = await invoiceService.getInvoiceById(id);
+            const invoice = await invoiceService.getInvoiceById(id as string);
             res.json({ success: true, data: invoice });
         } catch (error: any) {
             if (error.message === 'Invoice not found') {
@@ -49,7 +50,7 @@ export const invoiceController = {
         try {
             const { id } = req.params;
             const updateData: UpdateInvoiceDTO = req.body;
-            const invoice = await invoiceService.updateInvoice(id, updateData);
+            const invoice = await invoiceService.updateInvoice(id as string, updateData);
             res.json({ success: true, data: invoice });
         } catch (error: any) {
             if (error.message === 'Invoice not found') {
@@ -66,7 +67,7 @@ export const invoiceController = {
     async deleteInvoice(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const result = await invoiceService.deleteInvoice(id);
+            const result = await invoiceService.deleteInvoice(id as string);
             res.json(result);
         } catch (error: any) {
             if (error.message === 'Invoice not found') {
@@ -95,7 +96,7 @@ export const invoiceController = {
     async markAsPaid(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const invoice = await invoiceService.markInvoiceAsPaid(id);
+            const invoice = await invoiceService.markInvoiceAsPaid(id as string);
             res.json({ success: true, data: invoice, message: 'Invoice marked as paid' });
         } catch (error: any) {
             if (error.message === 'Invoice not found') {
@@ -112,7 +113,7 @@ export const invoiceController = {
     async markAsSent(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const invoice = await invoiceService.markInvoiceAsSent(id);
+            const invoice = await invoiceService.markInvoiceAsSent(id as string);
             res.json({ success: true, data: invoice, message: 'Invoice marked as sent' });
         } catch (error: any) {
             if (error.message === 'Invoice not found') {

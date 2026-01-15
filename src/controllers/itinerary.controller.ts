@@ -66,7 +66,7 @@ export const itineraryController = {
     async getItineraryById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const itinerary = await itineraryService.getItineraryById(id);
+            const itinerary = await itineraryService.getItineraryById(id as string);
 
             if (!itinerary) {
                 return res.status(404).json({
@@ -94,7 +94,7 @@ export const itineraryController = {
     async getItineraryByNumber(req: Request, res: Response) {
         try {
             const { itineraryNumber } = req.params;
-            const itinerary = await itineraryService.getItineraryByNumber(itineraryNumber);
+            const itinerary = await itineraryService.getItineraryByNumber(itineraryNumber as string);
 
             if (!itinerary) {
                 return res.status(404).json({
@@ -158,7 +158,7 @@ export const itineraryController = {
             const { id } = req.params;
             const payload: IUpdateItineraryDTO = req.body;
 
-            const itinerary = await itineraryService.updateItinerary(id, payload);
+            const itinerary = await itineraryService.updateItinerary(id as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -182,7 +182,7 @@ export const itineraryController = {
         try {
             const { id } = req.params;
 
-            await itineraryService.deleteItinerary(id);
+            await itineraryService.deleteItinerary(id as string);
 
             res.status(200).json({
                 success: true,
@@ -208,7 +208,7 @@ export const itineraryController = {
             const { itineraryId } = req.params;
             const payload: IAddServiceToItineraryDTO = req.body;
 
-            const itinerary = await itineraryService.addServiceToItinerary(itineraryId, payload);
+            const itinerary = await itineraryService.addServiceToItinerary(itineraryId as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -232,7 +232,7 @@ export const itineraryController = {
         try {
             const { itineraryId, itineraryServiceId } = req.params;
 
-            await itineraryService.removeServiceFromItinerary(itineraryId, itineraryServiceId);
+            await itineraryService.removeServiceFromItinerary(itineraryId as string, itineraryServiceId as string);
 
             res.status(200).json({
                 success: true,
@@ -256,7 +256,7 @@ export const itineraryController = {
             const { itineraryServiceId } = req.params;
             const payload: IUpdateItineraryServiceDTO = req.body;
 
-            const service = await itineraryService.updateItineraryService(itineraryServiceId, payload);
+            const service = await itineraryService.updateItineraryService(itineraryServiceId as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -280,7 +280,7 @@ export const itineraryController = {
             const { optionId } = req.params;
             const payload: IUpdateItineraryOptionDTO = req.body;
 
-            const option = await itineraryService.updateItineraryOption(optionId, payload);
+            const option = await itineraryService.updateItineraryOption(optionId as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -303,7 +303,7 @@ export const itineraryController = {
         try {
             const { optionId } = req.params;
 
-            await itineraryService.removeOptionFromItinerary(optionId);
+            await itineraryService.removeOptionFromItinerary(optionId as string);
 
             res.status(200).json({
                 success: true,
@@ -336,7 +336,7 @@ export const itineraryController = {
                 });
             }
 
-            const itinerary = await itineraryService.changeItineraryStatus(id, status as any);
+            const itinerary = await itineraryService.changeItineraryStatus(id as string, status as any);
 
             res.status(200).json({
                 success: true,
@@ -360,7 +360,7 @@ export const itineraryController = {
         try {
             const { id } = req.params;
 
-            const totalPrice = await itineraryService.updateItineraryTotalPrice(id);
+            const totalPrice = await itineraryService.updateItineraryTotalPrice(id as string);
 
             res.status(200).json({
                 success: true,

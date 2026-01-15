@@ -9,7 +9,10 @@ import {
     IHotelPreference,
     IFlightPreference,
     IAllRelatedDetailsByIdsResponse,
-    IAllRelatedDetailsResponse
+    IAllRelatedDetailsResponse,
+    IDateRangeParams,
+    IPaginationParams,
+    IAllItinerariesResponse
 } from '../interfaces/itinerary-preferences.interface';
 
 import {
@@ -674,6 +677,163 @@ export const itineraryPreferencesService = {
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get all related details'
+            };
+        }
+    },
+
+    
+
+    /**
+     * Get all itineraries with pagination
+     */
+    async getAllItineraries(params?: IPaginationParams): Promise<IAllItinerariesResponse> {
+        try {
+            const result = await itineraryPreferencesRepository.getAllItinerariesPaginated(params);
+            console.log("&&&&&&&&&&&&&\nThe result we get in service", result);
+
+            let totalFlightPrefs = 0;
+            let totalHotelPrefs = 0;
+            let totalVisaPrefs = 0;
+            let itinerariesWithFlightPrefs = 0;
+            let itinerariesWithHotelPrefs = 0;
+            let itinerariesWithVisaPrefs = 0;
+            let completeItineraries = 0;
+
+            result.itineraries.forEach(itinerary => {
+                totalFlightPrefs += itinerary.flight_preferences.length;
+                totalHotelPrefs += itinerary.hotel_preferences.length;
+                totalVisaPrefs += itinerary.visa_preferences.length;
+
+                if (itinerary.flight_preferences.length > 0) itinerariesWithFlightPrefs++;
+                if (itinerary.hotel_preferences.length > 0) itinerariesWithHotelPrefs++;
+                if (itinerary.visa_preferences.length > 0) itinerariesWithVisaPrefs++;
+
+                if (itinerary.flight_preferences.length > 0 &&
+                    itinerary.hotel_preferences.length > 0 &&
+                    itinerary.visa_preferences.length > 0) {
+                    completeItineraries++;
+                }
+            });
+
+            return {
+                success: true,
+                data: {
+                    itineraries: result.itineraries,
+                    total_count: result.total_count,
+                    pagination: {
+                        page: result.page,
+                        limit: result.limit,
+                        total_pages: result.total_pages
+                    }
+                },
+                summary: {
+                    total_itineraries: result.total_count,
+                    total_flight_preferences: totalFlightPrefs,
+                    total_hotel_preferences: totalHotelPrefs,
+                    total_visa_preferences: totalVisaPrefs,
+                    itineraries_with_flight_prefs: itinerariesWithFlightPrefs,
+                    itineraries_with_hotel_prefs: itinerariesWithHotelPrefs,
+                    itineraries_with_visa_prefs: itinerariesWithVisaPrefs,
+                    complete_itineraries: completeItineraries
+                }
+            };
+        } catch (error) {
+            console.error('Error in getAllItineraries service:', error);
+            return {
+                success: false,
+                data: {
+                    itineraries: [],
+                    total_count: 0
+                },
+                message: error instanceof Error ? error.message : 'Failed to get all itineraries'
+            };
+        }
+    },
+
+    /**
+     * Get summary statistics of all itineraries
+     */
+    async getAllItinerariesSummary(): Promise<{
+        success: boolean;
+        summary?: any;
+        message?: string;
+    }> {
+        try {
+            const summary = await itineraryPreferencesRepository.getAllItinerariesSummary();
+
+            return {
+                success: true,
+                summary
+            };
+        } catch (error) {
+            console.error('Error in getAllItinerariesSummary service:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to get itineraries summary'
+            };
+        }
+    },
+
+    /**
+     * Get recent itineraries
+     */
+    async getRecentItineraries(limit: number = 10): Promise<{
+        success: boolean;
+        data?: IItineraryPreferencesResponse[];
+        message?: string;
+    }> {
+        try {
+            const itineraries = await itineraryPreferencesRepository.getRecentItineraries(limit);
+
+            return {
+                success: true,
+                data: itineraries
+            };
+        } catch (error) {
+            console.error('Error in getRecentItineraries service:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to get recent itineraries'
+            };
+        }
+    },
+
+    /**
+     * Get itineraries by date range
+     */
+    async getItinerariesByDateRange(params: IDateRangeParams): Promise<{
+        success: boolean;
+        data?: IItineraryPreferencesResponse[];
+        summary?: {
+            count: number;
+            date_range: {
+                start: string;
+                end: string;
+                field: string;
+            };
+        };
+        message?: string;
+    }> {
+        try {
+            const itineraries = await itineraryPreferencesRepository.getItinerariesByDateRange(params);
+
+            return {
+                success: true,
+                data: itineraries,
+                summary: {
+                    count: itineraries.length,
+                    date_range: {
+                        start: params.start_date,
+                        end: params.end_date,
+                        field: params.field || 'last_updated'
+                    }
+                }
+            };
+        } catch (error) {
+            console.error('Error in getItinerariesByDateRange service:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to get itineraries by date range'
             };
         }
     },

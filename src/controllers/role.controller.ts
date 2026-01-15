@@ -44,7 +44,7 @@ export const roleController = {
 
     async updateRole(req: Request, res: Response) {
         try {
-            const role = await roleService.updateRole(req.params.id, req.body);
+            const role = await roleService.updateRole(req.params.id as string, req.body);
             // Audit log removed
             res.json({ message: 'Role updated successfully', role });
         } catch (error: any) {
@@ -54,7 +54,7 @@ export const roleController = {
 
     async deleteRole(req: Request, res: Response) {
         try {
-            await roleService.deleteRole(req.params.id);
+            await roleService.deleteRole(req.params.id as string);
             // Audit log removed
             res.json({ message: 'Role deleted successfully' });
         } catch (error: any) {

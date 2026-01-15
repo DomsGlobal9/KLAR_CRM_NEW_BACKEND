@@ -44,7 +44,7 @@ export const serviceController = {
     async getServiceById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const service = await serviceService.getServiceById(id);
+            const service = await serviceService.getServiceById(id as string);
 
             if (!service) {
                 return res.status(404).json({
@@ -72,7 +72,7 @@ export const serviceController = {
     async getServiceWithRelations(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const service = await serviceService.getServiceWithRelations(id);
+            const service = await serviceService.getServiceWithRelations(id as string);
 
             if (!service) {
                 return res.status(404).json({
@@ -168,7 +168,7 @@ export const serviceController = {
         try {
             const { serviceId } = req.params;
 
-            const service = await serviceService.getServiceById(serviceId);
+            const service = await serviceService.getServiceById(serviceId as string);
 
             if (!service) {
                 return res.status(404).json({
@@ -184,7 +184,7 @@ export const serviceController = {
             };
 
             const categories = await serviceService.getSubServiceCategoriesByServiceId(
-                serviceId,
+                serviceId as string,
                 categoriesFilter
             );
 
@@ -397,7 +397,7 @@ export const serviceController = {
             const { id } = req.params;
             const payload: IUpdateServiceDTO = req.body;
 
-            const service = await serviceService.updateService(id, payload);
+            const service = await serviceService.updateService(id as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -421,7 +421,7 @@ export const serviceController = {
         try {
             const { id } = req.params;
 
-            await serviceService.deleteService(id);
+            await serviceService.deleteService(id as string);
 
             res.status(200).json({
                 success: true,
@@ -452,7 +452,7 @@ export const serviceController = {
                 });
             }
 
-            const service = await serviceService.toggleServiceStatus(id, is_active);
+            const service = await serviceService.toggleServiceStatus(id as string, is_active);
 
             res.status(200).json({
                 success: true,
@@ -499,7 +499,7 @@ export const serviceController = {
     async getSubServiceCategoryById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const category = await serviceService.getSubServiceCategoryById(id);
+            const category = await serviceService.getSubServiceCategoryById(id as string);
 
             if (!category) {
                 return res.status(404).json({
@@ -533,7 +533,7 @@ export const serviceController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const categories = await serviceService.getSubServiceCategoriesByServiceId(serviceId, filter);
+            const categories = await serviceService.getSubServiceCategoriesByServiceId(serviceId as string, filter);
 
             res.status(200).json({
                 success: true,
@@ -564,7 +564,7 @@ export const serviceController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const categories = await serviceService.getSubServiceCategoriesOnlyByServiceId(serviceId, filter);
+            const categories = await serviceService.getSubServiceCategoriesOnlyByServiceId(serviceId as string, filter);
 
             res.status(200).json({
                 success: true,
@@ -589,7 +589,7 @@ export const serviceController = {
             const { id } = req.params;
             const payload: IUpdateSubServiceCategoryDTO = req.body;
 
-            const category = await serviceService.updateSubServiceCategory(id, payload);
+            const category = await serviceService.updateSubServiceCategory(id as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -613,7 +613,7 @@ export const serviceController = {
         try {
             const { id } = req.params;
 
-            await serviceService.deleteSubServiceCategory(id);
+            await serviceService.deleteSubServiceCategory(id as string);
 
             res.status(200).json({
                 success: true,
@@ -659,7 +659,7 @@ export const serviceController = {
     async getSubServiceById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const subService = await serviceService.getSubServiceById(id);
+            const subService = await serviceService.getSubServiceById(id as string);
 
             if (!subService) {
                 return res.status(404).json({
@@ -693,7 +693,7 @@ export const serviceController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const subServices = await serviceService.getSubServicesByCategoryId(categoryId, filter);
+            const subServices = await serviceService.getSubServicesByCategoryId(categoryId as string, filter);
 
             res.status(200).json({
                 success: true,
@@ -722,7 +722,7 @@ export const serviceController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const subServices = await serviceService.getSubServicesByServiceId(serviceId, filter);
+            const subServices = await serviceService.getSubServicesByServiceId(serviceId as string, filter);
 
             res.status(200).json({
                 success: true,
@@ -747,7 +747,7 @@ export const serviceController = {
             const { id } = req.params;
             const payload: IUpdateSubServiceDTO = req.body;
 
-            const subService = await serviceService.updateSubService(id, payload);
+            const subService = await serviceService.updateSubService(id as string, payload);
 
             res.status(200).json({
                 success: true,
@@ -771,7 +771,7 @@ export const serviceController = {
         try {
             const { id } = req.params;
 
-            await serviceService.deleteSubService(id);
+            await serviceService.deleteSubService(id as string);
 
             res.status(200).json({
                 success: true,

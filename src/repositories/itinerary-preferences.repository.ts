@@ -558,4 +558,357 @@ export const itineraryPreferencesRepository = {
             );
         }
     },
+
+
+
+    /**
+     * Get all unique itinerary IDs from all tables
+     */
+    async getAllItineraryIds(): Promise<string[]> {
+        try {
+
+            const [
+                flightItinerariesResult,
+                hotelItinerariesResult,
+                visaItinerariesResult,
+                summaryItinerariesResult
+            ] = await Promise.all([
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('itinerary_id')
+                    .order('created_at', { ascending: false }),
+
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('itinerary_id')
+                    .order('created_at', { ascending: false }),
+
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('itinerary_id')
+                    .order('created_at', { ascending: false }),
+
+                supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .select('itinerary_id')
+                    .order('created_at', { ascending: false })
+            ]);
+
+
+            const allItineraryIds = new Set<string>();
+
+
+            flightItinerariesResult.data?.forEach(item => {
+                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
+            });
+
+
+            hotelItinerariesResult.data?.forEach(item => {
+                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
+            });
+
+
+            visaItinerariesResult.data?.forEach(item => {
+                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
+            });
+
+
+            summaryItinerariesResult.data?.forEach(item => {
+                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
+            });
+
+            return Array.from(allItineraryIds);
+        } catch (error) {
+            console.error('Error in getAllItineraryIds:', error);
+            throw new Error(`Failed to get itinerary IDs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
+
+    /**
+     * Get all itineraries with pagination
+     */
+    async getAllItinerariesPaginated(params?: {
+        page?: number;
+        limit?: number;
+        sort_by?: string;
+        sort_order?: 'asc' | 'desc';
+    }): Promise<{
+        itineraries: IItineraryPreferencesResponse[];
+        total_count: number;
+        page: number;
+        limit: number;
+        total_pages: number;
+    }> {
+        try {
+            const page = params?.page || 1;
+            const limit = params?.limit || 50;
+            const sortBy = params?.sort_by || 'updated_at';
+            const sortOrder = params?.sort_order || 'desc';
+
+
+            const allItineraryIds = await this.getAllItineraryIds();
+            const totalCount = allItineraryIds.length;
+
+            if (totalCount === 0) {
+                return {
+                    itineraries: [],
+                    total_count: 0,
+                    page,
+                    limit,
+                    total_pages: 0
+                };
+            }
+
+
+            const totalPages = Math.ceil(totalCount / limit);
+            const currentPage = Math.max(1, Math.min(page, totalPages));
+            const startIndex = (currentPage - 1) * limit;
+            const endIndex = Math.min(startIndex + limit, totalCount);
+
+
+            const paginatedItineraryIds = allItineraryIds.slice(startIndex, endIndex);
+
+
+            const itineraries = await Promise.all(
+                paginatedItineraryIds.map(itineraryId =>
+                    this.getByItineraryId(itineraryId).catch(error => {
+                        console.error(`Error fetching itinerary ${itineraryId}:`, error);
+                        return null;
+                    })
+                )
+            );
+
+
+            const validItineraries = itineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+
+            return {
+                itineraries: validItineraries,
+                total_count: totalCount,
+                page: currentPage,
+                limit,
+                total_pages: totalPages
+            };
+        } catch (error) {
+            console.error('Error in getAllItinerariesPaginated:', error);
+            throw new Error(`Failed to get all itineraries: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
+
+    /**
+     * Get summary statistics of all itineraries
+     */
+    async getAllItinerariesSummary(): Promise<{
+        total_itineraries: number;
+        total_flight_preferences: number;
+        total_hotel_preferences: number;
+        total_visa_preferences: number;
+        itineraries_with_flight_prefs: number;
+        itineraries_with_hotel_prefs: number;
+        itineraries_with_visa_prefs: number;
+        complete_itineraries: number;
+        recent_itineraries_last_7_days: number;
+        recent_itineraries_last_30_days: number;
+    }> {
+        try {
+
+            const allItineraryIds = await this.getAllItineraryIds();
+
+            if (allItineraryIds.length === 0) {
+                return {
+                    total_itineraries: 0,
+                    total_flight_preferences: 0,
+                    total_hotel_preferences: 0,
+                    total_visa_preferences: 0,
+                    itineraries_with_flight_prefs: 0,
+                    itineraries_with_hotel_prefs: 0,
+                    itineraries_with_visa_prefs: 0,
+                    complete_itineraries: 0,
+                    recent_itineraries_last_7_days: 0,
+                    recent_itineraries_last_30_days: 0
+                };
+            }
+
+
+            const allItineraries = await Promise.all(
+                allItineraryIds.map(itineraryId =>
+                    this.getByItineraryId(itineraryId).catch(() => null)
+                )
+            );
+
+
+            const validItineraries = allItineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+
+
+            let totalFlightPrefs = 0;
+            let totalHotelPrefs = 0;
+            let totalVisaPrefs = 0;
+            let itinerariesWithFlightPrefs = 0;
+            let itinerariesWithHotelPrefs = 0;
+            let itinerariesWithVisaPrefs = 0;
+            let completeItineraries = 0;
+            let recent7Days = 0;
+            let recent30Days = 0;
+
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            validItineraries.forEach(itinerary => {
+
+                totalFlightPrefs += itinerary.flight_preferences.length;
+                totalHotelPrefs += itinerary.hotel_preferences.length;
+                totalVisaPrefs += itinerary.visa_preferences.length;
+
+
+                if (itinerary.flight_preferences.length > 0) itinerariesWithFlightPrefs++;
+                if (itinerary.hotel_preferences.length > 0) itinerariesWithHotelPrefs++;
+                if (itinerary.visa_preferences.length > 0) itinerariesWithVisaPrefs++;
+
+
+                if (itinerary.flight_preferences.length > 0 &&
+                    itinerary.hotel_preferences.length > 0 &&
+                    itinerary.visa_preferences.length > 0) {
+                    completeItineraries++;
+                }
+
+
+                const lastUpdated = new Date(itinerary.user_preferences_summary?.last_updated || itinerary.flight_preferences[0]?.created_at || itinerary.hotel_preferences[0]?.created_at || itinerary.visa_preferences[0]?.created_at || '2000-01-01');
+
+                if (lastUpdated > sevenDaysAgo) recent7Days++;
+                if (lastUpdated > thirtyDaysAgo) recent30Days++;
+            });
+
+            return {
+                total_itineraries: validItineraries.length,
+                total_flight_preferences: totalFlightPrefs,
+                total_hotel_preferences: totalHotelPrefs,
+                total_visa_preferences: totalVisaPrefs,
+                itineraries_with_flight_prefs: itinerariesWithFlightPrefs,
+                itineraries_with_hotel_prefs: itinerariesWithHotelPrefs,
+                itineraries_with_visa_prefs: itinerariesWithVisaPrefs,
+                complete_itineraries: completeItineraries,
+                recent_itineraries_last_7_days: recent7Days,
+                recent_itineraries_last_30_days: recent30Days
+            };
+        } catch (error) {
+            console.error('Error in getAllItinerariesSummary:', error);
+            throw new Error(`Failed to get itineraries summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
+
+    /**
+     * Get recent itineraries
+     */
+    async getRecentItineraries(limit: number = 10): Promise<IItineraryPreferencesResponse[]> {
+        try {
+
+            const { data, error } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('itinerary_id, last_updated')
+                .order('last_updated', { ascending: false })
+                .limit(limit);
+
+            if (error) {
+                throw new Error(`Failed to get recent itineraries: ${error.message}`);
+            }
+
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+
+            const recentItineraries = await Promise.all(
+                data.map(item =>
+                    this.getByItineraryId(item.itinerary_id).catch(() => null)
+                )
+            );
+
+
+            const validItineraries = recentItineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+
+            return validItineraries.sort((a, b) => {
+                const dateA = new Date(a.user_preferences_summary?.last_updated || '2000-01-01');
+                const dateB = new Date(b.user_preferences_summary?.last_updated || '2000-01-01');
+                return dateB.getTime() - dateA.getTime();
+            });
+        } catch (error) {
+            console.error('Error in getRecentItineraries:', error);
+            throw new Error(`Failed to get recent itineraries: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
+
+    /**
+     * Get itineraries by date range
+     */
+    async getItinerariesByDateRange(params: {
+        start_date: string;
+        end_date: string;
+        field?: 'created_at' | 'updated_at' | 'last_updated';
+    }): Promise<IItineraryPreferencesResponse[]> {
+        try {
+            const { start_date, end_date, field = 'last_updated' } = params;
+
+
+            let tableName = 'user_itenary_preferences_summary';
+            let fieldName = 'last_updated';
+
+            if (field === 'created_at') {
+                tableName = 'user_itenary_preferences_summary';
+                fieldName = 'created_at';
+            } else if (field === 'updated_at') {
+                tableName = 'user_itenary_preferences_summary';
+                fieldName = 'updated_at';
+            }
+
+
+            const { data, error } = await supabaseAdmin
+                .from(tableName)
+                .select('itinerary_id')
+                .gte(fieldName, start_date)
+                .lte(fieldName, end_date)
+                .order(fieldName, { ascending: false });
+
+            if (error) {
+                throw new Error(`Failed to get itineraries by date range: ${error.message}`);
+            }
+
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+
+            const itineraryIds = [...new Set(data.map(item => item.itinerary_id))];
+
+
+            const itineraries = await Promise.all(
+                itineraryIds.map(itineraryId =>
+                    this.getByItineraryId(itineraryId).catch(() => null)
+                )
+            );
+
+
+            const validItineraries = itineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+
+
+            return validItineraries.sort((a, b) => {
+                let dateA: Date, dateB: Date;
+
+                if (field === 'created_at') {
+                    dateA = new Date(a.flight_preferences[0]?.created_at || a.hotel_preferences[0]?.created_at || a.visa_preferences[0]?.created_at || '2000-01-01');
+                    dateB = new Date(b.flight_preferences[0]?.created_at || b.hotel_preferences[0]?.created_at || b.visa_preferences[0]?.created_at || '2000-01-01');
+                } else if (field === 'updated_at') {
+                    dateA = new Date(a.flight_preferences[0]?.updated_at || a.hotel_preferences[0]?.updated_at || a.visa_preferences[0]?.updated_at || '2000-01-01');
+                    dateB = new Date(b.flight_preferences[0]?.updated_at || b.hotel_preferences[0]?.updated_at || b.visa_preferences[0]?.updated_at || '2000-01-01');
+                } else {
+                    dateA = new Date(a.user_preferences_summary?.last_updated || '2000-01-01');
+                    dateB = new Date(b.user_preferences_summary?.last_updated || '2000-01-01');
+                }
+
+                return dateB.getTime() - dateA.getTime();
+            });
+        } catch (error) {
+            console.error('Error in getItinerariesByDateRange:', error);
+            throw new Error(`Failed to get itineraries by date range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
 };

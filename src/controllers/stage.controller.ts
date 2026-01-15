@@ -81,7 +81,7 @@ export const stageController = {
   async getStageById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const stage = await stageService.getStageById(id);
+      const stage = await stageService.getStageById(id as string);
 
       res.json({
         success: true,
@@ -103,7 +103,7 @@ export const stageController = {
       const { id } = req.params;
       const payload: UpdateStagePayload = req.body;
 
-      const stage = await stageService.updateStage(id, payload);
+      const stage = await stageService.updateStage(id as string, payload);
 
       res.json({
         success: true,
@@ -125,7 +125,7 @@ export const stageController = {
     try {
       const { id } = req.params;
 
-      await stageService.deleteStage(id);
+      await stageService.deleteStage(id as string);
 
       res.json({
         success: true,

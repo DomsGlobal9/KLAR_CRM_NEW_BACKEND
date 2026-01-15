@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && tsc",
     "serve": "npm run build && npm start",
-    "clean": "rimraf dist",
-    "hard-clean": "rimraf dist node_modules package-lock.json"
+    "clean": "rimraf dist && npm install",
+    "hard-clean": "rimraf dist node_modules package-lock.json && npm install"
   },
   "keywords": [],
   "author": "",
@@ -23,8 +23,8 @@
     "@types/express": "^5.0.6",
     "@types/helmet": "^0.0.48",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^25.0.3",
-    "@types/nodemailer": "^7.0.4",
+    "@types/node": "^25.0.8",
+    "@types/nodemailer": "^7.0.5",
     "@types/supertest": "^6.0.3",
     "nodemon": "^3.1.11",
     "rimraf": "^6.1.2",
