@@ -89,6 +89,15 @@ export const itineraryPreferencesRepository = {
         const { itineraryId, flightPreferences, hotelPreferences, visaPreferences, userPreferences } = data;
 
         try {
+            const exists = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('id')
+                .eq('itinerary_id', itineraryId)
+                .maybeSingle();
+
+            if (exists.data) {
+                throw new Error(`Cannot create: preferences already exist for itinerary ${itineraryId}. Use update instead.`);
+            }
 
             await this.deleteByItineraryId(itineraryId);
 

@@ -7,7 +7,9 @@ import {
     IUserPreferencesSummary,
     IVisaPreference,
     IHotelPreference,
-    IFlightPreference
+    IFlightPreference,
+    IAllRelatedDetailsByIdsResponse,
+    IAllRelatedDetailsResponse
 } from '../interfaces/itinerary-preferences.interface';
 
 import {
@@ -598,5 +600,81 @@ export const itineraryPreferencesService = {
                 message: error instanceof Error ? error.message : 'Failed to get preferences'
             };
         }
-    }
+    },
+
+    /**
+     * Get all related details from database by ID only (auto-detects type)
+     */
+    async getAllRelatedDetailsById(id: string): Promise<IAllRelatedDetailsResponse> {
+        try {
+            // First, try to identify what type of ID this is
+            const preferenceResult = await itineraryPreferencesRepository.getPreferenceById(id);
+
+            if (!preferenceResult.data) {
+                return {
+                    success: false,
+                    message: 'No preference found with the given ID'
+                };
+            }
+
+            const { type, data: preference } = preferenceResult;
+
+            // Extract itinerary_id from the preference
+            let itineraryId: string | undefined;
+
+            if (type !== 'summary') {
+                itineraryId = (preference as IFlightPreference | IHotelPreference | IVisaPreference).itinerary_id;
+            } else {
+                itineraryId = (preference as IUserPreferencesSummary).itinerary_id;
+            }
+
+            // Get all related data for the itinerary
+            let itineraryData: IItineraryPreferencesResponse | null = null;
+            if (itineraryId) {
+                try {
+                    itineraryData = await itineraryPreferencesRepository.getByItineraryId(itineraryId);
+                } catch (error) {
+                    console.warn('Could not fetch itinerary data:', error);
+                }
+            }
+
+            // Prepare summary
+            const summary = {
+                preference_type: type,
+                itinerary_id: itineraryId,
+                has_itinerary_data: !!itineraryData,
+                has_related_preferences: !!itineraryData && (
+                    itineraryData.flight_preferences.length > 0 ||
+                    itineraryData.hotel_preferences.length > 0 ||
+                    itineraryData.visa_preferences.length > 0
+                ),
+                total_related_preferences: itineraryData ?
+                    itineraryData.flight_preferences.length +
+                    itineraryData.hotel_preferences.length +
+                    itineraryData.visa_preferences.length : 0
+            };
+
+            return {
+                success: true,
+                type,
+                data: {
+                    preference,
+                    itinerary: itineraryData ? {
+                        id: itineraryId!,
+                        flight_preferences: itineraryData.flight_preferences,
+                        hotel_preferences: itineraryData.hotel_preferences,
+                        visa_preferences: itineraryData.visa_preferences,
+                        user_preferences_summary: itineraryData.user_preferences_summary
+                    } : undefined,
+                    summary
+                }
+            };
+        } catch (error) {
+            console.error('Error in getAllRelatedDetailsById service:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to get all related details'
+            };
+        }
+    },
 };

@@ -73,5 +73,7 @@ export {
     ICombinedPreferenceData,
     IItineraryPreferencesResponse,
     IUpdatePreferenceData,
-    IFrontendFormData
+    IFrontendFormData,
+    IAllRelatedDetailsResponse,
+    IAllRelatedDetailsByIdsResponse
 } from "./itinerary-preferences.interface";

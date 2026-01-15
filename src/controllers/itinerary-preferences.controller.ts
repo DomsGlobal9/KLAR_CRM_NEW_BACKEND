@@ -1,12 +1,18 @@
 import { Request, Response } from 'express';
 import { itineraryPreferencesService } from '../services';
-import { IUpdatePreferenceData, IFrontendFormData } from '../interfaces';
+import {
+    IUpdatePreferenceData,
+    IFrontendFormData,
+    IAllRelatedDetailsResponse,
+    IAllRelatedDetailsByIdsResponse
+} from '../interfaces';
 import {
     validateFormData,
     calculateFormStats,
     formatFormDataForDisplay
 } from '../helpers';
 import { normalizeFrontendPayload } from '../adapters';
+
 
 export const itineraryPreferencesController = {
 
@@ -117,24 +123,23 @@ export const itineraryPreferencesController = {
         try {
             const payload = req.body;
 
-            // Defensive mapping – never trust frontend shape
             const formData = normalizeFrontendPayload(req.body);
 
-            // Early exit if core identifier missing
             if (!formData.itineraryData?.id) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Itinerary ID is required (itinerary_id or itineraryData.id)',
-                    receivedKeys: Object.keys(payload)
-                });
+                return res.status(400).json({ success: false, message: 'Itinerary ID required' });
             }
 
-            console.log('→ Remapped formData structure:', {
-                itineraryId: formData.itineraryData.id,
-                flightCount: formData.flightOptions.length,
-                hotelCount: formData.hotelOptions.length,
-                visaCount: formData.visaOptions.length,
-            });
+            const itineraryId = formData.itineraryData.id;
+
+            // ← Add this check
+            const { exists } = await itineraryPreferencesService.checkPreferencesExist(itineraryId);
+            if (exists) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Preferences already exist for this itinerary. Use PUT to update or create a new itinerary.',
+                    itineraryId
+                });
+            }
 
             // Now validation & save can proceed normally
             const validation = validateFormData(formData);
@@ -587,6 +592,36 @@ export const itineraryPreferencesController = {
                 message: 'Internal server error'
             });
         }
-    }
+    },
+
+    /**
+     * Get all related details from database by ID only (auto-detects type)
+     */
+    async getAllRelatedDetailsById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID is required'
+                });
+            }
+
+            const result = await itineraryPreferencesService.getAllRelatedDetailsById(id);
+
+            if (!result.success) {
+                return res.status(404).json(result);
+            }
+
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Error in getAllRelatedDetailsById controller:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
 
 };

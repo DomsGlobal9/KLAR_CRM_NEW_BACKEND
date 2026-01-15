@@ -79,4 +79,15 @@ router.get('/preference/:id', itineraryPreferencesController.getPreferenceById);
 router.post('/by-ids', itineraryPreferencesController.getPreferencesByIds);
 
 
+/**
+ * @route   GET /api/itinerary-preferences/all-related/:id
+ * @desc    Get all related details from database by ID only (auto-detects type)
+ * @access  Public/Private
+ */
+router.get('/all-related/:id', itineraryPreferencesController.getAllRelatedDetailsById);
+
+
+
+
+
 export default router;

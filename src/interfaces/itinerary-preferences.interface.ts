@@ -110,3 +110,52 @@ export interface IFrontendFormData {
     };
     metadata?: any;
 }
+
+
+export interface IAllRelatedDetailsResponse {
+    success: boolean;
+    type?: 'flight' | 'hotel' | 'visa' | 'summary' | 'itinerary';
+    data?: {
+        
+        preference?: IFlightPreference | IHotelPreference | IVisaPreference | IUserPreferencesSummary;
+
+        
+        itinerary?: {
+            id: string;
+            flight_preferences?: IFlightPreference[];
+            hotel_preferences?: IHotelPreference[];
+            visa_preferences?: IVisaPreference[];
+            user_preferences_summary?: IUserPreferencesSummary | null;
+        };
+
+        
+        summary: {
+            preference_type: string;
+            itinerary_id?: string;
+            has_itinerary_data: boolean;
+            has_related_preferences: boolean;
+            total_related_preferences: number;
+        };
+    };
+    message?: string;
+}
+
+export interface IAllRelatedDetailsByIdsResponse {
+    success: boolean;
+    data?: {
+        flight_preferences?: IFlightPreference[];
+        hotel_preferences?: IHotelPreference[];
+        visa_preferences?: IVisaPreference[];
+        user_preferences_summaries?: IUserPreferencesSummary[];
+        itineraries?: Map<string, IItineraryPreferencesResponse>;
+    };
+    summary: {
+        total_found: number;
+        flight_preferences_count: number;
+        hotel_preferences_count: number;
+        visa_preferences_count: number;
+        user_preferences_summaries_count: number;
+        unique_itineraries_count: number;
+    };
+    message?: string;
+}
