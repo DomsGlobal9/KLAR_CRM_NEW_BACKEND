@@ -65,3 +65,13 @@ export {
     IUpdateItineraryServiceDTO,
     IUpdateItineraryOptionDTO
 } from "./itinerary.interface";
+export {
+    IFlightPreference,
+    IHotelPreference,
+    IVisaPreference,
+    IUserPreferencesSummary,
+    ICombinedPreferenceData,
+    IItineraryPreferencesResponse,
+    IUpdatePreferenceData,
+    IFrontendFormData
+} from "./itinerary-preferences.interface";

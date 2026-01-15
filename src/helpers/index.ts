@@ -12,3 +12,10 @@ export {
 } from './otp.service.helper';
 
 export { AuditLogData, createLeadAuditLog } from "./audit-log.helper";
+
+export { 
+    validateFormData,
+    calculateFormStats,
+    generatePreferencesSummary,
+    formatFormDataForDisplay
+} from "./itinerary-preferences.helper";

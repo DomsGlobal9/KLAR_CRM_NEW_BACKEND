@@ -11,6 +11,7 @@ import invoiceRoutes from './invoice.routes';
 import quoteRoutes from './quote.routes';
 import serviceRoutes from './service.routes';
 import itenaryRoutes from './itinerary.routes';
+import itenaryUserPreference from "./itinerary-preferences.routes";
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
 router.use('/itenary', itenaryRoutes);
+router.use('/itenary-preference', itenaryUserPreference);
 
 export default router;

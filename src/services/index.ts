@@ -16,3 +16,4 @@ export { roleService } from "./role.service";
 export { teamService } from "./team.service";
 export { serviceService } from "./service.service";
 export { itineraryService } from "./itinerary.service";
+export { itineraryPreferencesService } from "./itinerary-preferences.service";

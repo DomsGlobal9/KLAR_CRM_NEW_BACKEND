@@ -9,3 +9,4 @@ export { teamController } from "./team.controller";
 export { teamMemberController } from "./teamMember.controller";
 export { serviceController } from "./service.controller";
 export { itineraryController } from "./itinerary.controller";
+export { itineraryPreferencesController } from "./itinerary-preferences.controller";
