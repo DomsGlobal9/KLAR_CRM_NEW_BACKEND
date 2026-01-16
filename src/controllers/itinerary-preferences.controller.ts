@@ -102,7 +102,7 @@ export const itineraryPreferencesController = {
             }
 
             const result = await itineraryPreferencesService.getPreferences(itineraryId as string);
-            
+
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -626,8 +626,6 @@ export const itineraryPreferencesController = {
         }
     },
 
-
-
     /**
      * Get all itineraries with preferences (admin endpoint)
      */
@@ -635,6 +633,49 @@ export const itineraryPreferencesController = {
         console.log("Enter into function to get all details");
         try {
             console.log("Enter into try section");
+
+            const itineraryId = req.query.id as string;
+
+            if (itineraryId) {
+                const singleResult = await itineraryPreferencesService.getPreferences(itineraryId);
+
+                if (!singleResult.success || !singleResult.data) {
+                    return res.status(404).json({
+                        success: false,
+                        message: `Itinerary with ID ${itineraryId} not found`
+                    });
+                }
+
+                const singleItinerary = singleResult.data;
+
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        itineraries: [singleItinerary],
+                        total_count: 1,
+                        pagination: {
+                            page: 1,
+                            limit: 1,
+                            total_pages: 1
+                        }
+                    },
+                    summary: {
+                        total_itineraries: 1,
+                        total_flight_preferences: singleItinerary.flight_preferences?.length || 0,
+                        total_hotel_preferences: singleItinerary.hotel_preferences?.length || 0,
+                        total_visa_preferences: singleItinerary.visa_preferences?.length || 0,
+                        itineraries_with_flight_prefs: singleItinerary.flight_preferences?.length > 0 ? 1 : 0,
+                        itineraries_with_hotel_prefs: singleItinerary.hotel_preferences?.length > 0 ? 1 : 0,
+                        itineraries_with_visa_prefs: singleItinerary.visa_preferences?.length > 0 ? 1 : 0,
+                        complete_itineraries: (
+                            singleItinerary.flight_preferences?.length > 0 &&
+                            singleItinerary.hotel_preferences?.length > 0 &&
+                            singleItinerary.visa_preferences?.length > 0
+                        ) ? 1 : 0
+                    }
+                });
+            }
+
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 50;
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
