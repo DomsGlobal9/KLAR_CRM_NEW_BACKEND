@@ -105,13 +105,13 @@ export const itineraryPreferencesService = {
     /**
      * Get all preferences for an itinerary
      */
-    async getPreferences(itineraryId: string): Promise<{
+    async getPreferences(clientID: string): Promise<{
         success: boolean;
         data?: IItineraryPreferencesResponse;
         message?: string;
     }> {
         try {
-            const data = await itineraryPreferencesRepository.getByItineraryId(itineraryId);
+            const data = await itineraryPreferencesRepository.getByItineraryId(clientID);
             // console.log("&&&&&&&&&&&&&&&&\nThe data we get in service", data);
             return {
                 success: true,

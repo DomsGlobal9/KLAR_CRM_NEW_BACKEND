@@ -11,11 +11,47 @@ import {
 } from '../interfaces/itinerary-preferences.interface';
 
 export const itineraryPreferencesRepository = {
+
+    /**
+    * Get itinerary_id from user preferences summary by summary ID
+    */
+    async getItineraryIdByUserPreferenceId(
+        userPreferenceId: string
+    ): Promise<string | null> {
+        try {
+            const { data, error } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('itinerary_id')
+                .eq('id', userPreferenceId)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    return null; // not found
+                }
+                throw new Error(`Failed to fetch itinerary_id: ${error.message}`);
+            }
+
+            return data.itinerary_id;
+        } catch (error) {
+            console.error('Error in getItineraryIdByUserPreferenceId:', error);
+            throw new Error(
+                `Failed to get itinerary_id: ${error instanceof Error ? error.message : 'Unknown error'
+                }`
+            );
+        }
+    },
+
     /**
      * Get all preferences for an itinerary
      */
-    async getByItineraryId(itineraryId: string): Promise<IItineraryPreferencesResponse> {
+    async getByItineraryId(clientID: string): Promise<IItineraryPreferencesResponse> {
         try {
+
+            const itineraryId = await this.getItineraryIdByUserPreferenceId(clientID);
+            if (!itineraryId) {
+                throw new Error ("Itenary ID not found in repository");
+            }
             // Fetch all data in parallel
             const [
                 flightPreferencesResult,

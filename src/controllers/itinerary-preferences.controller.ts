@@ -634,15 +634,15 @@ export const itineraryPreferencesController = {
         try {
             console.log("Enter into try section");
 
-            const itineraryId = req.query.id as string;
+            const clientID = req.query.id as string;
 
-            if (itineraryId) {
-                const singleResult = await itineraryPreferencesService.getPreferences(itineraryId);
+            if (clientID) {
+                const singleResult = await itineraryPreferencesService.getPreferences(clientID);
 
                 if (!singleResult.success || !singleResult.data) {
                     return res.status(404).json({
                         success: false,
-                        message: `Itinerary with ID ${itineraryId} not found`
+                        message: `Itinerary with ID ${clientID} not found`
                     });
                 }
 
