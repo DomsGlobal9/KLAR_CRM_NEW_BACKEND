@@ -6,7 +6,8 @@ import {
     IUserPreferencesSummary,
     IItineraryPreferencesResponse,
     ICombinedPreferenceData,
-    IFrontendFormData
+    IFrontendFormData,
+    IItineraryDetails
 } from '../interfaces/itinerary-preferences.interface';
 
 export const itineraryPreferencesRepository = {
@@ -15,12 +16,13 @@ export const itineraryPreferencesRepository = {
      */
     async getByItineraryId(itineraryId: string): Promise<IItineraryPreferencesResponse> {
         try {
-
+            // Fetch all data in parallel
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
-                userPreferencesResult
+                userPreferencesResult,
+                itineraryDetailsResult
             ] = await Promise.all([
                 supabaseAdmin
                     .from('flight_preferences')
@@ -44,10 +46,16 @@ export const itineraryPreferencesRepository = {
                     .from('user_itenary_preferences_summary')
                     .select('*')
                     .eq('itinerary_id', itineraryId)
+                    .single(),
+
+                supabaseAdmin
+                    .from('itineraries')
+                    .select('*')
+                    .eq('id', itineraryId)
                     .single()
             ]);
 
-
+            // Handle errors
             if (flightPreferencesResult.error && flightPreferencesResult.error.code !== 'PGRST116') {
                 throw new Error(`Failed to fetch flight preferences: ${flightPreferencesResult.error.message}`);
             }
@@ -60,20 +68,28 @@ export const itineraryPreferencesRepository = {
                 throw new Error(`Failed to fetch visa preferences: ${visaPreferencesResult.error.message}`);
             }
 
-
+            // Handle user preferences error (allow missing summary)
             const userPrefsError = userPreferencesResult.error;
             if (userPrefsError && userPrefsError.code !== 'PGRST116') {
                 console.warn('Error fetching user preferences summary:', userPrefsError.message);
             }
 
-            console.log("@@@@@@@@@@@@\nThe repository data we get", { flightPreferencesResult, hotelPreferencesResult, visaPreferencesResult, userPreferencesResult });
+            // Handle itinerary details error (itinerary might exist without details in our table)
+            let itineraryDetails: IItineraryDetails | undefined;
+            const itineraryDetailsError = itineraryDetailsResult.error;
+            if (itineraryDetailsError && itineraryDetailsError.code !== 'PGRST116') {
+                console.warn('Error fetching itinerary details:', itineraryDetailsError.message);
+            } else if (itineraryDetailsResult.data) {
+                itineraryDetails = itineraryDetailsResult.data as IItineraryDetails;
+            }
 
             return {
                 itinerary_id: itineraryId,
                 flight_preferences: flightPreferencesResult.data as IFlightPreference[] || [],
                 hotel_preferences: hotelPreferencesResult.data as IHotelPreference[] || [],
                 visa_preferences: visaPreferencesResult.data as IVisaPreference[] || [],
-                user_preferences_summary: userPreferencesResult.data as IUserPreferencesSummary || null
+                user_preferences_summary: userPreferencesResult.data as IUserPreferencesSummary || null,
+                itinerary_details: itineraryDetails
             };
         } catch (error) {
             console.error('Error in getByItineraryId:', error);
@@ -85,10 +101,14 @@ export const itineraryPreferencesRepository = {
     /**
      * Save all preferences for an itinerary
      */
+    /**
+ * Save all preferences for an itinerary - Updated to optionally include itinerary details
+ */
     async saveAllPreferences(data: ICombinedPreferenceData): Promise<IItineraryPreferencesResponse> {
-        const { itineraryId, flightPreferences, hotelPreferences, visaPreferences, userPreferences } = data;
+        const { itineraryId, flightPreferences, hotelPreferences, visaPreferences, userPreferences, itineraryDetails } = data;
 
         try {
+            // Check if preferences already exist
             const exists = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('id')
@@ -99,9 +119,10 @@ export const itineraryPreferencesRepository = {
                 throw new Error(`Cannot create: preferences already exist for itinerary ${itineraryId}. Use update instead.`);
             }
 
+            // Clear existing data
             await this.deleteByItineraryId(itineraryId);
 
-
+            // Save flight preferences
             let savedFlightPreferences: IFlightPreference[] = [];
             if (flightPreferences.length > 0) {
                 const flightPrefsToInsert = flightPreferences.map((pref, index) => ({
@@ -121,7 +142,7 @@ export const itineraryPreferencesRepository = {
                 savedFlightPreferences = flightData as IFlightPreference[] || [];
             }
 
-
+            // Save hotel preferences
             let savedHotelPreferences: IHotelPreference[] = [];
             if (hotelPreferences.length > 0) {
                 const hotelPrefsToInsert = hotelPreferences.map((pref, index) => ({
@@ -141,7 +162,7 @@ export const itineraryPreferencesRepository = {
                 savedHotelPreferences = hotelData as IHotelPreference[] || [];
             }
 
-
+            // Save visa preferences
             let savedVisaPreferences: IVisaPreference[] = [];
             if (visaPreferences.length > 0) {
                 const visaPrefsToInsert = visaPreferences.map((pref, index) => ({
@@ -161,14 +182,17 @@ export const itineraryPreferencesRepository = {
                 savedVisaPreferences = visaData as IVisaPreference[] || [];
             }
 
-
+            // Save user preferences summary
             const userPrefsSummary: Omit<IUserPreferencesSummary, 'id'> = {
                 itinerary_id: itineraryId,
                 flight_preferences_added: userPreferences.flightPreferencesAdded,
                 hotel_preferences_added: userPreferences.hotelPreferencesAdded,
                 visa_preferences_added: userPreferences.visaPreferencesAdded,
                 last_updated: userPreferences.lastUpdated || new Date().toISOString(),
-                metadata: userPreferences.metadata || {},
+                metadata: {
+                    ...userPreferences.metadata,
+                    ...(itineraryDetails && { itinerary_details_available: true })
+                },
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
@@ -181,12 +205,29 @@ export const itineraryPreferencesRepository = {
 
             if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
 
+            // Fetch itinerary details if not provided
+            let itineraryDetailsResult: IItineraryDetails | undefined = itineraryDetails;
+            if (!itineraryDetailsResult) {
+                try {
+                    const { data: detailsData } = await supabaseAdmin
+                        .from('itineraries')
+                        .select('*')
+                        .eq('id', itineraryId)
+                        .single();
+
+                    itineraryDetailsResult = detailsData as IItineraryDetails;
+                } catch (error) {
+                    console.warn('Could not fetch itinerary details:', error);
+                }
+            }
+
             return {
                 itinerary_id: itineraryId,
                 flight_preferences: savedFlightPreferences,
                 hotel_preferences: savedHotelPreferences,
                 visa_preferences: savedVisaPreferences,
-                user_preferences_summary: userPrefsData as IUserPreferencesSummary
+                user_preferences_summary: userPrefsData as IUserPreferencesSummary,
+                itinerary_details: itineraryDetailsResult
             };
         } catch (error) {
             console.error('Error in saveAllPreferences:', error);
@@ -561,63 +602,22 @@ export const itineraryPreferencesRepository = {
 
 
 
+
     /**
-     * Get all unique itinerary IDs from all tables
+     * Get all unique itinerary IDs from the parent table
      */
     async getAllItineraryIds(): Promise<string[]> {
         try {
+            const { data, error } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('itinerary_id')
+                .order('created_at', { ascending: false });
 
-            const [
-                flightItinerariesResult,
-                hotelItinerariesResult,
-                visaItinerariesResult,
-                summaryItinerariesResult
-            ] = await Promise.all([
-                supabaseAdmin
-                    .from('flight_preferences')
-                    .select('itinerary_id')
-                    .order('created_at', { ascending: false }),
+            if (error) {
+                throw new Error(`Failed to get itinerary IDs: ${error.message}`);
+            }
 
-                supabaseAdmin
-                    .from('hotel_preferences')
-                    .select('itinerary_id')
-                    .order('created_at', { ascending: false }),
-
-                supabaseAdmin
-                    .from('visa_preferences')
-                    .select('itinerary_id')
-                    .order('created_at', { ascending: false }),
-
-                supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('itinerary_id')
-                    .order('created_at', { ascending: false })
-            ]);
-
-
-            const allItineraryIds = new Set<string>();
-
-
-            flightItinerariesResult.data?.forEach(item => {
-                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
-            });
-
-
-            hotelItinerariesResult.data?.forEach(item => {
-                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
-            });
-
-
-            visaItinerariesResult.data?.forEach(item => {
-                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
-            });
-
-
-            summaryItinerariesResult.data?.forEach(item => {
-                if (item.itinerary_id) allItineraryIds.add(item.itinerary_id);
-            });
-
-            return Array.from(allItineraryIds);
+            return data?.map(item => item.itinerary_id) || [];
         } catch (error) {
             console.error('Error in getAllItineraryIds:', error);
             throw new Error(`Failed to get itinerary IDs: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -645,48 +645,110 @@ export const itineraryPreferencesRepository = {
             const sortBy = params?.sort_by || 'updated_at';
             const sortOrder = params?.sort_order || 'desc';
 
+            // Step 1: Get paginated summaries from PARENT table first
+            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('*', { count: 'exact' })
+                .order(sortBy, { ascending: sortOrder === 'asc' })
+                .range((page - 1) * limit, page * limit - 1);
 
-            const allItineraryIds = await this.getAllItineraryIds();
-            const totalCount = allItineraryIds.length;
+            if (summariesError) {
+                throw new Error(`Failed to fetch summaries: ${summariesError.message}`);
+            }
 
-            if (totalCount === 0) {
+            if (!summaries || summaries.length === 0) {
                 return {
                     itineraries: [],
-                    total_count: 0,
+                    total_count: count || 0,
                     page,
                     limit,
-                    total_pages: 0
+                    total_pages: Math.ceil((count || 0) / limit)
                 };
             }
 
+            // Step 2: Extract all itinerary IDs from summaries
+            const itineraryIds = summaries.map(summary => summary.itinerary_id);
 
-            const totalPages = Math.ceil(totalCount / limit);
-            const currentPage = Math.max(1, Math.min(page, totalPages));
-            const startIndex = (currentPage - 1) * limit;
-            const endIndex = Math.min(startIndex + limit, totalCount);
+            // Step 3: Fetch all related data in parallel - including itinerary details
+            const [
+                flightPreferencesResult,
+                hotelPreferencesResult,
+                visaPreferencesResult,
+                itineraryDetailsResult
+            ] = await Promise.all([
+                // Get all flight preferences for these itineraries
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true }),
 
+                // Get all hotel preferences for these itineraries
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true }),
 
-            const paginatedItineraryIds = allItineraryIds.slice(startIndex, endIndex);
+                // Get all visa preferences for these itineraries
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true }),
 
+                // Get itinerary details from itineraries table
+                supabaseAdmin
+                    .from('itineraries')
+                    .select('*')
+                    .in('id', itineraryIds)
+            ]);
 
-            const itineraries = await Promise.all(
-                paginatedItineraryIds.map(itineraryId =>
-                    this.getByItineraryId(itineraryId).catch(error => {
-                        console.error(`Error fetching itinerary ${itineraryId}:`, error);
-                        return null;
-                    })
-                )
-            );
+            // Step 4: Create maps for quick lookup
+            const flightPreferencesMap = new Map<string, IFlightPreference[]>();
+            const hotelPreferencesMap = new Map<string, IHotelPreference[]>();
+            const visaPreferencesMap = new Map<string, IVisaPreference[]>();
+            const itineraryDetailsMap = new Map<string, IItineraryDetails>();
 
+            // Group flight preferences by itinerary_id
+            flightPreferencesResult.data?.forEach(fp => {
+                const existing = flightPreferencesMap.get(fp.itinerary_id) || [];
+                flightPreferencesMap.set(fp.itinerary_id, [...existing, fp as IFlightPreference]);
+            });
 
-            const validItineraries = itineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+            // Group hotel preferences by itinerary_id
+            hotelPreferencesResult.data?.forEach(hp => {
+                const existing = hotelPreferencesMap.get(hp.itinerary_id) || [];
+                hotelPreferencesMap.set(hp.itinerary_id, [...existing, hp as IHotelPreference]);
+            });
+
+            // Group visa preferences by itinerary_id
+            visaPreferencesResult.data?.forEach(vp => {
+                const existing = visaPreferencesMap.get(vp.itinerary_id) || [];
+                visaPreferencesMap.set(vp.itinerary_id, [...existing, vp as IVisaPreference]);
+            });
+
+            // Create itinerary details map
+            itineraryDetailsResult.data?.forEach(itinerary => {
+                itineraryDetailsMap.set(itinerary.id, itinerary as IItineraryDetails);
+            });
+
+            // Step 5: Combine all data
+            const itineraries = summaries.map(summary => ({
+                itinerary_id: summary.itinerary_id,
+                flight_preferences: flightPreferencesMap.get(summary.itinerary_id) || [],
+                hotel_preferences: hotelPreferencesMap.get(summary.itinerary_id) || [],
+                visa_preferences: visaPreferencesMap.get(summary.itinerary_id) || [],
+                user_preferences_summary: summary as IUserPreferencesSummary,
+                itinerary_details: itineraryDetailsMap.get(summary.itinerary_id)
+            }));
 
             return {
-                itineraries: validItineraries,
-                total_count: totalCount,
-                page: currentPage,
+                itineraries,
+                total_count: count || 0,
+                page,
                 limit,
-                total_pages: totalPages
+                total_pages: Math.ceil((count || 0) / limit)
             };
         } catch (error) {
             console.error('Error in getAllItinerariesPaginated:', error);
@@ -695,7 +757,7 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Get summary statistics of all itineraries
+     * Get summary statistics of all itineraries - OPTIMIZED VERSION
      */
     async getAllItinerariesSummary(): Promise<{
         total_itineraries: number;
@@ -711,84 +773,86 @@ export const itineraryPreferencesRepository = {
     }> {
         try {
 
-            const allItineraryIds = await this.getAllItineraryIds();
+            const { count: totalItineraries, error: countError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('*', { count: 'exact', head: true });
 
-            if (allItineraryIds.length === 0) {
-                return {
-                    total_itineraries: 0,
-                    total_flight_preferences: 0,
-                    total_hotel_preferences: 0,
-                    total_visa_preferences: 0,
-                    itineraries_with_flight_prefs: 0,
-                    itineraries_with_hotel_prefs: 0,
-                    itineraries_with_visa_prefs: 0,
-                    complete_itineraries: 0,
-                    recent_itineraries_last_7_days: 0,
-                    recent_itineraries_last_30_days: 0
-                };
+            if (countError) {
+                throw new Error(`Failed to get total count: ${countError.message}`);
             }
 
 
-            const allItineraries = await Promise.all(
-                allItineraryIds.map(itineraryId =>
-                    this.getByItineraryId(itineraryId).catch(() => null)
-                )
-            );
+            const [
+                flightCountResult,
+                hotelCountResult,
+                visaCountResult
+            ] = await Promise.all([
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('itinerary_id', { count: 'exact', head: true }),
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('itinerary_id', { count: 'exact', head: true }),
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('itinerary_id', { count: 'exact', head: true })
+            ]);
 
 
-            const validItineraries = allItineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+            const [
+                distinctFlightItineraries,
+                distinctHotelItineraries,
+                distinctVisaItineraries
+            ] = await Promise.all([
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('itinerary_id')
+                    .limit(1),
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('itinerary_id')
+                    .limit(1),
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('itinerary_id')
+                    .limit(1)
+            ]);
 
+            // Get recent summaries for date calculations
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-            let totalFlightPrefs = 0;
-            let totalHotelPrefs = 0;
-            let totalVisaPrefs = 0;
-            let itinerariesWithFlightPrefs = 0;
-            let itinerariesWithHotelPrefs = 0;
-            let itinerariesWithVisaPrefs = 0;
-            let completeItineraries = 0;
-            let recent7Days = 0;
-            let recent30Days = 0;
+            const { count: recent7DaysCount } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('*', { count: 'exact', head: true })
+                .gte('last_updated', sevenDaysAgo.toISOString());
 
-            const now = new Date();
-            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const { count: recent30DaysCount } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('*', { count: 'exact', head: true })
+                .gte('last_updated', thirtyDaysAgo.toISOString());
 
-            validItineraries.forEach(itinerary => {
-
-                totalFlightPrefs += itinerary.flight_preferences.length;
-                totalHotelPrefs += itinerary.hotel_preferences.length;
-                totalVisaPrefs += itinerary.visa_preferences.length;
-
-
-                if (itinerary.flight_preferences.length > 0) itinerariesWithFlightPrefs++;
-                if (itinerary.hotel_preferences.length > 0) itinerariesWithHotelPrefs++;
-                if (itinerary.visa_preferences.length > 0) itinerariesWithVisaPrefs++;
-
-
-                if (itinerary.flight_preferences.length > 0 &&
-                    itinerary.hotel_preferences.length > 0 &&
-                    itinerary.visa_preferences.length > 0) {
-                    completeItineraries++;
-                }
-
-
-                const lastUpdated = new Date(itinerary.user_preferences_summary?.last_updated || itinerary.flight_preferences[0]?.created_at || itinerary.hotel_preferences[0]?.created_at || itinerary.visa_preferences[0]?.created_at || '2000-01-01');
-
-                if (lastUpdated > sevenDaysAgo) recent7Days++;
-                if (lastUpdated > thirtyDaysAgo) recent30Days++;
-            });
+            // Get complete itineraries (have all three preference types)
+            const { data: completeItinerariesData } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('itinerary_id')
+                .eq('flight_preferences_added', true)
+                .eq('hotel_preferences_added', true)
+                .eq('visa_preferences_added', true);
 
             return {
-                total_itineraries: validItineraries.length,
-                total_flight_preferences: totalFlightPrefs,
-                total_hotel_preferences: totalHotelPrefs,
-                total_visa_preferences: totalVisaPrefs,
-                itineraries_with_flight_prefs: itinerariesWithFlightPrefs,
-                itineraries_with_hotel_prefs: itinerariesWithHotelPrefs,
-                itineraries_with_visa_prefs: itinerariesWithVisaPrefs,
-                complete_itineraries: completeItineraries,
-                recent_itineraries_last_7_days: recent7Days,
-                recent_itineraries_last_30_days: recent30Days
+                total_itineraries: totalItineraries || 0,
+                total_flight_preferences: flightCountResult.count || 0,
+                total_hotel_preferences: hotelCountResult.count || 0,
+                total_visa_preferences: visaCountResult.count || 0,
+                itineraries_with_flight_prefs: distinctFlightItineraries.data?.length || 0,
+                itineraries_with_hotel_prefs: distinctHotelItineraries.data?.length || 0,
+                itineraries_with_visa_prefs: distinctVisaItineraries.data?.length || 0,
+                complete_itineraries: completeItinerariesData?.length || 0,
+                recent_itineraries_last_7_days: recent7DaysCount || 0,
+                recent_itineraries_last_30_days: recent30DaysCount || 0
             };
         } catch (error) {
             console.error('Error in getAllItinerariesSummary:', error);
@@ -797,14 +861,17 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Get recent itineraries
+     * Get recent itineraries with itinerary details
      */
     async getRecentItineraries(limit: number = 10): Promise<IItineraryPreferencesResponse[]> {
         try {
-
+            // Get recent summaries with itinerary details
             const { data, error } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('itinerary_id, last_updated')
+                .select(`
+                *,
+                itineraries:itinerary_id (*)
+            `)
                 .order('last_updated', { ascending: false })
                 .limit(limit);
 
@@ -816,17 +883,65 @@ export const itineraryPreferencesRepository = {
                 return [];
             }
 
+            // Extract itinerary IDs
+            const itineraryIds = data.map(item => item.itinerary_id);
 
-            const recentItineraries = await Promise.all(
-                data.map(item =>
-                    this.getByItineraryId(item.itinerary_id).catch(() => null)
-                )
-            );
+            // Fetch all preferences in bulk
+            const [
+                flightPreferencesResult,
+                hotelPreferencesResult,
+                visaPreferencesResult
+            ] = await Promise.all([
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true }),
 
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true }),
 
-            const validItineraries = recentItineraries.filter(Boolean) as IItineraryPreferencesResponse[];
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('*')
+                    .in('itinerary_id', itineraryIds)
+                    .order('preference_order', { ascending: true })
+            ]);
 
-            return validItineraries.sort((a, b) => {
+            // Create maps
+            const flightPreferencesMap = new Map<string, IFlightPreference[]>();
+            const hotelPreferencesMap = new Map<string, IHotelPreference[]>();
+            const visaPreferencesMap = new Map<string, IVisaPreference[]>();
+
+            flightPreferencesResult.data?.forEach(fp => {
+                const existing = flightPreferencesMap.get(fp.itinerary_id) || [];
+                flightPreferencesMap.set(fp.itinerary_id, [...existing, fp as IFlightPreference]);
+            });
+
+            hotelPreferencesResult.data?.forEach(hp => {
+                const existing = hotelPreferencesMap.get(hp.itinerary_id) || [];
+                hotelPreferencesMap.set(hp.itinerary_id, [...existing, hp as IHotelPreference]);
+            });
+
+            visaPreferencesResult.data?.forEach(vp => {
+                const existing = visaPreferencesMap.get(vp.itinerary_id) || [];
+                visaPreferencesMap.set(vp.itinerary_id, [...existing, vp as IVisaPreference]);
+            });
+
+            // Combine data
+            const itineraries = data.map(item => ({
+                itinerary_id: item.itinerary_id,
+                flight_preferences: flightPreferencesMap.get(item.itinerary_id) || [],
+                hotel_preferences: hotelPreferencesMap.get(item.itinerary_id) || [],
+                visa_preferences: visaPreferencesMap.get(item.itinerary_id) || [],
+                user_preferences_summary: item as IUserPreferencesSummary,
+                itinerary_details: item.itineraries as IItineraryDetails
+            }));
+
+            return itineraries.sort((a, b) => {
                 const dateA = new Date(a.user_preferences_summary?.last_updated || '2000-01-01');
                 const dateB = new Date(b.user_preferences_summary?.last_updated || '2000-01-01');
                 return dateB.getTime() - dateA.getTime();

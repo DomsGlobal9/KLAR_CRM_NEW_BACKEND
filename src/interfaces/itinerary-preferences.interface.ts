@@ -74,6 +74,7 @@ export interface ICombinedPreferenceData {
         lastUpdated: string;
         metadata?: Record<string, any>;
     };
+    itineraryDetails?: IItineraryDetails; 
 }
 
 export interface IItineraryPreferencesResponse {
@@ -82,6 +83,7 @@ export interface IItineraryPreferencesResponse {
     hotel_preferences: IHotelPreference[];
     visa_preferences: IVisaPreference[];
     user_preferences_summary: IUserPreferencesSummary | null;
+    itinerary_details?: IItineraryDetails;
 }
 
 export interface IUpdatePreferenceData {
@@ -180,7 +182,7 @@ export interface IAllItinerariesResponse {
         itineraries_with_flight_prefs: number;
         itineraries_with_hotel_prefs: number;
         itineraries_with_visa_prefs: number;
-        complete_itineraries: number; 
+        complete_itineraries: number;
     };
     message?: string;
 }
@@ -211,4 +213,26 @@ export interface IItinerarySummary {
         hotel_preferences_added: boolean;
         visa_preferences_added: boolean;
     };
+}
+
+export interface IItineraryDetails {
+    id: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    number_of_travelers: number;
+    from_location: string;
+    to_location: string;
+    travel_date: string;
+    return_date?: string;
+    budget_range?: string;
+    additional_notes?: string;
+    status: string;
+    itinerary_number: string;
+    total_price?: number;
+    currency: string;
+    is_active: boolean;
+    metadata?: Record<string, any>;
+    created_at: string;
+    updated_at: string;
 }
