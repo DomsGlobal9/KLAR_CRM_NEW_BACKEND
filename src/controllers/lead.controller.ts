@@ -1,17 +1,28 @@
 import { Request, Response } from 'express';
 import { leadService } from '../services';
-import { CreateLeadPayload, UpdateLeadPayload, LeadFilter } from '../interfaces';
+import { 
+    CreateLeadPayload, 
+    UpdateLeadPayload, 
+    LeadFilter,
+    CreateFlightRequirementPayload,
+    CreateHotelRequirementPayload,
+    CreateJourneyDetailsPayload
+} from '../interfaces/lead.interface';
 import { createLeadAuditLog } from '../helpers';
 
 export const leadController = {
+    // ============================================
+    // EXISTING ENDPOINTS (Keep backward compatible)
+    // ============================================
+
     /**
-     * Create a new lead
+     * Create a new lead (ENHANCED - now supports flight/hotel/journey)
      */
     async createLead(req: Request, res: Response) {
         try {
             const payload: CreateLeadPayload = req.body;
 
-            console.log("THe lead data we are getting from frontend", req.body);
+            console.log("Lead data received from frontend:", req.body);
 
             const lead = await leadService.createLead(payload);
 
@@ -114,7 +125,7 @@ export const leadController = {
     },
 
     /**
-     * Get lead by ID
+     * Get lead by ID (basic requirements only - backward compatible)
      */
     async getLeadById(req: Request, res: Response) {
         try {
@@ -143,9 +154,7 @@ export const leadController = {
 
             const lead = await leadService.updateLead(id, payload);
 
-            // Create audit log
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_UPDATED',
                 entity_type: 'lead',
                 entity_id: id,
@@ -176,9 +185,7 @@ export const leadController = {
 
             await leadService.deleteLead(id);
 
-            // Create audit log
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_DELETED',
                 entity_type: 'lead',
                 entity_id: id,
@@ -235,9 +242,7 @@ export const leadController = {
 
             const lead = await leadService.updateLeadStage(id, stage);
 
-            // Create audit log
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_STAGE_UPDATED',
                 entity_type: 'lead',
                 entity_id: id,
@@ -276,9 +281,7 @@ export const leadController = {
 
             const lead = await leadService.assignLead(id, assigned_to);
 
-            // Create audit log
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_ASSIGNED',
                 entity_type: 'lead',
                 entity_id: id,
@@ -320,6 +323,329 @@ export const leadController = {
                 success: true,
                 data: leads,
                 count: leads.length
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    // ============================================
+    // NEW ENDPOINTS - FULL LEAD DETAILS
+    // ============================================
+
+    /**
+     * Get lead by ID with FULL requirements (flights, hotels, journey)
+     */
+    async getLeadByIdWithFullDetails(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const lead = await leadService.getLeadByIdWithFullDetails(id);
+
+            res.json({
+                success: true,
+                data: lead,
+                message: 'Lead with full details retrieved successfully'
+            });
+        } catch (error: any) {
+            res.status(404).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get all leads assigned to a specific RM with full details
+     */
+    async getLeadsByAssignedRM(req: Request, res: Response) {
+        try {
+            const { rmId } = req.params;
+
+            if (!rmId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'RM ID is required'
+                });
+            }
+
+            const leads = await leadService.getLeadsByAssignedRM(rmId);
+
+            res.json({
+                success: true,
+                data: leads,
+                count: leads.length,
+                message: `Retrieved ${leads.length} leads for RM`
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    // ============================================
+    // NEW ENDPOINTS - FLIGHT REQUIREMENTS
+    // ============================================
+
+    /**
+     * Add flight requirement to a lead
+     */
+    async addFlightRequirement(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+            const payload: CreateFlightRequirementPayload = req.body;
+
+            const flightRequirement = await leadService.addFlightRequirement(leadId, payload);
+
+            await createLeadAuditLog({
+                action: 'FLIGHT_REQUIREMENT_ADDED',
+                entity_type: 'lead',
+                entity_id: leadId,
+                details: `Flight requirement added: ${payload.departure_city} to ${payload.arrival_city}`,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Flight requirement added successfully',
+                data: flightRequirement
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update flight requirement
+     */
+    async updateFlightRequirement(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const payload: Partial<CreateFlightRequirementPayload> = req.body;
+
+            const flightRequirement = await leadService.updateFlightRequirement(id, payload);
+
+            res.json({
+                success: true,
+                message: 'Flight requirement updated successfully',
+                data: flightRequirement
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Delete flight requirement
+     */
+    async deleteFlightRequirement(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            await leadService.deleteFlightRequirement(id);
+
+            res.json({
+                success: true,
+                message: 'Flight requirement deleted successfully'
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get flight requirements by lead ID
+     */
+    async getFlightRequirementsByLeadId(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            const flightRequirements = await leadService.getFlightRequirementsByLeadId(leadId);
+
+            res.json({
+                success: true,
+                data: flightRequirements,
+                count: flightRequirements.length
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    // ============================================
+    // NEW ENDPOINTS - HOTEL REQUIREMENTS
+    // ============================================
+
+    /**
+     * Add hotel requirement to a lead
+     */
+    async addHotelRequirement(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+            const payload: CreateHotelRequirementPayload = req.body;
+
+            const hotelRequirement = await leadService.addHotelRequirement(leadId, payload);
+
+            await createLeadAuditLog({
+                action: 'HOTEL_REQUIREMENT_ADDED',
+                entity_type: 'lead',
+                entity_id: leadId,
+                details: `Hotel requirement added: ${payload.city}`,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Hotel requirement added successfully',
+                data: hotelRequirement
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Update hotel requirement
+     */
+    async updateHotelRequirement(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const payload: Partial<CreateHotelRequirementPayload> = req.body;
+
+            const hotelRequirement = await leadService.updateHotelRequirement(id, payload);
+
+            res.json({
+                success: true,
+                message: 'Hotel requirement updated successfully',
+                data: hotelRequirement
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Delete hotel requirement
+     */
+    async deleteHotelRequirement(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            await leadService.deleteHotelRequirement(id);
+
+            res.json({
+                success: true,
+                message: 'Hotel requirement deleted successfully'
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get hotel requirements by lead ID
+     */
+    async getHotelRequirementsByLeadId(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            const hotelRequirements = await leadService.getHotelRequirementsByLeadId(leadId);
+
+            res.json({
+                success: true,
+                data: hotelRequirements,
+                count: hotelRequirements.length
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    // ============================================
+    // NEW ENDPOINTS - JOURNEY DETAILS
+    // ============================================
+
+    /**
+     * Upsert journey details for a lead
+     */
+    async upsertJourneyDetails(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+            const payload: CreateJourneyDetailsPayload = req.body;
+
+            const journeyDetails = await leadService.upsertJourneyDetails(leadId, payload);
+
+            await createLeadAuditLog({
+                action: 'JOURNEY_DETAILS_UPDATED',
+                entity_type: 'lead',
+                entity_id: leadId,
+                details: `Journey details updated`,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            res.json({
+                success: true,
+                message: 'Journey details saved successfully',
+                data: journeyDetails
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Get journey details by lead ID
+     */
+    async getJourneyDetailsByLeadId(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            const journeyDetails = await leadService.getJourneyDetailsByLeadId(leadId);
+
+            if (!journeyDetails) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Journey details not found'
+                });
+            }
+
+            res.json({
+                success: true,
+                data: journeyDetails
             });
         } catch (error: any) {
             res.status(400).json({

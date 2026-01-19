@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   }
   next();
 });
-
+  
 /**
  * Routes (API included inside)
  */

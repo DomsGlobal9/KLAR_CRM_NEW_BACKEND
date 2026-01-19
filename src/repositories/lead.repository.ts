@@ -3,17 +3,28 @@ import {
     Lead,
     LeadRequirements,
     LeadWithRequirements,
+    LeadWithFullRequirements,
+    LeadFlightRequirement,
+    LeadHotelRequirement,
+    LeadJourneyDetails,
     CreateLeadPayload,
     UpdateLeadPayload,
-    LeadFilter
+    LeadFilter,
+    CreateFlightRequirementPayload,
+    CreateHotelRequirementPayload,
+    CreateJourneyDetailsPayload
 } from '../interfaces/lead.interface';
 
 export const leadRepository = {
+    // ============================================
+    // CORE LEAD OPERATIONS (Existing - Keep as is)
+    // ============================================
+
     /**
      * Create a new lead with requirements
      */
-    async createLeadWithRequirements(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
-        // Start a transaction
+    async createLeadWithRequirements(payload: CreateLeadPayload): Promise<LeadWithFullRequirements> {
+        // Create lead
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .insert({
@@ -40,63 +51,124 @@ export const leadRepository = {
 
         const lead = leadData as Lead;
         let requirements: LeadRequirements | null = null;
+        let flightRequirements: LeadFlightRequirement[] = [];
+        let hotelRequirements: LeadHotelRequirement[] = [];
+        let journeyDetails: LeadJourneyDetails | null = null;
 
-        const hasRequirements =
-            payload.from_location || payload.destination || payload.travel_date ||
-            payload.return_date || payload.service_type || payload.services ||
-            payload.sub_service || payload.needs_visa !== undefined ||
-            payload.budget !== undefined || payload.travelers !== undefined ||
-            payload.flight_class || payload.customer_category || payload.sub_category ||
-            payload.company_name || payload.company_address || payload.company_details ||
-            payload.gst_number || payload.lead_type || payload.notes;
+        try {
+            // Create basic requirements if any
+            const hasBasicRequirements =
+                payload.from_location || payload.to_location || payload.travel_date ||
+                payload.return_date || payload.service_type || payload.services ||
+                payload.sub_service || payload.needs_visa !== undefined ||
+                payload.budget !== undefined || payload.travelers !== undefined ||
+                payload.flight_class || payload.customer_category || payload.sub_category ||
+                payload.company_name || payload.company_address || payload.company_details ||
+                payload.gst_number || payload.lead_type || payload.notes;
 
-        if (hasRequirements) {
-            const { data: reqData, error: reqError } = await supabaseAdmin
-                .from('lead_requirements')
-                .insert({
-                    lead_id: lead.id,
-                    from_location: payload.from_location,
-                    destination: payload.destination,
-                    travel_date: payload.travel_date,
-                    return_date: payload.return_date,
-                    service_type: payload.service_type,
-                    services: payload.services,
-                    sub_service: payload.sub_service,
-                    needs_visa: payload.needs_visa,
-                    budget: payload.budget,
-                    travelers: payload.travelers,
-                    flight_class: payload.flight_class,
-                    customer_category: payload.customer_category,
-                    sub_category: payload.sub_category,
-                    company_name: payload.company_name,
-                    company_address: payload.company_address,
-                    company_details: payload.company_details,
-                    gst_number: payload.gst_number,
-                    lead_type: payload.lead_type,
-                    notes: payload.notes
-                })
-                .select()
-                .single();
+            if (hasBasicRequirements) {
+                const { data: reqData, error: reqError } = await supabaseAdmin
+                    .from('lead_requirements')
+                    .insert({
+                        lead_id: lead.id,
+                        from_location: payload.from_location,
+                        to_location: payload.to_location,
+                        travel_date: payload.travel_date,
+                        return_date: payload.return_date,
+                        service_type: payload.service_type,
+                        services: payload.services,
+                        sub_service: payload.sub_service,
+                        needs_visa: payload.needs_visa,
+                        budget: payload.budget,
+                        travelers: payload.travelers,
+                        flight_class: payload.flight_class,
+                        customer_category: payload.customer_category,
+                        sub_category: payload.sub_category,
+                        company_name: payload.company_name,
+                        company_address: payload.company_address,
+                        company_details: payload.company_details,
+                        gst_number: payload.gst_number,
+                        lead_type: payload.lead_type,
+                        notes: payload.notes
+                    })
+                    .select()
+                    .single();
 
-            if (reqError) {
-                // If requirements fail, delete the lead (or you can choose to keep it)
-                await supabaseAdmin.from('leads').delete().eq('id', lead.id);
-                throw new Error(`Failed to create lead requirements: ${reqError.message}`);
+                if (reqError) throw new Error(`Failed to create requirements: ${reqError.message}`);
+                requirements = reqData as LeadRequirements;
             }
 
-            requirements = reqData as LeadRequirements;
+            // Create flight requirements
+            if (payload.flight_requirements && payload.flight_requirements.length > 0) {
+                const flightInserts = payload.flight_requirements.map(flight => ({
+                    lead_id: lead.id,
+                    ...flight
+                }));
+
+                const { data: flightData, error: flightError } = await supabaseAdmin
+                    .from('lead_flight_requirements')
+                    .insert(flightInserts)
+                    .select();
+
+                if (flightError) throw new Error(`Failed to create flight requirements: ${flightError.message}`);
+                flightRequirements = flightData as LeadFlightRequirement[];
+            }
+
+            // Create hotel requirements
+            if (payload.hotel_requirements && payload.hotel_requirements.length > 0) {
+                const hotelInserts = payload.hotel_requirements.map(hotel => ({
+                    lead_id: lead.id,
+                    ...hotel
+                }));
+
+                const { data: hotelData, error: hotelError } = await supabaseAdmin
+                    .from('lead_hotel_requirements')
+                    .insert(hotelInserts)
+                    .select();
+
+                if (hotelError) throw new Error(`Failed to create hotel requirements: ${hotelError.message}`);
+                hotelRequirements = hotelData as LeadHotelRequirement[];
+            }
+
+            // Create journey details
+            if (payload.journey_details) {
+                const { data: journeyData, error: journeyError } = await supabaseAdmin
+                    .from('lead_journey_details')
+                    .insert({
+                        lead_id: lead.id,
+                        ...payload.journey_details
+                    })
+                    .select()
+                    .single();
+
+                if (journeyError) throw new Error(`Failed to create journey details: ${journeyError.message}`);
+                journeyDetails = journeyData as LeadJourneyDetails;
+            }
+
+        } catch (error: any) {
+            // Rollback: delete the lead if any related data fails
+            await supabaseAdmin.from('leads').delete().eq('id', lead.id);
+            throw error;
         }
 
         return {
             ...lead,
-            requirements: requirements || undefined
+            requirements: requirements || undefined,
+            flight_requirements: flightRequirements.length > 0 ? flightRequirements : undefined,
+            hotel_requirements: hotelRequirements.length > 0 ? hotelRequirements : undefined,
+            journey_details: journeyDetails || undefined
         };
     },
 
+
+
+
+
+
     /**
-     * Get lead by ID with requirements
+     * Get lead by ID with ALL requirements
      */
-    async getLeadById(id: string): Promise<LeadWithRequirements | null> {
+    async getLeadByIdWithFullRequirements(id: string): Promise<LeadWithFullRequirements | null> {
         // Get lead
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
@@ -105,26 +177,75 @@ export const leadRepository = {
             .single();
 
         if (leadError) {
-            if (leadError.code === 'PGRST116') {
-                return null;
-            }
+            if (leadError.code === 'PGRST116') return null;
             throw new Error(`Failed to fetch lead: ${leadError.message}`);
         }
 
         const lead = leadData as Lead;
 
-        // Get requirements
+        // Get basic requirements
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
             .select('*')
             .eq('lead_id', id)
-            .maybeSingle(); // Use maybeSingle to return null if no requirements
+            .maybeSingle();
 
-        const requirements = reqData as LeadRequirements | null;
+        // Get flight requirements
+        const { data: flightData } = await supabaseAdmin
+            .from('lead_flight_requirements')
+            .select('*')
+            .eq('lead_id', id)
+            .eq('is_active', true);
+
+        // Get hotel requirements
+        const { data: hotelData } = await supabaseAdmin
+            .from('lead_hotel_requirements')
+            .select('*')
+            .eq('lead_id', id)
+            .eq('is_active', true);
+
+        // Get journey details
+        const { data: journeyData } = await supabaseAdmin
+            .from('lead_journey_details')
+            .select('*')
+            .eq('lead_id', id)
+            .maybeSingle();
 
         return {
             ...lead,
-            requirements: requirements || undefined
+            requirements: reqData || undefined,
+            flight_requirements: flightData && flightData.length > 0 ? flightData as LeadFlightRequirement[] : undefined,
+            hotel_requirements: hotelData && hotelData.length > 0 ? hotelData as LeadHotelRequirement[] : undefined,
+            journey_details: journeyData || undefined
+        };
+    },
+
+    /**
+     * Get lead by ID (backward compatible - basic requirements only)
+     */
+    async getLeadById(id: string): Promise<LeadWithRequirements | null> {
+        const { data: leadData, error: leadError } = await supabaseAdmin
+            .from('leads')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (leadError) {
+            if (leadError.code === 'PGRST116') return null;
+            throw new Error(`Failed to fetch lead: ${leadError.message}`);
+        }
+
+        const lead = leadData as Lead;
+
+        const { data: reqData } = await supabaseAdmin
+            .from('lead_requirements')
+            .select('*')
+            .eq('lead_id', id)
+            .maybeSingle();
+
+        return {
+            ...lead,
+            requirements: reqData || undefined
         };
     },
 
@@ -132,7 +253,6 @@ export const leadRepository = {
      * Get lead by email with requirements
      */
     async getLeadByEmail(email: string): Promise<LeadWithRequirements | null> {
-        // Get lead
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .select('*')
@@ -140,29 +260,23 @@ export const leadRepository = {
             .single();
 
         if (leadError) {
-            if (leadError.code === 'PGRST116') {
-                return null;
-            }
+            if (leadError.code === 'PGRST116') return null;
             throw new Error(`Failed to fetch lead by email: ${leadError.message}`);
         }
 
         const lead = leadData as Lead;
 
-        // Get requirements
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
             .select('*')
             .eq('lead_id', lead.id)
             .maybeSingle();
 
-        const requirements = reqData as LeadRequirements | null;
-
         return {
             ...lead,
-            requirements: requirements || undefined,
+            requirements: reqData || undefined,
         };
     },
-
 
     /**
      * Get lead requirements by lead ID
@@ -175,9 +289,7 @@ export const leadRepository = {
             .single();
 
         if (error) {
-            if (error.code === 'PGRST116') {
-                return null;
-            }
+            if (error.code === 'PGRST116') return null;
             throw new Error(`Failed to fetch lead requirements: ${error.message}`);
         }
 
@@ -185,10 +297,9 @@ export const leadRepository = {
     },
 
     /**
-     * Get all leads with requirements
+     * Get all leads with basic requirements (backward compatible)
      */
     async getAllLeadsWithRequirements(filter: LeadFilter = {}): Promise<LeadWithRequirements[]> {
-        // Using the view for better performance
         let query = supabaseAdmin
             .from('lead_details')
             .select('*')
@@ -198,50 +309,20 @@ export const leadRepository = {
         if (filter.search) {
             query = query.or(`name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%`);
         }
-
-        if (filter.stage) {
-            query = query.eq('stage', filter.stage);
-        }
-
-        if (filter.status) {
-            query = query.eq('status', filter.status);
-        }
-
-        if (filter.customer_category) {
-            query = query.eq('customer_category', filter.customer_category);
-        }
-
-        if (filter.assigned_to) {
-            query = query.eq('assigned_to', filter.assigned_to);
-        }
-
-        if (filter.type) {
-            query = query.eq('type', filter.type);
-        }
-
-        if (filter.date_from) {
-            query = query.gte('created_at', filter.date_from);
-        }
-
-        if (filter.date_to) {
-            query = query.lte('created_at', filter.date_to);
-        }
-
-        if (filter.limit) {
-            query = query.limit(filter.limit);
-        }
-
-        if (filter.offset) {
-            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
-        }
+        if (filter.stage) query = query.eq('stage', filter.stage);
+        if (filter.status) query = query.eq('status', filter.status);
+        if (filter.customer_category) query = query.eq('customer_category', filter.customer_category);
+        if (filter.assigned_to) query = query.eq('assigned_to', filter.assigned_to);
+        if (filter.type) query = query.eq('type', filter.type);
+        if (filter.date_from) query = query.gte('created_at', filter.date_from);
+        if (filter.date_to) query = query.lte('created_at', filter.date_to);
+        if (filter.limit) query = query.limit(filter.limit);
+        if (filter.offset) query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
 
         const { data, error } = await query;
 
-        if (error) {
-            throw new Error(`Failed to fetch leads: ${error.message}`);
-        }
+        if (error) throw new Error(`Failed to fetch leads: ${error.message}`);
 
-        // Transform view data back to structured format
         return data.map((row: any) => {
             const {
                 from_location, destination, travel_date, return_date,
@@ -284,26 +365,13 @@ export const leadRepository = {
             return {
                 ...lead,
                 requirements: hasRequirements ? {
-                    id: `${lead.id}_req`, // Since we're using a view, we don't have the real requirement ID
+                    id: `${lead.id}_req`,
                     lead_id: lead.id,
-                    from_location,
-                    destination,
-                    travel_date,
-                    return_date,
-                    service_type,
-                    services,
-                    sub_service,
-                    needs_visa,
-                    budget,
-                    travelers,
-                    flight_class,
-                    customer_category,
-                    sub_category,
-                    company_name,
-                    company_address,
-                    company_details,
-                    gst_number,
-                    lead_type,
+                    from_location, destination, travel_date, return_date,
+                    service_type, services, sub_service, needs_visa,
+                    budget, travelers, flight_class, customer_category,
+                    sub_category, company_name, company_address, company_details,
+                    gst_number, lead_type,
                     notes: requirements_notes,
                     created_at: leadData.created_at,
                     updated_at: leadData.updated_at
@@ -316,7 +384,6 @@ export const leadRepository = {
      * Update lead and requirements
      */
     async updateLeadWithRequirements(id: string, payload: UpdateLeadPayload): Promise<LeadWithRequirements> {
-        // Separate primary fields from requirement fields
         const primaryFields: any = {};
         const requirementFields: any = {};
 
@@ -333,7 +400,6 @@ export const leadRepository = {
             }
         });
 
-        // Update lead
         let leadUpdatePromise;
         if (Object.keys(primaryFields).length > 0) {
             leadUpdatePromise = supabaseAdmin
@@ -343,7 +409,6 @@ export const leadRepository = {
                 .select()
                 .single();
         } else {
-            // Get existing lead if no primary fields to update
             leadUpdatePromise = supabaseAdmin
                 .from('leads')
                 .select('*')
@@ -352,21 +417,14 @@ export const leadRepository = {
         }
 
         const { data: leadData, error: leadError } = await leadUpdatePromise;
-
-        if (leadError) {
-            throw new Error(`Failed to update lead: ${leadError.message}`);
-        }
+        if (leadError) throw new Error(`Failed to update lead: ${leadError.message}`);
 
         const lead = leadData as Lead;
-
-        // Check if requirements exist
         const existingRequirements = await this.getLeadRequirements(id);
-
         let requirements: LeadRequirements | null = null;
 
         if (Object.keys(requirementFields).length > 0) {
             if (existingRequirements) {
-                // Update existing requirements
                 const { data: reqData, error: reqError } = await supabaseAdmin
                     .from('lead_requirements')
                     .update(requirementFields)
@@ -374,26 +432,16 @@ export const leadRepository = {
                     .select()
                     .single();
 
-                if (reqError) {
-                    throw new Error(`Failed to update lead requirements: ${reqError.message}`);
-                }
-
+                if (reqError) throw new Error(`Failed to update requirements: ${reqError.message}`);
                 requirements = reqData as LeadRequirements;
             } else {
-                // Create new requirements
                 const { data: reqData, error: reqError } = await supabaseAdmin
                     .from('lead_requirements')
-                    .insert({
-                        lead_id: id,
-                        ...requirementFields
-                    })
+                    .insert({ lead_id: id, ...requirementFields })
                     .select()
                     .single();
 
-                if (reqError) {
-                    throw new Error(`Failed to create lead requirements: ${reqError.message}`);
-                }
-
+                if (reqError) throw new Error(`Failed to create requirements: ${reqError.message}`);
                 requirements = reqData as LeadRequirements;
             }
         } else {
@@ -410,11 +458,9 @@ export const leadRepository = {
      * Update or create lead requirements
      */
     async upsertLeadRequirements(leadId: string, payload: Partial<LeadRequirements>): Promise<LeadRequirements> {
-        // Check if requirements exist
         const existing = await this.getLeadRequirements(leadId);
 
         if (existing) {
-            // Update existing
             const { data, error } = await supabaseAdmin
                 .from('lead_requirements')
                 .update(payload)
@@ -422,32 +468,22 @@ export const leadRepository = {
                 .select()
                 .single();
 
-            if (error) {
-                throw new Error(`Failed to update lead requirements: ${error.message}`);
-            }
-
+            if (error) throw new Error(`Failed to update requirements: ${error.message}`);
             return data as LeadRequirements;
         } else {
-            // Create new
             const { data, error } = await supabaseAdmin
                 .from('lead_requirements')
-                .insert({
-                    lead_id: leadId,
-                    ...payload
-                })
+                .insert({ lead_id: leadId, ...payload })
                 .select()
                 .single();
 
-            if (error) {
-                throw new Error(`Failed to create lead requirements: ${error.message}`);
-            }
-
+            if (error) throw new Error(`Failed to create requirements: ${error.message}`);
             return data as LeadRequirements;
         }
     },
 
     /**
-     * Delete lead (cascade will delete requirements)
+     * Delete lead (cascade will delete all requirements)
      */
     async deleteLead(id: string): Promise<boolean> {
         const { error } = await supabaseAdmin
@@ -455,18 +491,14 @@ export const leadRepository = {
             .delete()
             .eq('id', id);
 
-        if (error) {
-            throw new Error(`Failed to delete lead: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Failed to delete lead: ${error.message}`);
         return true;
     },
 
     /**
-     * Get lead statistics (using leads table only)
+     * Get lead statistics
      */
     async getLeadStats(): Promise<any> {
-        // Same implementation as before, using leads table
         const { data: totalData, error: totalError } = await supabaseAdmin
             .from('leads')
             .select('id', { count: 'exact' });
@@ -505,7 +537,6 @@ export const leadRepository = {
 
         if (convertedError) throw convertedError;
 
-        // Calculate statistics
         const byStage: Record<string, number> = {};
         const byType: Record<string, number> = {};
         const byStatus: Record<string, number> = {};
@@ -530,5 +561,167 @@ export const leadRepository = {
             recent_count: recentData?.length || 0,
             converted_count: convertedData?.length || 0
         };
+    },
+
+    // ============================================
+    // NEW: FLIGHT REQUIREMENTS OPERATIONS
+    // ============================================
+
+    async addFlightRequirement(leadId: string, payload: CreateFlightRequirementPayload): Promise<LeadFlightRequirement> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_flight_requirements')
+            .insert({ lead_id: leadId, ...payload })
+            .select()
+            .single();
+
+        if (error) throw new Error(`Failed to add flight requirement: ${error.message}`);
+        return data as LeadFlightRequirement;
+    },
+
+    async updateFlightRequirement(id: string, payload: Partial<CreateFlightRequirementPayload>): Promise<LeadFlightRequirement> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_flight_requirements')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw new Error(`Failed to update flight requirement: ${error.message}`);
+        return data as LeadFlightRequirement;
+    },
+
+    async deleteFlightRequirement(id: string): Promise<boolean> {
+        const { error } = await supabaseAdmin
+            .from('lead_flight_requirements')
+            .update({ is_active: false })
+            .eq('id', id);
+
+        if (error) throw new Error(`Failed to delete flight requirement: ${error.message}`);
+        return true;
+    },
+
+    async getFlightRequirementsByLeadId(leadId: string): Promise<LeadFlightRequirement[]> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_flight_requirements')
+            .select('*')
+            .eq('lead_id', leadId)
+            .eq('is_active', true);
+
+        if (error) throw new Error(`Failed to fetch flight requirements: ${error.message}`);
+        return data as LeadFlightRequirement[];
+    },
+
+    // ============================================
+    // NEW: HOTEL REQUIREMENTS OPERATIONS
+    // ============================================
+
+    async addHotelRequirement(leadId: string, payload: CreateHotelRequirementPayload): Promise<LeadHotelRequirement> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_hotel_requirements')
+            .insert({ lead_id: leadId, ...payload })
+            .select()
+            .single();
+
+        if (error) throw new Error(`Failed to add hotel requirement: ${error.message}`);
+        return data as LeadHotelRequirement;
+    },
+
+    async updateHotelRequirement(id: string, payload: Partial<CreateHotelRequirementPayload>): Promise<LeadHotelRequirement> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_hotel_requirements')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw new Error(`Failed to update hotel requirement: ${error.message}`);
+        return data as LeadHotelRequirement;
+    },
+
+    async deleteHotelRequirement(id: string): Promise<boolean> {
+        const { error } = await supabaseAdmin
+            .from('lead_hotel_requirements')
+            .update({ is_active: false })
+            .eq('id', id);
+
+        if (error) throw new Error(`Failed to delete hotel requirement: ${error.message}`);
+        return true;
+    },
+
+    async getHotelRequirementsByLeadId(leadId: string): Promise<LeadHotelRequirement[]> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_hotel_requirements')
+            .select('*')
+            .eq('lead_id', leadId)
+            .eq('is_active', true);
+
+        if (error) throw new Error(`Failed to fetch hotel requirements: ${error.message}`);
+        return data as LeadHotelRequirement[];
+    },
+
+    // ============================================
+    // NEW: JOURNEY DETAILS OPERATIONS
+    // ============================================
+
+    async upsertJourneyDetails(leadId: string, payload: CreateJourneyDetailsPayload): Promise<LeadJourneyDetails> {
+        const existing = await supabaseAdmin
+            .from('lead_journey_details')
+            .select('*')
+            .eq('lead_id', leadId)
+            .maybeSingle();
+
+        if (existing.data) {
+            const { data, error } = await supabaseAdmin
+                .from('lead_journey_details')
+                .update(payload)
+                .eq('lead_id', leadId)
+                .select()
+                .single();
+
+            if (error) throw new Error(`Failed to update journey details: ${error.message}`);
+            return data as LeadJourneyDetails;
+        } else {
+            const { data, error } = await supabaseAdmin
+                .from('lead_journey_details')
+                .insert({ lead_id: leadId, ...payload })
+                .select()
+                .single();
+
+            if (error) throw new Error(`Failed to create journey details: ${error.message}`);
+            return data as LeadJourneyDetails;
+        }
+    },
+
+    async getJourneyDetailsByLeadId(leadId: string): Promise<LeadJourneyDetails | null> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_journey_details')
+            .select('*')
+            .eq('lead_id', leadId)
+            .maybeSingle();
+
+        if (error) throw new Error(`Failed to fetch journey details: ${error.message}`);
+        return data as LeadJourneyDetails | null;
+    },
+
+    // ============================================
+    // NEW: GET LEADS BY ASSIGNED RM
+    // ============================================
+
+    async getLeadsByAssignedRM(rmId: string): Promise<LeadWithFullRequirements[]> {
+        const { data: leads, error } = await supabaseAdmin
+            .from('leads')
+            .select('*')
+            .eq('assigned_to', rmId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw new Error(`Failed to fetch leads by RM: ${error.message}`);
+
+        const leadsWithRequirements = await Promise.all(
+            leads.map(async (lead: Lead) => {
+                return await this.getLeadByIdWithFullRequirements(lead.id);
+            })
+        );
+
+        return leadsWithRequirements.filter(lead => lead !== null) as LeadWithFullRequirements[];
     }
 };
