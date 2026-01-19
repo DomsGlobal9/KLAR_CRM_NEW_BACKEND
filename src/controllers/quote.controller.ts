@@ -12,7 +12,7 @@ export const quoteController = {
      */
     async createQuote(req: Request, res: Response) {
         try {
-            const payload: ICreateQuoteDTO = req.body;
+            const payload: ICreateQuoteDTO = req.body.quoteData ?? req.body;
 
             const result = await quoteService.createQuote(payload);
 
