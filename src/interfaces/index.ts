@@ -81,3 +81,14 @@ export {
     IDateRangeParams,
     IItinerarySummary,
 } from "./itinerary-preferences.interface";
+export {
+    IQuote,
+    IQuoteLineItem,
+    ISelectedPreferences,
+    IUpdateQuoteDTO,
+    IQuoteFilter,
+    IQuoteStats,
+    IQuoteWithRelations,
+    IQuoteResponse,
+    ICreateQuoteDTO
+} from "./quote.interface";

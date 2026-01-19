@@ -1,39 +1,27 @@
 import { Router } from 'express';
-import { quoteController } from '../controllers';
+import { quoteController } from '../controllers/quote.controller';
 
 const router = Router();
 
-// GET /api/quotes
-router.get('/', quoteController.getAllQuotes);
-
-// GET /api/quotes/stats/overview
-router.get('/stats/overview', quoteController.getQuoteStats);
-
-// GET /api/quotes/lead/:leadId
-router.get('/lead/:lead_id', quoteController.getQuotesByLeadId);
-
-// GET /api/quotes/:id
-router.get('/:id', quoteController.getQuoteById);
-
-// POST /api/quotes
+// Quote CRUD routes
 router.post('/', quoteController.createQuote);
+router.get('/', quoteController.getAllQuotes);
+router.get('/recent', quoteController.getRecentQuotes);
+router.get('/search', quoteController.searchQuotes);
+router.get('/stats', quoteController.getQuoteStatistics);
+router.get('/generate-number', quoteController.generateQuoteNumber);
 
-// PATCH /api/quotes/:id
-router.patch('/:id', quoteController.updateQuote);
-
-// DELETE /api/quotes/:id
+// Quote by ID routes
+router.get('/:id', quoteController.getQuoteById);
+router.put('/:id', quoteController.updateQuote);
 router.delete('/:id', quoteController.deleteQuote);
+router.patch('/:id/status', quoteController.updateQuoteStatus);
 
-// POST /api/quotes/:id/convert-to-invoice
-router.post('/:id/convert-to-invoice', quoteController.convertToInvoice);
+// Quote by number
+router.get('/number/:quoteNumber', quoteController.getQuoteByNumber);
 
-// PATCH /api/quotes/:id/mark-accepted
-router.patch('/:id/mark-accepted', quoteController.markAsAccepted);
-
-// PATCH /api/quotes/:id/mark-rejected
-router.patch('/:id/mark-rejected', quoteController.markAsRejected);
-
-// PATCH /api/quotes/:id/mark-sent
-router.patch('/:id/mark-sent', quoteController.markAsSent);
+// Quotes by relation routes
+router.get('/itinerary/:itineraryId', quoteController.getQuotesByItinerary);
+router.get('/client/:email', quoteController.getQuotesByClientEmail);
 
 export default router;
