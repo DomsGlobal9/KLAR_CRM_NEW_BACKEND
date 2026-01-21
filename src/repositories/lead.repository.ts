@@ -13,7 +13,8 @@ export const leadRepository = {
      * Create a new lead with requirements
      */
     async createLeadWithRequirements(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
-        // Start a transaction
+
+
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .insert({
@@ -79,7 +80,6 @@ export const leadRepository = {
                 .single();
 
             if (reqError) {
-                // If requirements fail, delete the lead (or you can choose to keep it)
                 await supabaseAdmin.from('leads').delete().eq('id', lead.id);
                 throw new Error(`Failed to create lead requirements: ${reqError.message}`);
             }
@@ -132,7 +132,10 @@ export const leadRepository = {
      * Get lead by email with requirements
      */
     async getLeadByEmail(email: string): Promise<LeadWithRequirements | null> {
-        // Get lead
+        
+        /**
+         * Get lead by email
+         */
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .select('*')
@@ -148,7 +151,10 @@ export const leadRepository = {
 
         const lead = leadData as Lead;
 
-        // Get requirements
+        /**
+         * Get Lead Details by email id
+         * If email found then will lead can get
+         */
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
             .select('*')

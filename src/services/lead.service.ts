@@ -12,19 +12,29 @@ export const leadService = {
    * Create a new lead with optional requirements
    */
   async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
+
+    /**
+     * Leads Payload validation
+     */
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
         
+    /**
+     * Data sanitized here
+     */
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
-    
+
+
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
       console.log(`Lead with email ${sanitizedData.email} already exists`);
     }
     
-    // Create lead with requirements
+    /**
+     * Create lead with Lead personal details and Lead requirements
+     */
     return await leadRepository.createLeadWithRequirements(sanitizedData);
   },
 
