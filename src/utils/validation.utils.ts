@@ -33,10 +33,18 @@ export class StageValidationUtils {
    * Validate color format (Tailwind gradient format)
    */
   static validateColor(color: string): boolean {
-    // Basic validation for Tailwind gradient format
-    // Example: "from-blue-500 to-blue-600"
-    const colorRegex = /^from-(?:[a-z]+)-(?:[1-9]00) to-(?:[a-z]+)-(?:[1-9]00)$/;
-    return colorRegex.test(color);
+    // Accept multiple formats:
+    // 1. Standard Tailwind: "from-blue-500 to-blue-600"
+    // 2. Custom color classes: "from-[#E15555] to-[#E15555]"
+    // 3. Plain HEX: "#E15555" (for solid colors)
+
+    const patterns = [
+      /^from-(?:[a-z]+)-(?:[1-9]00) to-(?:[a-z]+)-(?:[1-9]00)$/, // Standard Tailwind
+      /^from-\[#[0-9A-Fa-f]{6}\] to-\[#[0-9A-Fa-f]{6}\]$/, // Custom HEX gradients
+      /^#[0-9A-Fa-f]{6}$/ // Plain HEX colors
+    ];
+
+    return patterns.some(pattern => pattern.test(color));
   }
 
   /**
@@ -97,6 +105,6 @@ export class StageValidationUtils {
     };
   }
 
-  
-  
+
+
 }
