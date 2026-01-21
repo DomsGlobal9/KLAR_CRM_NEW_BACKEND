@@ -77,6 +77,7 @@ export interface LeadWithRequirements extends Lead {
 
 
 export interface CreateLeadPayload {
+
     // Primary Details (Required)
     name: string;
     email: string;
@@ -116,21 +117,27 @@ export interface CreateLeadPayload {
     notes?: string;
 }
 
-export interface UpdateLeadPayload {
-    // Primary Details
-    name?: string;
-    email?: string;
-    phone?: string;
-    type?: 'event' | 'travel' | 'visa' | 'other';
-    status?: 'active' | 'inactive' | 'converted';
-    stage?: string;
-    assigned_to?: string;
+export interface CreateLeadPayload {
+    // Primary Details (Required)
+    name: string;
+    email: string;
+    phone: string;
+    type: 'event' | 'travel' | 'visa' | 'other';
+
+    // Optional Primary Details
     source?: string;
     source_medium?: string;
+    assigned_to?: string;
+    captured_from?: 'web_form' | 'api' | 'manual';
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
 
-    // Requirements
+    // Requirements (All Optional)
     from_location?: string;
-    destination?: string;
+    destination?: string; // Frontend uses 'destination', not 'to_location'
     travel_date?: string;
     return_date?: string;
     service_type?: string;
@@ -148,20 +155,98 @@ export interface UpdateLeadPayload {
     gst_number?: string;
     lead_type?: string;
     notes?: string;
+
+    // NEW: Service hierarchy fields from frontend
+    service_id?: string;
+    service_name?: string;
+    service_category_id?: string;
+    service_category_name?: string;
+    categories?: Array<{
+        category: {
+            id: string;
+            name: string;
+        };
+        sub_services: Array<{
+            id: string;
+            name: string;
+            selection_type: 'single' | 'multi';
+        }>;
+    }>;
+
+    // NEW: Additional frontend fields
+    inquiry_source?: string;
+    preferred_contact_method?: string;
+    budget_range?: string;
+    timeline?: string;
+    country_city?: string;
+    team_id?: string;
+    team_name?: string;
+    assigned_member_name?: string;
+
+    // Status & stage from frontend
+    status?: 'active' | 'inactive' | 'converted';
+    stage?: string;
 }
 
-
-export interface LeadFilter {
-    search?: string;
+export interface UpdateLeadPayload {
+    // Primary Details
+    name?: string;
+    email?: string;
+    phone?: string;
+    type?: 'event' | 'travel' | 'visa' | 'other';
+    status?: 'active' | 'inactive' | 'converted';
     stage?: string;
-    status?: string;
-    customer_category?: string;
     assigned_to?: string;
-    type?: string;
-    date_from?: string;
-    date_to?: string;
-    limit?: number;
-    offset?: number;
+    source?: string;
+    source_medium?: string;
+
+    // Requirements
+    from_location?: string;
+    destination?: string; 
+    travel_date?: string;
+    return_date?: string;
+    service_type?: string;
+    services?: string;
+    sub_service?: string;
+    needs_visa?: boolean;
+    budget?: number;
+    travelers?: number;
+    flight_class?: string;
+    customer_category?: 'individual' | 'corporate';
+    sub_category?: string;
+    company_name?: string;
+    company_address?: string;
+    company_details?: string;
+    gst_number?: string;
+    lead_type?: string;
+    notes?: string;
+
+    // NEW: Service hierarchy fields
+    service_id?: string;
+    service_name?: string;
+    service_category_id?: string;
+    service_category_name?: string;
+    categories?: Array<{
+        category: {
+            id: string;
+            name: string;
+        };
+        sub_services: Array<{
+            id: string;
+            name: string;
+            selection_type: 'single' | 'multi';
+        }>;
+    }>;
+
+    // NEW: Additional frontend fields
+    inquiry_source?: string;
+    preferred_contact_method?: string;
+    budget_range?: string;
+    timeline?: string;
+    country_city?: string;
+    team_id?: string;
+    team_name?: string;
+    assigned_member_name?: string;
 }
 
 export interface LeadStats {
