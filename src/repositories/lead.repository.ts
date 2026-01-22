@@ -12,6 +12,24 @@ import { AuthRepository } from './auth.repository';
 export const leadRepository = {
 
     /**
+     * Check whether a lead exists by ID
+     */
+    async isLeadExists(leadId: string): Promise<boolean> {
+        const { data, error } = await supabaseAdmin
+            .from('leads')
+            .select('id')
+            .eq('id', leadId)
+            .maybeSingle();
+
+        if (error) {
+            throw new Error(`Failed to check lead existence: ${error.message}`);
+        }
+
+        return !!data;
+    },
+
+
+    /**
      * Create a new lead with requirements
      */
     async createLeadWithRequirements(payload: any): Promise<LeadWithRequirements> {

@@ -75,11 +75,10 @@ export {
     IUpdatePreferenceData,
     IFrontendFormData,
     IAllRelatedDetailsResponse,
-    IAllRelatedDetailsByIdsResponse,
     IAllItinerariesResponse,
     IPaginationParams,
     IDateRangeParams,
-    IItinerarySummary,
+    ILeadDetails
 } from "./itinerary-preferences.interface";
 export {
     IQuote,

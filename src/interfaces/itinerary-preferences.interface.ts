@@ -1,6 +1,6 @@
 export interface IFlightPreference {
     id: string;
-    itinerary_id: string;
+    lead_id: string;
     preference_order: number;
     airline?: string;
     route?: string;
@@ -19,7 +19,7 @@ export interface IFlightPreference {
 
 export interface IHotelPreference {
     id: string;
-    itinerary_id: string;
+    lead_id: string;
     preference_order: number;
     hotel_category?: string;
     meal_plan?: string;
@@ -38,7 +38,7 @@ export interface IHotelPreference {
 
 export interface IVisaPreference {
     id: string;
-    itinerary_id: string;
+    lead_id: string;
     preference_order: number;
     visa_type?: string;
     processing_time?: string;
@@ -52,7 +52,7 @@ export interface IVisaPreference {
 
 export interface IUserPreferencesSummary {
     id: string;
-    itinerary_id: string;
+    lead_id: string;
     flight_preferences_added: boolean;
     hotel_preferences_added: boolean;
     visa_preferences_added: boolean;
@@ -63,10 +63,10 @@ export interface IUserPreferencesSummary {
 }
 
 export interface ICombinedPreferenceData {
-    itineraryId: string;
-    flightPreferences: Omit<IFlightPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
-    hotelPreferences: Omit<IHotelPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
-    visaPreferences: Omit<IVisaPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
+    leadId: string;
+    flightPreferences: Omit<IFlightPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
+    hotelPreferences: Omit<IHotelPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
+    visaPreferences: Omit<IVisaPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
     userPreferences: {
         flightPreferencesAdded: boolean;
         hotelPreferencesAdded: boolean;
@@ -74,22 +74,22 @@ export interface ICombinedPreferenceData {
         lastUpdated: string;
         metadata?: Record<string, any>;
     };
-    itineraryDetails?: IItineraryDetails; 
+    leadDetails?: ILeadDetails;
 }
 
 export interface IItineraryPreferencesResponse {
-    itinerary_id: string;
+    lead_id: string;
     flight_preferences: IFlightPreference[];
     hotel_preferences: IHotelPreference[];
     visa_preferences: IVisaPreference[];
     user_preferences_summary: IUserPreferencesSummary | null;
-    itinerary_details?: IItineraryDetails;
+    lead_details?: ILeadDetails;
 }
 
 export interface IUpdatePreferenceData {
-    flightPreferences?: Omit<IFlightPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
-    hotelPreferences?: Omit<IHotelPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
-    visaPreferences?: Omit<IVisaPreference, 'id' | 'itinerary_id' | 'created_at' | 'updated_at'>[];
+    flightPreferences?: Omit<IFlightPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
+    hotelPreferences?: Omit<IHotelPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
+    visaPreferences?: Omit<IVisaPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
     userPreferences?: {
         flightPreferencesAdded?: boolean;
         hotelPreferencesAdded?: boolean;
@@ -100,7 +100,7 @@ export interface IUpdatePreferenceData {
 }
 
 export interface IFrontendFormData {
-    itineraryData: any;
+    leadData: any;
     flightOptions: any[];
     hotelOptions: any[];
     visaOptions: any[];
@@ -113,28 +113,48 @@ export interface IFrontendFormData {
     metadata?: any;
 }
 
+export interface ILeadDetails {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    type: string;
+    status: string;
+    stage: string;
+    captured_from: string;
+    assigned_to?: string;
+    created_by?: string;
+    source?: string;
+    source_medium?: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+    created_at: string;
+    updated_at: string;
+}
 
 export interface IAllRelatedDetailsResponse {
     success: boolean;
-    type?: 'flight' | 'hotel' | 'visa' | 'summary' | 'itinerary';
+    type?: 'flight' | 'hotel' | 'visa' | 'summary' | 'lead';
     data?: {
-
-        preference?: IFlightPreference | IHotelPreference | IVisaPreference | IUserPreferencesSummary;
-
-
-        itinerary?: {
+        preference?: IFlightPreference 
+        | IHotelPreference 
+        | IVisaPreference 
+        | IUserPreferencesSummary;
+        lead?: {
             id: string;
             flight_preferences?: IFlightPreference[];
             hotel_preferences?: IHotelPreference[];
             visa_preferences?: IVisaPreference[];
             user_preferences_summary?: IUserPreferencesSummary | null;
+            lead_details?: ILeadDetails;
         };
-
-
         summary: {
             preference_type: string;
-            itinerary_id?: string;
-            has_itinerary_data: boolean;
+            lead_id?: string;
+            has_lead_data: boolean;
             has_related_preferences: boolean;
             total_related_preferences: number;
         };
@@ -142,31 +162,10 @@ export interface IAllRelatedDetailsResponse {
     message?: string;
 }
 
-export interface IAllRelatedDetailsByIdsResponse {
-    success: boolean;
-    data?: {
-        flight_preferences?: IFlightPreference[];
-        hotel_preferences?: IHotelPreference[];
-        visa_preferences?: IVisaPreference[];
-        user_preferences_summaries?: IUserPreferencesSummary[];
-        itineraries?: Map<string, IItineraryPreferencesResponse>;
-    };
-    summary: {
-        total_found: number;
-        flight_preferences_count: number;
-        hotel_preferences_count: number;
-        visa_preferences_count: number;
-        user_preferences_summaries_count: number;
-        unique_itineraries_count: number;
-    };
-    message?: string;
-}
-
-
 export interface IAllItinerariesResponse {
     success: boolean;
     data: {
-        itineraries: IItineraryPreferencesResponse[];
+        leads: IItineraryPreferencesResponse[];
         total_count: number;
         pagination?: {
             page: number;
@@ -175,14 +174,14 @@ export interface IAllItinerariesResponse {
         };
     };
     summary?: {
-        total_itineraries: number;
+        total_leads: number;
         total_flight_preferences: number;
         total_hotel_preferences: number;
         total_visa_preferences: number;
-        itineraries_with_flight_prefs: number;
-        itineraries_with_hotel_prefs: number;
-        itineraries_with_visa_prefs: number;
-        complete_itineraries: number;
+        leads_with_flight_prefs: number;
+        leads_with_hotel_prefs: number;
+        leads_with_visa_prefs: number;
+        complete_leads: number;
     };
     message?: string;
 }
@@ -200,8 +199,8 @@ export interface IDateRangeParams {
     field?: 'created_at' | 'updated_at' | 'last_updated';
 }
 
-export interface IItinerarySummary {
-    itinerary_id: string;
+export interface ILeadSummary {
+    lead_id: string;
     flight_preferences_count: number;
     hotel_preferences_count: number;
     visa_preferences_count: number;
@@ -213,26 +212,4 @@ export interface IItinerarySummary {
         hotel_preferences_added: boolean;
         visa_preferences_added: boolean;
     };
-}
-
-export interface IItineraryDetails {
-    id: string;
-    client_name: string;
-    client_email: string;
-    client_phone?: string;
-    number_of_travelers: number;
-    from_location: string;
-    to_location: string;
-    travel_date: string;
-    return_date?: string;
-    budget_range?: string;
-    additional_notes?: string;
-    status: string;
-    itinerary_number: string;
-    total_price?: number;
-    currency: string;
-    is_active: boolean;
-    metadata?: Record<string, any>;
-    created_at: string;
-    updated_at: string;
 }
