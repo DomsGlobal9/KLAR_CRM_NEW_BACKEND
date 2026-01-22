@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { leadService } from '../services';
 import { CreateLeadPayload, UpdateLeadPayload, LeadFilter } from '../interfaces';
 import { createLeadAuditLog } from '../helpers';
+import { LeadDataMapper } from '../utils/lead-data-mapper';
 
 export const leadController = {
     /**
@@ -11,9 +12,17 @@ export const leadController = {
         try {
             const payload: CreateLeadPayload = req.body;
 
-            console.log("THe lead data we are getting from frontend", req.body);
+            console.log("📥 Raw frontend payload received:", JSON.stringify(payload, null, 2));
 
-            const lead = await leadService.createLead(payload);
+            // Transform frontend data to database format
+            const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
+
+            console.log("🔄 Transformed payload for database:", JSON.stringify(mappedPayload, null, 2));
+
+            const lead = await leadService.createLead(mappedPayload);
+
+            // Transform back to frontend format for response
+            const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
 
             await createLeadAuditLog({
                 action: 'LEAD_CREATED',
@@ -27,9 +36,10 @@ export const leadController = {
             res.status(201).json({
                 success: true,
                 message: 'Lead created successfully',
-                data: lead
+                data: frontendLead
             });
         } catch (error: any) {
+            console.error("❌ Lead creation error:", error);
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -100,12 +110,18 @@ export const leadController = {
 
             const leads = await leadService.getAllLeads(filter);
 
+            // Transform database data to frontend format
+            const frontendLeads = leads.map(lead =>
+                LeadDataMapper.mapDatabaseToFrontend(lead)
+            );
+
             res.json({
                 success: true,
-                data: leads,
+                data: frontendLeads,
                 count: leads.length
             });
         } catch (error: any) {
+            console.error("❌ Get all leads error:", error);
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -121,11 +137,15 @@ export const leadController = {
             const { id } = req.params;
             const lead = await leadService.getLeadById(id as string);
 
+            // Transform to frontend format
+            const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
+
             res.json({
                 success: true,
-                data: lead
+                data: frontendLead
             });
         } catch (error: any) {
+            console.error("❌ Get lead by ID error:", error);
             res.status(404).json({
                 success: false,
                 error: error.message
@@ -141,11 +161,15 @@ export const leadController = {
             const { id } = req.params;
             const payload: UpdateLeadPayload = req.body;
 
-            const lead = await leadService.updateLead(id as string, payload);
+            console.log("📥 Update payload:", payload);
 
-            // Create audit log
+            const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
+
+            const lead = await leadService.updateLead(id as string, mappedPayload);
+
+            const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
+
             await createLeadAuditLog({
-                // user_id: req.user?.id,
                 action: 'LEAD_UPDATED',
                 entity_type: 'lead',
                 entity_id: id as string,
@@ -157,9 +181,10 @@ export const leadController = {
             res.json({
                 success: true,
                 message: 'Lead updated successfully',
-                data: lead
+                data: frontendLead
             });
         } catch (error: any) {
+            console.error("❌ Update lead error:", error);
             res.status(400).json({
                 success: false,
                 error: error.message
