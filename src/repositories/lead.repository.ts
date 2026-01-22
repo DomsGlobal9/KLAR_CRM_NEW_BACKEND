@@ -140,7 +140,6 @@ export const leadRepository = {
      * Get lead by ID with requirements
      */
     async getLeadById(id: string): Promise<LeadWithRequirements | null> {
-
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .select('*')
@@ -154,8 +153,13 @@ export const leadRepository = {
             throw new Error(`Failed to fetch lead: ${leadError.message}`);
         }
 
-        const lead = leadData as Lead;
+        let assignedToName: string | null = null;
 
+        if (leadData.assigned_to) {
+            assignedToName = await AuthRepository.getUsernameById(
+                leadData.assigned_to
+            );
+        }
 
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
@@ -163,13 +167,13 @@ export const leadRepository = {
             .eq('lead_id', id)
             .maybeSingle();
 
-        const requirements = reqData as LeadRequirements | null;
-
         return {
-            ...lead,
-            requirements: requirements || undefined
+            ...leadData,
+            assigned_to: assignedToName,
+            requirements: reqData || undefined
         };
     },
+
 
     /**
      * Get lead by email with requirements
@@ -319,7 +323,7 @@ export const leadRepository = {
                 status: leadData.status,
                 stage: leadData.stage,
                 captured_from: leadData.captured_from,
-                assigned_to: assignedToUsername || '', 
+                assigned_to: assignedToUsername || '',
                 // assigned_to: leadData.assigned_to,
                 created_by: leadData.created_by,
                 source: leadData.source,
