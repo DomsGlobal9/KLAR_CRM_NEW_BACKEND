@@ -23,36 +23,96 @@ export class ValidationUtils {
         return gstRegex.test(gstNumber.toUpperCase());
     }
 
+    // static sanitizeLeadData(data: any): any {
+    //     const sanitized: any = {};
+
+    //     // Required fields
+    //     if (data.name) sanitized.name = data.name.toString().trim();
+    //     if (data.email) sanitized.email = data.email.toString().trim().toLowerCase();
+    //     if (data.phone) sanitized.phone = data.phone.toString().trim();
+    //     if (data.type) sanitized.type = data.type.toString().trim().toLowerCase();
+
+    //     // Optional fields - only include if they exist
+    //     const optionalFields = [
+    //         'source', 'source_medium', 'service_type', 'from_location', 'destination',
+    //         'services', 'sub_service', 'customer_category', 'sub_category', 'gst_number',
+    //         'notes', 'assigned_to', 'lead_type', 'flight_class', 'company_name',
+    //         'company_address', 'company_details', 'captured_from',
+    //         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
+    //     ];
+
+    //     optionalFields.forEach(field => {
+    //         if (data[field] !== undefined && data[field] !== null) {
+    //             sanitized[field] = data[field].toString().trim();
+    //         }
+    //     });
+
+    //     // Boolean fields
+    //     if (data.needs_visa !== undefined) {
+    //         sanitized.needs_visa = Boolean(data.needs_visa);
+    //     }
+
+    //     // Numeric fields
+    //     if (data.budget !== undefined) {
+    //         const budget = parseFloat(data.budget);
+    //         sanitized.budget = isNaN(budget) ? 0 : Math.max(0, budget);
+    //     }
+
+    //     if (data.travelers !== undefined) {
+    //         const travelers = parseInt(data.travelers);
+    //         sanitized.travelers = isNaN(travelers) ? 1 : Math.max(1, travelers);
+    //     }
+
+    //     // Date fields
+    //     if (data.travel_date) {
+    //         sanitized.travel_date = new Date(data.travel_date).toISOString().split('T')[0];
+    //     }
+
+    //     if (data.return_date) {
+    //         sanitized.return_date = new Date(data.return_date).toISOString().split('T')[0];
+    //     }
+
+    //     return sanitized;
+    // }
+
     static sanitizeLeadData(data: any): any {
         const sanitized: any = {};
 
-        // Required fields
+        // Copy ALL fields from data to sanitized
+        Object.keys(data).forEach(key => {
+            const value = data[key];
+
+            // Skip if undefined or null
+            if (value === undefined || value === null) {
+                return;
+            }
+
+            // Handle string fields - trim them
+            if (typeof value === 'string') {
+                sanitized[key] = value.trim();
+            }
+            // Handle arrays and objects - keep as-is
+            else if (Array.isArray(value) || typeof value === 'object') {
+                sanitized[key] = value;
+            }
+            // Handle numbers, booleans - keep as-is
+            else {
+                sanitized[key] = value;
+            }
+        });
+
+        // Ensure required fields exist
         if (data.name) sanitized.name = data.name.toString().trim();
         if (data.email) sanitized.email = data.email.toString().trim().toLowerCase();
         if (data.phone) sanitized.phone = data.phone.toString().trim();
         if (data.type) sanitized.type = data.type.toString().trim().toLowerCase();
 
-        // Optional fields - only include if they exist
-        const optionalFields = [
-            'source', 'source_medium', 'service_type', 'from_location', 'destination',
-            'services', 'sub_service', 'customer_category', 'sub_category', 'gst_number',
-            'notes', 'assigned_to', 'lead_type', 'flight_class', 'company_name',
-            'company_address', 'company_details', 'captured_from',
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
-        ];
-
-        optionalFields.forEach(field => {
-            if (data[field] !== undefined && data[field] !== null) {
-                sanitized[field] = data[field].toString().trim();
-            }
-        });
-
-        // Boolean fields
+        // Convert specific boolean fields
         if (data.needs_visa !== undefined) {
             sanitized.needs_visa = Boolean(data.needs_visa);
         }
 
-        // Numeric fields
+        // Ensure numeric fields are numbers
         if (data.budget !== undefined) {
             const budget = parseFloat(data.budget);
             sanitized.budget = isNaN(budget) ? 0 : Math.max(0, budget);
@@ -61,15 +121,6 @@ export class ValidationUtils {
         if (data.travelers !== undefined) {
             const travelers = parseInt(data.travelers);
             sanitized.travelers = isNaN(travelers) ? 1 : Math.max(1, travelers);
-        }
-
-        // Date fields
-        if (data.travel_date) {
-            sanitized.travel_date = new Date(data.travel_date).toISOString().split('T')[0];
-        }
-
-        if (data.return_date) {
-            sanitized.return_date = new Date(data.return_date).toISOString().split('T')[0];
         }
 
         return sanitized;
@@ -101,7 +152,7 @@ export class ValidationUtils {
         }
 
         return {
-            valid: errors.length === 0, 
+            valid: errors.length === 0,
             errors
         };
     }

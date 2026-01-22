@@ -21,11 +21,11 @@ export {
 export {
     Lead,
     LeadRequirements,
-    LeadWithRequirements,
     CreateLeadPayload,
     UpdateLeadPayload,
     LeadFilter,
     LeadStats,
+    LeadWithRequirements,
 } from "./lead.interface";
 export {
     Stage,

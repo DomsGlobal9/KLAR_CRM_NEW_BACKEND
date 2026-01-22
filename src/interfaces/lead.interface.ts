@@ -71,10 +71,6 @@ export interface LeadRequirements {
 }
 
 
-export interface LeadWithRequirements extends Lead {
-    requirements?: LeadRequirements;
-}
-
 
 export interface CreateLeadPayload {
 
@@ -202,7 +198,7 @@ export interface UpdateLeadPayload {
 
     // Requirements
     from_location?: string;
-    destination?: string; 
+    destination?: string;
     travel_date?: string;
     return_date?: string;
     service_type?: string;
@@ -249,6 +245,19 @@ export interface UpdateLeadPayload {
     assigned_member_name?: string;
 }
 
+export interface LeadFilter {
+    search?: string;
+    stage?: string;
+    status?: string;
+    customer_category?: string;
+    assigned_to?: string;
+    type?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+    offset?: number;
+}
+
 export interface LeadStats {
     total: number;
     by_stage: Record<string, number>;
@@ -256,4 +265,16 @@ export interface LeadStats {
     by_status: Record<string, number>;
     recent_count: number;
     converted_count: number;
+}
+
+export interface LeadWithRequirements extends Lead {
+    requirements?: LeadRequirements;
+    assigned_user?: {
+        id: string;
+        email: string;
+        username: string | null;
+        full_name: string | null;
+        role_name: string | null;
+        team_id: string | null;
+    };
 }

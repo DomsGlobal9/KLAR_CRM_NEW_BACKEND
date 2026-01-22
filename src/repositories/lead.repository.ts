@@ -7,25 +7,33 @@ import {
     UpdateLeadPayload,
     LeadFilter
 } from '../interfaces/lead.interface';
+import { AuthRepository } from './auth.repository';
 
 export const leadRepository = {
+
     /**
      * Create a new lead with requirements
      */
-    async createLeadWithRequirements(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
+    async createLeadWithRequirements(payload: any): Promise<LeadWithRequirements> {
+        console.log("🗄️ Repository payload:", JSON.stringify(payload, null, 2));
 
-
+        /**
+         * Create lead first
+         */
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .insert({
                 name: payload.name,
                 email: payload.email,
                 phone: payload.phone,
-                type: payload.type,
-                source: payload.source,
-                source_medium: payload.source_medium,
-                assigned_to: payload.assigned_to,
+                type: payload.type || 'travel',
+                status: payload.status || 'active',
+                stage: payload.stage || 'lead',
                 captured_from: payload.captured_from || 'manual',
+                assigned_to: payload.assigned_to,
+                created_by: payload.created_by,
+                source: payload.source || payload.inquiry_source,
+                source_medium: payload.source_medium || payload.inquiry_source,
                 utm_source: payload.utm_source,
                 utm_medium: payload.utm_medium,
                 utm_campaign: payload.utm_campaign,
@@ -36,60 +44,95 @@ export const leadRepository = {
             .single();
 
         if (leadError) {
+            console.error("❌ Lead creation error:", leadError);
             throw new Error(`Failed to create lead: ${leadError.message}`);
         }
 
         const lead = leadData as Lead;
-        let requirements: LeadRequirements | null = null;
+        console.log("✅ Lead created with ID:", lead.id);
 
-        const hasRequirements =
-            payload.from_location || payload.destination || payload.travel_date ||
-            payload.return_date || payload.service_type || payload.services ||
-            payload.sub_service || payload.needs_visa !== undefined ||
-            payload.budget !== undefined || payload.travelers !== undefined ||
-            payload.flight_class || payload.customer_category || payload.sub_category ||
-            payload.company_name || payload.company_address || payload.company_details ||
-            payload.gst_number || payload.lead_type || payload.notes;
+        /**
+         * Create requirements - use to_location (mapped from destination)
+         */
+        const { data: reqData, error: reqError } = await supabaseAdmin
+            .from('lead_requirements')
+            .insert({
+                lead_id: lead.id,
 
-        if (hasRequirements) {
-            const { data: reqData, error: reqError } = await supabaseAdmin
-                .from('lead_requirements')
-                .insert({
-                    lead_id: lead.id,
-                    from_location: payload.from_location,
-                    destination: payload.destination,
-                    travel_date: payload.travel_date,
-                    return_date: payload.return_date,
-                    service_type: payload.service_type,
-                    services: payload.services,
-                    sub_service: payload.sub_service,
-                    needs_visa: payload.needs_visa,
-                    budget: payload.budget,
-                    travelers: payload.travelers,
-                    flight_class: payload.flight_class,
-                    customer_category: payload.customer_category,
-                    sub_category: payload.sub_category,
-                    company_name: payload.company_name,
-                    company_address: payload.company_address,
-                    company_details: payload.company_details,
-                    gst_number: payload.gst_number,
-                    lead_type: payload.lead_type,
-                    notes: payload.notes
-                })
-                .select()
-                .single();
+                /**
+                 * Service fields
+                 */
+                service_id: payload.service_id,
+                sub_service_category_id: payload.sub_service_category_id,
+                sub_service_id: payload.sub_service_id,
+                service_type: payload.service_type,
+                services: payload.services,
+                sub_service: payload.sub_service,
+                service_details: payload.service_details,
 
-            if (reqError) {
-                await supabaseAdmin.from('leads').delete().eq('id', lead.id);
-                throw new Error(`Failed to create lead requirements: ${reqError.message}`);
-            }
+                /**
+                 * Location - CRITICAL: Use to_location (mapped from frontend's destination)
+                 */
+                from_location: payload.from_location,
+                to_location: payload.to_location || payload.destination,
 
-            requirements = reqData as LeadRequirements;
+                /**
+                 * Travel dates
+                 */
+                travel_date: payload.travel_date,
+                return_date: payload.return_date,
+
+                /**
+                 * Travel details
+                 */
+                needs_visa: payload.needs_visa || false,
+                budget: payload.budget || 0,
+                travelers: payload.travelers || 1,
+                flight_class: payload.flight_class,
+
+                /**
+                 * Customer info
+                 */
+                customer_category: payload.customer_category || 'individual',
+                sub_category: payload.sub_category,
+
+                /**
+                 * Corporate fields
+                 */
+                company_name: payload.company_name,
+                company_address: payload.company_address,
+                company_details: payload.company_details,
+                gst_number: payload.gst_number,
+
+                /**
+                 * Additional
+                 */
+                lead_type: payload.lead_type,
+                notes: payload.notes,
+
+                /**
+                 * Defaults
+                 */
+                pricing_type: payload.pricing_type || 'fixed',
+                pricing_units: payload.pricing_units || 1,
+                pricing_metadata: payload.pricing_metadata || {},
+            })
+            .select()
+            .single();
+
+        if (reqError) {
+            console.error("❌ Requirements creation error:", reqError);
+
+            await supabaseAdmin.from('leads').delete().eq('id', lead.id);
+            throw new Error(`Failed to create lead requirements: ${reqError.message}`);
         }
+
+        console.log("✅ Requirements created successfully");
+        const requirements = reqData as LeadRequirements;
 
         return {
             ...lead,
-            requirements: requirements || undefined
+            requirements: requirements
         };
     },
 
@@ -97,7 +140,7 @@ export const leadRepository = {
      * Get lead by ID with requirements
      */
     async getLeadById(id: string): Promise<LeadWithRequirements | null> {
-        // Get lead
+
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .select('*')
@@ -113,12 +156,12 @@ export const leadRepository = {
 
         const lead = leadData as Lead;
 
-        // Get requirements
+
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
             .select('*')
             .eq('lead_id', id)
-            .maybeSingle(); // Use maybeSingle to return null if no requirements
+            .maybeSingle();
 
         const requirements = reqData as LeadRequirements | null;
 
@@ -132,7 +175,7 @@ export const leadRepository = {
      * Get lead by email with requirements
      */
     async getLeadByEmail(email: string): Promise<LeadWithRequirements | null> {
-        
+
         /**
          * Get lead by email
          */
@@ -194,13 +237,12 @@ export const leadRepository = {
      * Get all leads with requirements
      */
     async getAllLeadsWithRequirements(filter: LeadFilter = {}): Promise<LeadWithRequirements[]> {
-        // Using the view for better performance
+
         let query = supabaseAdmin
             .from('lead_details')
             .select('*')
             .order('created_at', { ascending: false });
 
-        // Apply filters
         if (filter.search) {
             query = query.or(`name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%`);
         }
@@ -247,16 +289,26 @@ export const leadRepository = {
             throw new Error(`Failed to fetch leads: ${error.message}`);
         }
 
-        // Transform view data back to structured format
-        return data.map((row: any) => {
+        // Create an array to store the leads with usernames
+        const leadsWithUsernames = await Promise.all(data.map(async (row: any) => {
+            const destination = row.to_location || row.destination;
+
             const {
-                from_location, destination, travel_date, return_date,
+                to_location,
+                from_location, travel_date, return_date,
                 service_type, services, sub_service, needs_visa,
                 budget, travelers, flight_class, customer_category,
                 sub_category, company_name, company_address, company_details,
                 gst_number, lead_type, requirements_notes,
                 ...leadData
             } = row;
+
+            // Get username for assigned_to user if it exists
+            let assignedToUsername = null;
+            if (leadData.assigned_to) {
+                assignedToUsername = await AuthRepository.getUsernameById(leadData.assigned_to);
+                console.log("Assigned to data:  ", assignedToUsername);
+            }
 
             const lead: Lead = {
                 id: leadData.id,
@@ -267,7 +319,8 @@ export const leadRepository = {
                 status: leadData.status,
                 stage: leadData.stage,
                 captured_from: leadData.captured_from,
-                assigned_to: leadData.assigned_to,
+                assigned_to: assignedToUsername || '', 
+                // assigned_to: leadData.assigned_to,
                 created_by: leadData.created_by,
                 source: leadData.source,
                 source_medium: leadData.source_medium,
@@ -289,11 +342,13 @@ export const leadRepository = {
 
             return {
                 ...lead,
+                destination: destination,
                 requirements: hasRequirements ? {
-                    id: `${lead.id}_req`, // Since we're using a view, we don't have the real requirement ID
+                    id: `${lead.id}_req`,
                     lead_id: lead.id,
                     from_location,
-                    destination,
+                    to_location: destination,
+                    destination: destination,
                     travel_date,
                     return_date,
                     service_type,
@@ -315,14 +370,16 @@ export const leadRepository = {
                     updated_at: leadData.updated_at
                 } : undefined
             };
-        }) as LeadWithRequirements[];
+        }));
+
+        return leadsWithUsernames as LeadWithRequirements[];
     },
 
     /**
      * Update lead and requirements
      */
     async updateLeadWithRequirements(id: string, payload: UpdateLeadPayload): Promise<LeadWithRequirements> {
-        // Separate primary fields from requirement fields
+
         const primaryFields: any = {};
         const requirementFields: any = {};
 
@@ -339,7 +396,7 @@ export const leadRepository = {
             }
         });
 
-        // Update lead
+
         let leadUpdatePromise;
         if (Object.keys(primaryFields).length > 0) {
             leadUpdatePromise = supabaseAdmin
@@ -349,7 +406,7 @@ export const leadRepository = {
                 .select()
                 .single();
         } else {
-            // Get existing lead if no primary fields to update
+
             leadUpdatePromise = supabaseAdmin
                 .from('leads')
                 .select('*')
@@ -365,14 +422,14 @@ export const leadRepository = {
 
         const lead = leadData as Lead;
 
-        // Check if requirements exist
+
         const existingRequirements = await this.getLeadRequirements(id);
 
         let requirements: LeadRequirements | null = null;
 
         if (Object.keys(requirementFields).length > 0) {
             if (existingRequirements) {
-                // Update existing requirements
+
                 const { data: reqData, error: reqError } = await supabaseAdmin
                     .from('lead_requirements')
                     .update(requirementFields)
@@ -386,7 +443,7 @@ export const leadRepository = {
 
                 requirements = reqData as LeadRequirements;
             } else {
-                // Create new requirements
+
                 const { data: reqData, error: reqError } = await supabaseAdmin
                     .from('lead_requirements')
                     .insert({
@@ -416,11 +473,11 @@ export const leadRepository = {
      * Update or create lead requirements
      */
     async upsertLeadRequirements(leadId: string, payload: Partial<LeadRequirements>): Promise<LeadRequirements> {
-        // Check if requirements exist
+
         const existing = await this.getLeadRequirements(leadId);
 
         if (existing) {
-            // Update existing
+
             const { data, error } = await supabaseAdmin
                 .from('lead_requirements')
                 .update(payload)
@@ -434,7 +491,7 @@ export const leadRepository = {
 
             return data as LeadRequirements;
         } else {
-            // Create new
+
             const { data, error } = await supabaseAdmin
                 .from('lead_requirements')
                 .insert({
@@ -472,7 +529,7 @@ export const leadRepository = {
      * Get lead statistics (using leads table only)
      */
     async getLeadStats(): Promise<any> {
-        // Same implementation as before, using leads table
+
         const { data: totalData, error: totalError } = await supabaseAdmin
             .from('leads')
             .select('id', { count: 'exact' });
@@ -511,7 +568,7 @@ export const leadRepository = {
 
         if (convertedError) throw convertedError;
 
-        // Calculate statistics
+
         const byStage: Record<string, number> = {};
         const byType: Record<string, number> = {};
         const byStatus: Record<string, number> = {};
