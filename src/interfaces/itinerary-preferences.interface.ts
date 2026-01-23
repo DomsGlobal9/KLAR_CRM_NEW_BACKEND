@@ -100,7 +100,8 @@ export interface IUpdatePreferenceData {
 }
 
 export interface IFrontendFormData {
-    leadData: any;
+    leadData?: any;
+    itineraryData: any;
     flightOptions: any[];
     hotelOptions: any[];
     visaOptions: any[];

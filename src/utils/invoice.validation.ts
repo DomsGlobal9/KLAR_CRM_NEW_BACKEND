@@ -1,5 +1,5 @@
 import { CreateInvoiceDTO } from '../interfaces/invoice.interface';
-import { CreateQuoteDTO } from '../interfaces/quote.interface';
+import { ICreateQuoteDTO } from '../interfaces/quote.interface';
 import { camelToSnakeCase } from './camelCase.validator';
 
 
@@ -115,7 +115,7 @@ export function validateInvoiceData(invoiceData: CreateInvoiceDTO): void {
 //     console.log('Quote data validation completed with no errors');
 // }
 
-export function validateQuoteData(quoteData: CreateQuoteDTO): void {
+export function validateQuoteData(quoteData: ICreateQuoteDTO): void {
     console.log('>>> Enter validateQuoteData');
     console.log('Raw payload:', JSON.stringify(quoteData, null, 2));
 
