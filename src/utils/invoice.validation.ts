@@ -1,5 +1,5 @@
 import { CreateInvoiceDTO } from '../interfaces/invoice.interface';
-import { CreateQuoteDTO } from '../interfaces/quote.interface';
+import { ICreateQuoteDTO } from '../interfaces/quote.interface';
 import { camelToSnakeCase } from './camelCase.validator';
 
 
@@ -59,63 +59,7 @@ export function validateInvoiceData(invoiceData: CreateInvoiceDTO): void {
 }
 
 
-
-// export function validateQuoteData(quoteData: CreateQuoteDTO): void {
-//     console.log('Enter into validateQuoteData function');
-//     console.log('Quote Data:', quoteData);
-//     const errors: string[] = [];
-
-//     if (!quoteData.client_name?.trim()) {
-//         errors.push('Client name is required');
-//     }
-
-//     if (!quoteData.client_email?.trim()) {
-//         errors.push('Client email is required');
-//     } else if (!validateEmail(quoteData.client_email)) {
-//         errors.push('Invalid email format');
-//     }
-
-//     if (quoteData.client_phone && !validatePhone(quoteData.client_phone)) {
-//         errors.push('Invalid phone number format');
-//     }
-
-//     if (!quoteData.currency?.trim()) {
-//         errors.push('Currency is required');
-//     }
-
-//     if (quoteData.final_amount <= 0) {
-//         errors.push('Final amount must be greater than 0');
-//     }
-
-//     if (quoteData.initial_amount <= 0) {
-//         errors.push('Initial amount must be greater than 0');
-//     }
-
-//     if (quoteData.line_items.length === 0) {
-//         errors.push('At least one line item is required');
-//     }
-
-//     if (quoteData.gst_number && !validateGSTNumber(quoteData.gst_number)) {
-//         errors.push('Invalid GST number format');
-//     }
-
-//     if (!quoteData.valid_until) {
-//         errors.push('Valid until date is required');
-//     } else {
-//         const validUntil = new Date(quoteData.valid_until);
-//         if (validUntil < new Date()) {
-//             errors.push('Valid until date must be in the future');
-//         }
-//     }
-
-//     if (errors.length > 0) {
-//         throw new Error(errors.join(', '));
-//     }
-
-//     console.log('Quote data validation completed with no errors');
-// }
-
-export function validateQuoteData(quoteData: CreateQuoteDTO): void {
+export function validateQuoteData(quoteData: ICreateQuoteDTO): void {
     console.log('>>> Enter validateQuoteData');
     console.log('Raw payload:', JSON.stringify(quoteData, null, 2));
 
