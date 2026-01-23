@@ -229,7 +229,9 @@ export const leadController = {
      */
     async getLeadStats(req: Request, res: Response) {
         try {
-            const stats = await leadService.getLeadStats();
+            const leadId = req.query.id as string;
+
+            const stats = await leadService.getLeadStats(leadId);
 
             res.json({
                 success: true,
@@ -249,31 +251,20 @@ export const leadController = {
     async updateLeadStage(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const { stage } = req.body;
+            const { stageId } = req.body;
 
-            if (!stage) {
+            if (!stageId) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Stage is required'
+                    error: 'Stage ID are required'
                 });
             }
 
-            const lead = await leadService.updateLeadStage(id as string, stage);
-
-            // Create audit log
-            await createLeadAuditLog({
-                // user_id: req.user?.id,
-                action: 'LEAD_STAGE_UPDATED',
-                entity_type: 'lead',
-                entity_id: id as string,
-                details: `Lead moved to ${stage} stage`,
-                ip_address: req.ip,
-                user_agent: req.headers['user-agent'],
-            });
+            const lead = await leadService.updateLeadStage(id as string, stageId);
 
             res.json({
                 success: true,
-                message: `Lead moved to ${stage} stage`,
+                message: `Lead moved to new stage Successfully`,
                 data: lead
             });
         } catch (error: any) {

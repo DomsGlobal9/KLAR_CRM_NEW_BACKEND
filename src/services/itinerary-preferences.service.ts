@@ -54,13 +54,17 @@ export const itineraryPreferencesService = {
 
             const leadId = formData.leadData.id;
 
-            // Check if the lead is exist or not
+            /**
+             * Check if the lead is exist or not
+             */
             const isLeadExist = await leadRepository.isLeadExists(leadId);
             if (!isLeadExist) {
                 throw new Error('Lead not found in Itenary preference Service');
             }
 
-            // Check if preferences already exist
+            /**
+             * Check if preferences already exist
+             */
             const { exists } = await this.checkPreferencesExist(leadId);
             if (exists) {
                 return {

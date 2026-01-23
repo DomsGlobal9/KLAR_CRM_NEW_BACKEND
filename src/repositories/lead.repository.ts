@@ -550,70 +550,115 @@ export const leadRepository = {
     /**
      * Get lead statistics (using leads table only)
      */
-    async getLeadStats(): Promise<any> {
+    async getLeadStats(leadId?: string): Promise<any> {
+        try {
+            if (leadId) {
+                const { data: leadData, error: leadError } = await supabaseAdmin
+                    .from('leads')
+                    .select('*')
+                    .eq('id', leadId)
+                    .single();
 
-        const { data: totalData, error: totalError } = await supabaseAdmin
-            .from('leads')
-            .select('id', { count: 'exact' });
+                if (leadError) {
+                    throw new Error(`Lead with ID ${leadId} not found`);
+                }
 
-        if (totalError) throw totalError;
+                const { data: preferencesData } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .select('*')
+                    .eq('lead_id', leadId)
+                    .maybeSingle();
 
-        const { data: stageData, error: stageError } = await supabaseAdmin
-            .from('leads')
-            .select('stage');
+                return {
+                    lead_id: leadData.id,
+                    name: leadData.name,
+                    email: leadData.email,
+                    stage: leadData.stage,
+                    type: leadData.type,
+                    status: leadData.status,
+                    created_at: leadData.created_at,
+                    has_itinerary_preferences: !!preferencesData,
+                    preferences_summary: preferencesData || null,
+                    lead_details: leadData
+                };
+            }
 
-        if (stageError) throw stageError;
+            const { data: totalData, error: totalError } = await supabaseAdmin
+                .from('leads')
+                .select('id', { count: 'exact' });
 
-        const { data: typeData, error: typeError } = await supabaseAdmin
-            .from('leads')
-            .select('type');
+            if (totalError) throw totalError;
 
-        if (typeError) throw typeError;
+            const { data: stageData, error: stageError } = await supabaseAdmin
+                .from('leads')
+                .select('stage');
 
-        const { data: statusData, error: statusError } = await supabaseAdmin
-            .from('leads')
-            .select('status');
+            if (stageError) throw stageError;
 
-        if (statusError) throw statusError;
+            const { data: typeData, error: typeError } = await supabaseAdmin
+                .from('leads')
+                .select('type');
 
-        const { data: recentData, error: recentError } = await supabaseAdmin
-            .from('leads')
-            .select('id', { count: 'exact' })
-            .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+            if (typeError) throw typeError;
 
-        if (recentError) throw recentError;
+            const { data: statusData, error: statusError } = await supabaseAdmin
+                .from('leads')
+                .select('status');
 
-        const { data: convertedData, error: convertedError } = await supabaseAdmin
-            .from('leads')
-            .select('id', { count: 'exact' })
-            .eq('status', 'converted');
+            if (statusError) throw statusError;
 
-        if (convertedError) throw convertedError;
+            const { data: recentData, error: recentError } = await supabaseAdmin
+                .from('leads')
+                .select('id', { count: 'exact' })
+                .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
+            if (recentError) throw recentError;
 
-        const byStage: Record<string, number> = {};
-        const byType: Record<string, number> = {};
-        const byStatus: Record<string, number> = {};
+            const { data: convertedData, error: convertedError } = await supabaseAdmin
+                .from('leads')
+                .select('id', { count: 'exact' })
+                .eq('status', 'converted');
 
-        stageData?.forEach(lead => {
-            byStage[lead.stage] = (byStage[lead.stage] || 0) + 1;
-        });
+            if (convertedError) throw convertedError;
 
-        typeData?.forEach(lead => {
-            byType[lead.type] = (byType[lead.type] || 0) + 1;
-        });
+            const { data: leadsWithPreferences } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('lead_id');
 
-        statusData?.forEach(lead => {
-            byStatus[lead.status] = (byStatus[lead.status] || 0) + 1;
-        });
+            const leadsWithPreferencesCount = leadsWithPreferences?.length || 0;
+            const leadsWithoutPreferences = (totalData?.length || 0) - leadsWithPreferencesCount;
 
-        return {
-            total: totalData?.length || 0,
-            by_stage: byStage,
-            by_type: byType,
-            by_status: byStatus,
-            recent_count: recentData?.length || 0,
-            converted_count: convertedData?.length || 0
-        };
+            const byStage: Record<string, number> = {};
+            const byType: Record<string, number> = {};
+            const byStatus: Record<string, number> = {};
+
+            stageData?.forEach(lead => {
+                byStage[lead.stage] = (byStage[lead.stage] || 0) + 1;
+            });
+
+            typeData?.forEach(lead => {
+                byType[lead.type] = (byType[lead.type] || 0) + 1;
+            });
+
+            statusData?.forEach(lead => {
+                byStatus[lead.status] = (byStatus[lead.status] || 0) + 1;
+            });
+
+            return {
+                total: totalData?.length || 0,
+                by_stage: byStage,
+                by_type: byType,
+                by_status: byStatus,
+                recent_count: recentData?.length || 0,
+                converted_count: convertedData?.length || 0,
+                with_itinerary_preferences: leadsWithPreferencesCount,
+                without_itinerary_preferences: leadsWithoutPreferences,
+                leads_with_preferences_percentage: totalData?.length ?
+                    Math.round((leadsWithPreferencesCount / totalData.length) * 100) : 0
+            };
+        } catch (error) {
+            console.error('Error in getLeadStats repository:', error);
+            throw error;
+        }
     }
 };

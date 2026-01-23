@@ -67,6 +67,7 @@ export const itineraryPreferencesController = {
                 ...result,
                 message: 'Preferences saved successfully'
             });
+            
         } catch (error) {
             console.error('Error in savePreferences controller:', error);
             return res.status(500).json({

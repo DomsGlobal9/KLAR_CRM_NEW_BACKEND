@@ -4,6 +4,7 @@ import {
   LeadFilter,
   LeadWithRequirements
 } from '../interfaces/lead.interface';
+import { stageRepository } from '../repositories';
 import { leadRepository } from '../repositories/lead.repository';
 import { ValidationUtils } from '../utils';
 import { LeadDataMapper } from '../utils/lead-data-mapper';
@@ -179,8 +180,13 @@ export const leadService = {
   /**
    * Get lead statistics
    */
-  async getLeadStats() {
-    return await leadRepository.getLeadStats();
+  async getLeadStats(leadId?: string): Promise<any> {
+    try {
+      return await leadRepository.getLeadStats(leadId);
+    } catch (error) {
+      console.error('Error in getLeadStats service:', error);
+      throw error;
+    }
   },
 
   /**
@@ -214,18 +220,27 @@ export const leadService = {
   /**
    * Update lead stage
    */
-  async updateLeadStage(id: string, stage: string): Promise<LeadWithRequirements> {
+  async updateLeadStage(
+    id: string, 
+    stageId: string
+  ): Promise<LeadWithRequirements> {
 
-    if (!stage || typeof stage !== 'string') {
-      throw new Error('Valid stage is required');
+    if (!stageId) {
+      throw new Error ('Valid stage id required');
     }
 
-    const validStages = ['lead', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
-    if (!validStages.includes(stage)) {
-      throw new Error(`Invalid stage. Must be one of: ${validStages.join(', ')}`);
+    const isStageExist = await stageRepository.getStageById(stageId);
+    if(!isStageExist) {
+      throw new Error('Stage not found');
     }
 
-    const payload: UpdateLeadPayload = { stage };
+    const stageName = await stageRepository.getStageNameById(stageId);
+    console.log("THe stage name we get", stageName);
+    if(!stageName) {
+      throw new Error('Stage name not found');
+    }
+
+    const payload: UpdateLeadPayload = { stage: stageName };
     return await leadRepository.updateLeadWithRequirements(id, payload);
   },
 

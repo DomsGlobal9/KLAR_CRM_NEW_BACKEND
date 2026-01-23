@@ -8,7 +8,7 @@ import {
     ICombinedPreferenceData,
     IFrontendFormData,
     ILeadDetails
-} from '../interfaces';
+} from '../interfaces/itinerary-preferences.interface';
 
 export const itineraryPreferencesRepository = {
     
@@ -91,7 +91,7 @@ export const itineraryPreferencesRepository = {
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
-                userPreferencesResult,
+                // userPreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
                 supabaseAdmin
@@ -139,10 +139,10 @@ export const itineraryPreferencesRepository = {
             }
 
             // Handle user preferences error (allow missing summary)
-            const userPrefsError = userPreferencesResult.error;
-            if (userPrefsError && userPrefsError.code !== 'PGRST116') {
-                console.warn('Error fetching user preferences summary:', userPrefsError.message);
-            }
+            // const userPrefsError = userPreferencesResult.error;
+            // if (userPrefsError && userPrefsError.code !== 'PGRST116') {
+            //     console.warn('Error fetching user preferences summary:', userPrefsError.message);
+            // }
 
             // Handle lead details error (lead might not exist in our table)
             let leadDetails: ILeadDetails | undefined;
@@ -154,11 +154,11 @@ export const itineraryPreferencesRepository = {
             }
 
             return {
-                lead_id: leadId,
+                // lead_id: leadId,
                 flight_preferences: flightPreferencesResult.data as IFlightPreference[] || [],
                 hotel_preferences: hotelPreferencesResult.data as IHotelPreference[] || [],
                 visa_preferences: visaPreferencesResult.data as IVisaPreference[] || [],
-                user_preferences_summary: userPreferencesResult.data as IUserPreferencesSummary || null,
+                // user_preferences_summary: userPreferencesResult.data as IUserPreferencesSummary || null,
                 lead_details: leadDetails
             };
         } catch (error) {

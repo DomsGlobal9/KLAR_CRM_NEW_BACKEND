@@ -78,11 +78,11 @@ export interface ICombinedPreferenceData {
 }
 
 export interface IItineraryPreferencesResponse {
-    lead_id: string;
+    lead_id?: string;
     flight_preferences: IFlightPreference[];
     hotel_preferences: IHotelPreference[];
     visa_preferences: IVisaPreference[];
-    user_preferences_summary: IUserPreferencesSummary | null;
+    user_preferences_summary?: IUserPreferencesSummary | null;
     lead_details?: ILeadDetails;
 }
 

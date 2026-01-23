@@ -191,6 +191,7 @@ export interface UpdateLeadPayload {
     phone?: string;
     type?: 'event' | 'travel' | 'visa' | 'other';
     status?: 'active' | 'inactive' | 'converted';
+    stageId?: string;
     stage?: string;
     assigned_to?: string;
     source?: string;

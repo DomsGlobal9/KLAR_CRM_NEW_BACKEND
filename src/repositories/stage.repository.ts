@@ -87,6 +87,24 @@ export const stageRepository = {
   },
 
   /**
+   * Get stage name by stage ID
+   */
+  async getStageNameById(stageId: string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
+      .select('name')
+      .eq('id', stageId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch stage name: ${error.message}`);
+    }
+
+    return data?.name || null;
+  },
+
+
+  /**
    * Update stage
    */
   async updateStage(id: string, payload: UpdateStagePayload): Promise<Stage> {
@@ -111,7 +129,7 @@ export const stageRepository = {
    * Delete stage
    */
   async deleteStage(id: string): Promise<boolean> {
-    // Check if stage has any deals before deleting
+
     const { data: dealsData } = await supabaseAdmin
       .from('deals')
       .select('id')
@@ -156,7 +174,7 @@ export const stageRepository = {
    * Reorder stages
    */
   async reorderStages(stages: Array<{ id: string; position: number }>): Promise<Stage[]> {
-    // Update in batch
+
     const updates = stages.map(stage =>
       supabaseAdmin
         .from('stages')
@@ -183,7 +201,7 @@ export const stageRepository = {
    * Get pipeline stages with deal counts
    */
   async getPipelineStages(): Promise<PipelineStage[]> {
-    // Using a view or subquery to get deal counts
+
     const { data: stages, error: stagesError } = await supabaseAdmin
       .from('stages')
       .select('*')

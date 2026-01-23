@@ -14,7 +14,9 @@ export const quoteService = {
      */
     async createQuote(payload: ICreateQuoteDTO): Promise<IQuoteResponse> {
         try {
-            // Validate required fields
+            /**
+             * Validate required fields
+             */
             if (!payload.client_name || !payload.client_email || !payload.client_phone) {
                 return {
                     success: false,
