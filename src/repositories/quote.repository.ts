@@ -42,42 +42,47 @@ export const quoteRepository = {
 
         const quoteData = {
             quote_number: quoteNumber,
-            quote_title: payload.quote_title,
+            quote_title: payload.quote_title || payload.quote_information?.quote_title || 'Untitled Quote',
             status: payload.status || 'draft',
-            valid_until: payload.valid_until,
-            validity_days: payload.validity_days || 30,
-            currency: payload.currency || 'INR',
+            valid_until: payload.valid_until || payload.quote_information?.valid_until,
+            validity_days: payload.validity_days || payload.quote_information?.validity_days || 30,
+            currency: payload.currency || payload.quote_information?.currency || 'INR',
 
-            client_name: payload.client_name,
-            client_email: payload.client_email,
-            client_phone: payload.client_phone || null,
-            client_address: payload.client_address || null,
+            client_name: payload.client_name || payload.client_information?.name,
+            client_email: payload.client_email || payload.client_information?.email,
+            client_phone: payload.client_phone || payload.client_information?.phone || null,
+            client_address: payload.client_address || payload.client_information?.address || null,
 
-            itinerary_id: payload.itinerary_id || null,
+            itinerary_id: payload.itinerary_id || payload.identifiers?.itinerary_id || null,
+            lead_id: payload.identifiers?.lead_id || null,
 
-            subtotal: payload.subtotal || 0,
-            tax_amount: payload.tax_amount || 0,
-            tax_rate: payload.tax_rate || 18,
-            discount_percent: payload.discount_percent || 0,
-            discount_amount: payload.discount_amount || 0,
-            total: payload.total || 0,
-            final_amount: payload.final_amount || 0,
-            initial_amount: payload.initial_amount || payload.subtotal || 0,
+            subtotal: payload.subtotal || payload.totals?.subtotal || 0,
+            tax_amount: payload.tax_amount || payload.totals?.tax_amount || 0,
+            tax_rate: payload.tax_rate || payload.totals?.tax_rate || 18,
+            discount_percent: payload.discount_percent || payload.quote_information?.discount_percent || 0,
+            discount_amount: payload.discount_amount || payload.quote_information?.discount_amount || 0,
+            total: payload.total || payload.totals?.final_amount || 0,
+            final_amount: payload.final_amount || payload.totals?.final_amount || 0,
+            initial_amount: payload.initial_amount || payload.totals?.subtotal || 0,
 
-            services_included: payload.services_included || null,
+            services_included: payload.services?.active_service_ids || null,
             active_service: payload.active_service || null,
 
             line_items: payload.line_items || [],
             selected_preferences: payload.selected_preferences || null,
 
-            notes: payload.notes || null,
-            terms_conditions: payload.terms_conditions || null,
-            gst_number: payload.gst_number || null,
+            notes: payload.notes || payload.quote_information?.notes || null,
+            terms_conditions: payload.terms_conditions || payload.quote_information?.terms_conditions || null,
+            gst_number: payload.gst_number || payload.client_information?.gst_number || null,
 
             itinerary_details: payload.itinerary_details || null,
             service_counts: payload.service_counts || null,
 
-            // metadata: payload.metadata || {}
+            meta: payload.meta || null,
+            identifiers: payload.identifiers || null,
+            services: payload.services || null,
+            quote_inputs: payload.quote_inputs || null,
+            totals: payload.totals || null
         };
 
         const { data, error } = await supabaseAdmin
