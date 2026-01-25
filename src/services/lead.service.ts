@@ -74,7 +74,7 @@ export const leadService = {
   /**
    * Update lead and requirements
    */
-  async updateLead(id: string, payload: UpdateLeadPayload): Promise<LeadWithRequirements> {
+  async updateLead(id: string, payload: UpdateLeadPayload): Promise<boolean> {
     console.log("🔧 Update service payload:", payload);
 
     /**
@@ -223,31 +223,26 @@ export const leadService = {
   async updateLeadStage(
     id: string, 
     stageId: string
-  ): Promise<LeadWithRequirements> {
+  ): Promise<boolean> {
 
     if (!stageId) {
       throw new Error ('Valid stage id required');
     }
 
-    const isStageExist = await stageRepository.getStageById(stageId);
-    if(!isStageExist) {
-      throw new Error('Stage not found');
-    }
-
     const stageName = await stageRepository.getStageNameById(stageId);
-    console.log("THe stage name we get", stageName);
+    
     if(!stageName) {
       throw new Error('Stage name not found');
     }
 
-    const payload: UpdateLeadPayload = { stage: stageName };
-    return await leadRepository.updateLeadWithRequirements(id, payload);
+    // const payload: UpdateLeadPayload = { stage: stageName };
+    return await leadRepository.updateLeadStageOnly(id, stageId);
   },
 
   /**
    * Assign lead to user
    */
-  async assignLead(id: string, assignedTo: string): Promise<LeadWithRequirements> {
+  async assignLead(id: string, assignedTo: string): Promise<boolean> {
     if (!assignedTo || typeof assignedTo !== 'string') {
       throw new Error('Valid user ID is required for assignment');
     }

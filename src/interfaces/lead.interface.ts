@@ -114,6 +114,7 @@ export interface CreateLeadPayload {
 }
 
 export interface CreateLeadPayload {
+    
     // Primary Details (Required)
     name: string;
     email: string;

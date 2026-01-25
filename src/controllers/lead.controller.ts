@@ -14,7 +14,6 @@ export const leadController = {
 
             console.log("📥 Raw frontend payload received:", JSON.stringify(payload, null, 2));
 
-            // Transform frontend data to database format
             const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
 
             console.log("🔄 Transformed payload for database:", JSON.stringify(mappedPayload, null, 2));
@@ -169,19 +168,9 @@ export const leadController = {
 
             const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
 
-            await createLeadAuditLog({
-                action: 'LEAD_UPDATED',
-                entity_type: 'lead',
-                entity_id: id as string,
-                details: `Lead updated: ${lead.name}`,
-                ip_address: req.ip,
-                user_agent: req.headers['user-agent'],
-            });
-
             res.json({
                 success: true,
                 message: 'Lead updated successfully',
-                data: frontendLead
             });
         } catch (error: any) {
             console.error("❌ Update lead error:", error);
@@ -265,7 +254,6 @@ export const leadController = {
             res.json({
                 success: true,
                 message: `Lead moved to new stage Successfully`,
-                data: lead
             });
         } catch (error: any) {
             res.status(400).json({

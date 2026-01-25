@@ -89,18 +89,46 @@ export const stageRepository = {
   /**
    * Get stage name by stage ID
    */
-  async getStageNameById(stageId: string): Promise<string | null> {
+  async getStageNameById(id: string): Promise<string | null> {
+    console.time(`getStageNameById-${id}`);
+
     const { data, error } = await supabaseAdmin
       .from('stages')
       .select('name')
-      .eq('id', stageId)
-      .maybeSingle();
+      .eq('id', id)
+      .single();
+
+    console.timeEnd(`getStageNameById-${id}`);
 
     if (error) {
-      throw new Error(`Failed to fetch stage name: ${error.message}`);
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error(`Stage name query error for ${id}:`, error.message);
+      return null;
     }
 
     return data?.name || null;
+  },
+
+  /**
+   * Get minimal stage info
+   */
+  async getStageBasicInfo(id: string): Promise<{ id: string, name: string } | null> {
+    const { data, error } = await supabaseAdmin
+      .from('stages')
+      .select('id, name')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      return null;
+    }
+
+    return data;
   },
 
 
@@ -274,5 +302,5 @@ export const stageRepository = {
     }
 
     return data && data.length > 0;
-  }
+  },
 };
