@@ -398,6 +398,50 @@ export const leadRepository = {
     },
 
     /**
+     * Get leads with minimal fields
+     * @param filter 
+     * @returns 
+     */
+    async getLeadsList(filter: LeadFilter = {}) {
+        let query = supabaseAdmin
+            .from('leads')
+            .select('name, source, stage, assigned_to')
+            .order('created_at', { ascending: false });
+
+        if (filter.search) {
+            query = query.ilike('name', `%${filter.search}%`);
+        }
+
+        if (filter.stage) {
+            query = query.eq('stage', filter.stage);
+        }
+
+        if (filter.assigned_to) {
+            query = query.eq('assigned_to', filter.assigned_to);
+        }
+
+        if (filter.limit) {
+            query = query.limit(filter.limit);
+        }
+
+        if (filter.offset) {
+            query = query.range(
+                filter.offset,
+                filter.offset + (filter.limit || 10) - 1
+            );
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to fetch leads: ${error.message}`);
+        }
+
+        return data;
+    },
+
+
+    /**
      * Update lead and requirements
      */
     async updateLeadWithRequirements(id: string, payload: UpdateLeadPayload): Promise<boolean> {
