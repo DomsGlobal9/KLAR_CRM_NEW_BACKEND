@@ -424,7 +424,7 @@ export const leadRepository = {
             query = query.limit(filter.limit);
         }
 
-        if (filter.offset) {
+        if (filter.offset !== undefined) {
             query = query.range(
                 filter.offset,
                 filter.offset + (filter.limit || 10) - 1
@@ -437,8 +437,26 @@ export const leadRepository = {
             throw new Error(`Failed to fetch leads: ${error.message}`);
         }
 
-        return data;
+        if (!data) return [];
+
+        const leadsWithUsernames = await Promise.all(
+            data.map(async (lead) => {
+                if (!lead.assigned_to) {
+                    return { ...lead, assigned_to: null };
+                }
+
+                const username = await AuthRepository.getUsernameById(lead.assigned_to);
+
+                return {
+                    ...lead,
+                    assigned_to: username,
+                };
+            })
+        );
+
+        return leadsWithUsernames;
     },
+
 
 
     /**
