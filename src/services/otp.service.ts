@@ -14,13 +14,13 @@ export const otpService = {
         try {
             email = email.toLowerCase();
 
-            // if (isDevelopment()) {
-            //     console.log(`🧪 DEV OTP for ${email} (${type}): ${DEV_STATIC_OTP}`);
-            //     return {
-            //         success: true,
-            //         message: 'OTP sent (development mode)',
-            //     };
-            // }
+            if (isDevelopment()) {
+                console.log(`🧪 DEV OTP for ${email} (${type}): ${DEV_STATIC_OTP}`);
+                return {
+                    success: true,
+                    message: 'OTP sent (development mode)',
+                };
+            }
 
 
             const existing = await otpRepository.findByEmailAndType(email, type);
@@ -72,9 +72,9 @@ export const otpService = {
             /**
              * 🧪 DEVELOPMENT MODE → Static OTP
              */
-            // if (isDevelopment()) {
-            //     return otp_code === DEV_STATIC_OTP;
-            // }
+            if (isDevelopment()) {
+                return otp_code === DEV_STATIC_OTP;
+            }
             const otp = await otpRepository.verify(email.toLowerCase(), otp_code, type);
             return otp.verified;
         } catch (error: any) {

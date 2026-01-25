@@ -400,7 +400,7 @@ export const leadRepository = {
     /**
      * Update lead and requirements
      */
-    async updateLeadWithRequirements(id: string, payload: UpdateLeadPayload): Promise<LeadWithRequirements> {
+    async updateLeadWithRequirements(id: string, payload: UpdateLeadPayload): Promise<boolean> {
 
         const primaryFields: any = {};
         const requirementFields: any = {};
@@ -485,10 +485,7 @@ export const leadRepository = {
             requirements = existingRequirements;
         }
 
-        return {
-            ...lead,
-            requirements: requirements || undefined
-        };
+        return true;
     },
 
     /**
@@ -660,5 +657,40 @@ export const leadRepository = {
             console.error('Error in getLeadStats repository:', error);
             throw error;
         }
+    },
+
+    /**
+     * Update ONLY lead stage (optimized for stage changes)
+     */
+    async updateLeadStageOnly(
+        leadId: string,
+        stageId: string
+    ): Promise<boolean> {
+
+        const start = performance.now();
+
+        const { error } = await supabaseAdmin
+            .from('leads')
+            .update({
+                stage_id: stageId,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', leadId);
+
+        console.log(
+            `⏱️ updateLeadStageOnly: ${(performance.now() - start).toFixed(2)} ms`
+        );
+
+        if (error) {
+            console.error('Lead stage update error:', {
+                leadId,
+                stageId,
+                error: error.message
+            });
+            throw new Error(`Failed to update lead stage: ${error.message}`);
+        }
+
+        return true;
     }
+
 };
