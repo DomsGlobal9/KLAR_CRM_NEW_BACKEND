@@ -67,8 +67,12 @@ export const leadService = {
   /**
    * Get all leads with requirements
    */
-  async getAllLeads(filter: LeadFilter = {}): Promise<LeadWithRequirements[]> {
-    return await leadRepository.getAllLeadsWithRequirements(filter);
+  // async getAllLeads(filter: LeadFilter = {}): Promise<LeadWithRequirements[]> {
+  //   return await leadRepository.getAllLeadsWithRequirements(filter);
+  // },
+
+  async getAllLeads(filter: LeadFilter = {}): Promise<any[]> {
+    return await leadRepository.getLeadsList(filter);
   },
 
   /**
