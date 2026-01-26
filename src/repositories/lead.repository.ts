@@ -405,7 +405,7 @@ export const leadRepository = {
     async getLeadsList(filter: LeadFilter = {}) {
         let query = supabaseAdmin
             .from('leads')
-            .select('name, source, stage, assigned_to')
+            .select('id, name, source, stage, assigned_to')
             .order('created_at', { ascending: false });
 
         if (filter.search) {
