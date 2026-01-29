@@ -7,6 +7,7 @@ import {
     UpdateLeadPayload,
     LeadFilter
 } from '../interfaces/lead.interface';
+import { LeadDataMapper } from '../utils/lead-data-mapper';
 import { AuthRepository } from './auth.repository';
 
 export const leadRepository = {
@@ -753,6 +754,327 @@ export const leadRepository = {
         }
 
         return true;
-    }
+    },
+
+    /**
+     * Create lead service relationships
+     */
+    async createLeadServiceRelationships(
+        leadId: string,
+        relationships: Array<{
+            service_id: string;
+            sub_service_category_id: string;
+            sub_service_id: string;
+            selection_type: 'single' | 'multi';
+            service_specific: Record<string, any>;
+            attachments?: any[];
+        }>
+    ): Promise<boolean> {
+        if (!relationships || relationships.length === 0) {
+            return true;
+        }
+
+        const relationshipsToInsert = relationships.map(rel => ({
+            lead_id: leadId,
+            ...rel,
+            attachments: rel.attachments || []
+        }));
+
+        const { error } = await supabaseAdmin
+            .from('lead_service_relationships')
+            .insert(relationshipsToInsert);
+
+        if (error) {
+            console.error('Failed to create service relationships:', error);
+            throw new Error(`Failed to create service relationships: ${error.message}`);
+        }
+
+        return true;
+    },
+
+    /**
+     * Get service relationships for a lead
+     */
+    async getLeadServiceRelationships(leadId: string): Promise<any[]> {
+        const { data, error } = await supabaseAdmin
+            .from('lead_service_relationships')
+            .select(`
+                *,
+                service:service_id(name, code, metadata),
+                category:sub_service_category_id(name, code, input_type),
+                sub_service:sub_service_id(name, code, description)
+            `)
+            .eq('lead_id', leadId)
+            .order('display_order', { ascending: true });
+
+        if (error) {
+            console.error('Failed to fetch service relationships:', error);
+            return [];
+        }
+
+        return data || [];
+    },
+
+    /**
+     * Update lead service relationships (delete old, insert new)
+     */
+    async updateLeadServiceRelationships(
+        leadId: string,
+        relationships: Array<{
+            service_id: string;
+            sub_service_category_id: string;
+            sub_service_id: string;
+            selection_type: 'single' | 'multi';
+            service_specific: Record<string, any>;
+            attachments?: any[];
+        }>
+    ): Promise<boolean> {
+        // Delete existing relationships
+        const { error: deleteError } = await supabaseAdmin
+            .from('lead_service_relationships')
+            .delete()
+            .eq('lead_id', leadId);
+
+        if (deleteError) {
+            console.error('Failed to delete old relationships:', deleteError);
+            throw new Error(`Failed to update service relationships: ${deleteError.message}`);
+        }
+
+        // Insert new relationships
+        if (relationships && relationships.length > 0) {
+            return await this.createLeadServiceRelationships(leadId, relationships);
+        }
+
+        return true;
+    },
+
+    /**
+     * Create lead with full details including service relationships
+     */
+    async createLeadWithFullDetails(payload: any): Promise<LeadWithRequirements> {
+        console.log("🗄️ Creating lead with full details:", payload);
+
+        // 1. Create lead
+        const leadData = LeadDataMapper.mapFrontendToDatabase(payload);
+
+        const { data: lead, error: leadError } = await supabaseAdmin
+            .from('leads')
+            .insert({
+                name: leadData.name,
+                email: leadData.email,
+                phone: leadData.phone,
+                type: leadData.type || 'travel',
+                status: leadData.status || 'active',
+                stage: leadData.stage || 'lead',
+                captured_from: leadData.captured_from || 'manual',
+                assigned_to: leadData.assigned_to,
+                created_by: leadData.created_by,
+                source: leadData.source,
+                source_medium: leadData.source_medium,
+                utm_source: leadData.utm_source,
+                utm_medium: leadData.utm_medium,
+                utm_campaign: leadData.utm_campaign,
+                utm_term: leadData.utm_term,
+                utm_content: leadData.utm_content,
+                metadata: {
+                    inquiry_source: payload.inquiry_source,
+                    preferred_contact_method: payload.preferred_contact_method,
+                    country_city: payload.country_city,
+                    team_id: payload.team_id,
+                    budget_range: payload.budget_range,
+                    timeline: payload.timeline,
+                    ...(payload.metadata || {})
+                }
+            })
+            .select()
+            .single();
+
+        if (leadError) {
+            console.error("❌ Lead creation error:", leadError);
+            throw new Error(`Failed to create lead: ${leadError.message}`);
+        }
+
+        console.log("✅ Lead created with ID:", lead.id);
+
+        // 2. Create lead requirements
+        const requirementsData = LeadDataMapper.prepareRequirements(payload);
+
+        const { data: requirements, error: reqError } = await supabaseAdmin
+            .from('lead_requirements')
+            .insert({
+                lead_id: lead.id,
+                ...requirementsData
+            })
+            .select()
+            .single();
+
+        if (reqError) {
+            console.error("❌ Requirements creation error:", reqError);
+
+            // Rollback: delete the lead
+            await supabaseAdmin.from('leads').delete().eq('id', lead.id);
+            throw new Error(`Failed to create lead requirements: ${reqError.message}`);
+        }
+
+        console.log("✅ Requirements created successfully");
+
+        // 3. Create service relationships
+        if (payload.service_selections && payload.service_selections.length > 0) {
+            const relationships = LeadDataMapper.prepareServiceRelationships(lead.id, payload);
+
+            try {
+                await this.createLeadServiceRelationships(lead.id, relationships);
+                console.log("✅ Service relationships created successfully");
+            } catch (error) {
+                console.error("❌ Service relationships error:", error);
+                // Optional: decide whether to rollback or continue
+            }
+        }
+
+        // 4. Get complete lead data with relationships
+        const completeLead = await this.getLeadWithFullDetails(lead.id);
+
+        return completeLead;
+    },
+
+    /**
+     * Get lead with full details including service relationships
+     */
+    async getLeadWithFullDetails(leadId: string): Promise<LeadWithRequirements> {
+        // Get lead
+        const { data: leadData, error: leadError } = await supabaseAdmin
+            .from('leads')
+            .select('*')
+            .eq('id', leadId)
+            .single();
+
+        if (leadError) {
+            throw new Error(`Failed to fetch lead: ${leadError.message}`);
+        }
+
+        // Get assigned user info if exists
+        let assignedToInfo = null;
+        if (leadData.assigned_to) {
+            assignedToInfo = await AuthRepository.getUsernameById(leadData.assigned_to);
+        }
+
+        // Get requirements
+        const { data: reqData } = await supabaseAdmin
+            .from('lead_requirements')
+            .select('*')
+            .eq('lead_id', leadId)
+            .maybeSingle();
+
+        // Get service relationships
+        const serviceRelationships = await this.getLeadServiceRelationships(leadId);
+
+        // Format for frontend
+        const formattedRelationships = LeadDataMapper.formatServiceRelationshipsForFrontend(
+            serviceRelationships,
+            serviceRelationships.map(r => r.service),
+            serviceRelationships.map(r => r.category),
+            serviceRelationships.map(r => r.sub_service)
+        );
+
+        return {
+            ...leadData,
+            assigned_to: assignedToInfo,
+            requirements: reqData || undefined,
+            service_relationships: serviceRelationships,
+            service_selections: formattedRelationships,
+            metadata: leadData.metadata || {}
+        };
+    },
+
+    /**
+     * Update lead with full details including service relationships
+     */
+    async updateLeadWithFullDetails(
+        leadId: string,
+        payload: any
+    ): Promise<boolean> {
+        console.log("🗄️ Updating lead with full details:", leadId);
+
+        // 1. Update lead
+        const leadData = LeadDataMapper.mapFrontendToDatabase(payload);
+
+        const { error: leadError } = await supabaseAdmin
+            .from('leads')
+            .update({
+                name: leadData.name,
+                email: leadData.email,
+                phone: leadData.phone,
+                type: leadData.type,
+                status: leadData.status,
+                stage: leadData.stage,
+                assigned_to: leadData.assigned_to,
+                source: leadData.source,
+                source_medium: leadData.source_medium,
+                metadata: {
+                    inquiry_source: payload.inquiry_source,
+                    preferred_contact_method: payload.preferred_contact_method,
+                    country_city: payload.country_city,
+                    team_id: payload.team_id,
+                    budget_range: payload.budget_range,
+                    timeline: payload.timeline,
+                    ...(payload.metadata || {})
+                },
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', leadId);
+
+        if (leadError) {
+            console.error("❌ Lead update error:", leadError);
+            throw new Error(`Failed to update lead: ${leadError.message}`);
+        }
+
+        console.log("✅ Lead updated successfully");
+
+        // 2. Update requirements
+        const requirementsData = LeadDataMapper.prepareRequirements(payload);
+
+        const { data: existingReq } = await supabaseAdmin
+            .from('lead_requirements')
+            .select('id')
+            .eq('lead_id', leadId)
+            .maybeSingle();
+
+        if (existingReq) {
+            // Update existing requirements
+            const { error: reqError } = await supabaseAdmin
+                .from('lead_requirements')
+                .update(requirementsData)
+                .eq('lead_id', leadId);
+
+            if (reqError) {
+                console.error("❌ Requirements update error:", reqError);
+                throw new Error(`Failed to update requirements: ${reqError.message}`);
+            }
+        } else {
+            // Create new requirements
+            const { error: reqError } = await supabaseAdmin
+                .from('lead_requirements')
+                .insert({
+                    lead_id: leadId,
+                    ...requirementsData
+                });
+
+            if (reqError) {
+                console.error("❌ Requirements creation error:", reqError);
+                throw new Error(`Failed to create requirements: ${reqError.message}`);
+            }
+        }
+
+        console.log("✅ Requirements updated successfully");
+
+        // 3. Update service relationships
+        if (payload.service_selections) {
+            const relationships = LeadDataMapper.prepareServiceRelationships(leadId, payload);
+            await this.updateLeadServiceRelationships(leadId, relationships);
+            console.log("✅ Service relationships updated successfully");
+        }
+
+        return true;
+    },
 
 };
