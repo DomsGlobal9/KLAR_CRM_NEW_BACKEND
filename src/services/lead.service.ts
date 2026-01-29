@@ -16,38 +16,24 @@ export const leadService = {
   async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
     console.log("🔧 Service received payload:", JSON.stringify(payload, null, 2));
 
-    /**
-     * Leads Payload validation
-     */
+    // Validate payload
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-    /**
-     * Data sanitized here
-     */
+    // Sanitize data
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
 
-    /**
-     * Prepare requirements data
-     */
-    const requirementsData = LeadDataMapper.prepareRequirements(sanitizedData);
-
-    console.log("📋 Prepared requirements:", JSON.stringify(requirementsData, null, 2));
-
+    // Check for existing lead
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
       console.log(`⚠️ Lead with email ${sanitizedData.email} already exists`);
+      // You might want to handle this differently (update or throw error)
     }
 
-    /**
-     * Create lead with Lead personal details and Lead requirements
-     */
-    const lead = await leadRepository.createLeadWithRequirements({
-      ...sanitizedData,
-      ...requirementsData
-    });
+    // Create lead with full details
+    const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
     console.log("✅ Lead created successfully:", lead.id);
     return lead;
@@ -57,12 +43,13 @@ export const leadService = {
    * Get lead by ID with requirements
    */
   async getLeadById(id: string): Promise<LeadWithRequirements> {
-    const lead = await leadRepository.getLeadById(id);
+    const lead = await leadRepository.getLeadWithFullDetails(id);
     if (!lead) {
       throw new Error('Lead not found');
     }
     return lead;
   },
+
 
   /**
    * Get all leads with requirements
@@ -81,35 +68,27 @@ export const leadService = {
   async updateLead(id: string, payload: UpdateLeadPayload): Promise<boolean> {
     console.log("🔧 Update service payload:", payload);
 
-    /**
-     * Get existing lead
-     */
+    // Get existing lead
     const existingLead = await leadRepository.getLeadById(id);
     if (!existingLead) {
       throw new Error('Lead not found');
     }
 
-    /**
-     * Validate if email is being updated
-     */
+    // Validate if email is being updated
     if (payload.email && payload.email !== existingLead.email) {
       const validation = ValidationUtils.validateEmail(payload.email);
       if (!validation) {
         throw new Error('Invalid email format');
       }
 
-      /**
-       * Check if new email already exists
-       */
+      // Check if new email already exists
       const existingWithNewEmail = await leadRepository.getLeadByEmail(payload.email);
       if (existingWithNewEmail && existingWithNewEmail.id !== id) {
         throw new Error('Email already in use by another lead');
       }
     }
 
-    /**
-     * Validate phone if being updated
-     */
+    // Validate phone if being updated
     if (payload.phone && payload.phone !== existingLead.phone) {
       const validation = ValidationUtils.validatePhone(payload.phone);
       if (!validation) {
@@ -117,25 +96,11 @@ export const leadService = {
       }
     }
 
-    /**
-     * Sanitize data
-     */
+    // Sanitize data
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
 
-    /**
-     * Prepare requirements data
-     */
-    const requirementsData = LeadDataMapper.prepareRequirements(sanitizedData);
-
-    console.log("📋 Update requirements data:", requirementsData);
-
-    /**
-     * Update lead with requirements
-     */
-    return await leadRepository.updateLeadWithRequirements(id, {
-      ...sanitizedData,
-      ...requirementsData
-    });
+    // Update lead with full details
+    return await leadRepository.updateLeadWithFullDetails(id, sanitizedData);
   },
 
   /**
@@ -225,17 +190,17 @@ export const leadService = {
    * Update lead stage
    */
   async updateLeadStage(
-    id: string, 
+    id: string,
     stageId: string
   ): Promise<boolean> {
 
     if (!stageId) {
-      throw new Error ('Valid stage id required');
+      throw new Error('Valid stage id required');
     }
 
     const stageName = await stageRepository.getStageNameById(stageId);
-    
-    if(!stageName) {
+
+    if (!stageName) {
       throw new Error('Stage name not found');
     }
 
@@ -260,5 +225,5 @@ export const leadService = {
    */
   async searchLeads(query: string): Promise<LeadWithRequirements[]> {
     return await leadRepository.getAllLeadsWithRequirements({ search: query });
-  }
+  },
 };

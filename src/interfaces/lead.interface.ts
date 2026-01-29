@@ -71,50 +71,8 @@ export interface LeadRequirements {
 }
 
 
-
 export interface CreateLeadPayload {
 
-    // Primary Details (Required)
-    name: string;
-    email: string;
-    phone: string;
-    type: 'event' | 'travel' | 'visa' | 'other';
-
-    // Optional Primary Details
-    source?: string;
-    source_medium?: string;
-    assigned_to?: string;
-    captured_from?: 'web_form' | 'api' | 'manual';
-    utm_source?: string;
-    utm_medium?: string;
-    utm_campaign?: string;
-    utm_term?: string;
-    utm_content?: string;
-
-    // Requirements (All Optional)
-    from_location?: string;
-    destination?: string;
-    travel_date?: string;
-    return_date?: string;
-    service_type?: string;
-    services?: string;
-    sub_service?: string;
-    needs_visa?: boolean;
-    budget?: number;
-    travelers?: number;
-    flight_class?: string;
-    customer_category?: 'individual' | 'corporate';
-    sub_category?: string;
-    company_name?: string;
-    company_address?: string;
-    company_details?: string;
-    gst_number?: string;
-    lead_type?: string;
-    notes?: string;
-}
-
-export interface CreateLeadPayload {
-    
     // Primary Details (Required)
     name: string;
     email: string;
@@ -153,21 +111,18 @@ export interface CreateLeadPayload {
     lead_type?: string;
     notes?: string;
 
-    // NEW: Service hierarchy fields from frontend
-    service_id?: string;
-    service_name?: string;
-    service_category_id?: string;
-    service_category_name?: string;
-    categories?: Array<{
-        category: {
-            id: string;
-            name: string;
-        };
-        sub_services: Array<{
-            id: string;
-            name: string;
-            selection_type: 'single' | 'multi';
+    // Service relationships from frontend
+    service_selections?: Array<{
+        service_id: string;
+        service_name: string;
+        service_type?: string;
+        categories: Array<{
+            category_id: string;
+            category_name: string;
+            sub_service_ids: string[];
+            sub_service_single?: string;
         }>;
+        service_specific: Record<string, any>;
     }>;
 
     // NEW: Additional frontend fields
@@ -219,21 +174,17 @@ export interface UpdateLeadPayload {
     lead_type?: string;
     notes?: string;
 
-    // NEW: Service hierarchy fields
-    service_id?: string;
-    service_name?: string;
-    service_category_id?: string;
-    service_category_name?: string;
-    categories?: Array<{
-        category: {
-            id: string;
-            name: string;
-        };
-        sub_services: Array<{
-            id: string;
-            name: string;
-            selection_type: 'single' | 'multi';
+    service_selections?: Array<{
+        service_id: string;
+        service_name: string;
+        service_type?: string;
+        categories: Array<{
+            category_id: string;
+            category_name: string;
+            sub_service_ids: string[];
+            sub_service_single?: string;
         }>;
+        service_specific: Record<string, any>;
     }>;
 
     // NEW: Additional frontend fields
@@ -271,6 +222,7 @@ export interface LeadStats {
 
 export interface LeadWithRequirements extends Lead {
     requirements?: LeadRequirements;
+    service_relationships?: LeadServiceRelationship[];
     assigned_user?: {
         id: string;
         email: string;
@@ -280,3 +232,30 @@ export interface LeadWithRequirements extends Lead {
         team_id: string | null;
     };
 }
+
+export interface LeadServiceRelationship {
+    id: string;
+    lead_id: string;
+    service_id: string;
+    service_name: string;
+    service_type?: string;
+    sub_service_category_id: string;
+    sub_service_category_name: string;
+    sub_service_id: string;
+    sub_service_name: string;
+    selection_type: 'single' | 'multi';
+    service_specific: Record<string, any>;
+    attachments: Array<{
+        name: string;
+        size: number;
+        type: string;
+        status: 'uploading' | 'uploaded' | 'error';
+        url?: string;
+        preview_url?: string;
+        upload_date: string;
+        error?: string;
+    }>;
+    created_at: string;
+    updated_at: string;
+}
+

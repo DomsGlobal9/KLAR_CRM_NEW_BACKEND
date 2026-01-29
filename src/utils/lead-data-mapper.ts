@@ -1,61 +1,17 @@
-/**
- * Utility to map frontend lead data to backend/database format
- */
 export class LeadDataMapper {
-    
+
     /**
      * Transform frontend payload to database format
      */
     static mapFrontendToDatabase(payload: any): any {
         const mappedData = { ...payload };
 
-        
+        // Map destination to to_location
         if (payload.destination) {
             mappedData.to_location = payload.destination;
-            
         }
 
-        
-        if (payload.categories && Array.isArray(payload.categories)) {
-            
-            mappedData.service_details = {
-                categories: payload.categories,
-                service_id: payload.service_id,
-                service_name: payload.service_name,
-                service_category_id: payload.service_category_id,
-                service_category_name: payload.service_category_name
-            };
-
-            
-            const servicesArray: string[] = [];
-            payload.categories.forEach((category: any) => {
-                if (category.sub_services && Array.isArray(category.sub_services)) {
-                    category.sub_services.forEach((sub: any) => {
-                        if (sub.name) {
-                            servicesArray.push(sub.name);
-                        }
-                    });
-                }
-            });
-
-            if (servicesArray.length > 0) {
-                mappedData.services = servicesArray.join(', ');
-            }
-
-            // Map the first sub-service ID if available
-            if (payload.categories.length > 0 &&
-                payload.categories[0].sub_services &&
-                payload.categories[0].sub_services.length > 0) {
-                mappedData.sub_service_id = payload.categories[0].sub_services[0].id;
-            }
-
-            // Map service category ID from first category
-            if (payload.categories.length > 0 && payload.categories[0].category) {
-                mappedData.sub_service_category_id = payload.categories[0].category.id;
-            }
-        }
-
-        // Map inquiry_source to source if source is not provided
+        // Map inquiry_source to source
         if (payload.inquiry_source && !payload.source) {
             mappedData.source = payload.inquiry_source;
             mappedData.source_medium = payload.inquiry_source;
@@ -78,7 +34,7 @@ export class LeadDataMapper {
             mappedData.captured_from = 'manual';
         }
 
-        // Remove frontend-specific fields that don't map to database
+        // Remove frontend-specific fields that don't map directly to leads table
         delete mappedData.categories;
         delete mappedData.inquiry_source;
         delete mappedData.preferred_contact_method;
@@ -89,31 +45,71 @@ export class LeadDataMapper {
         delete mappedData.assigned_member_name;
         delete mappedData.service_name;
         delete mappedData.service_category_name;
+        delete mappedData.service_selections; // This will be handled separately
 
         return mappedData;
     }
 
     /**
-     * Transform database data to frontend format
+     * Prepare service relationships from frontend payload
      */
-    static mapDatabaseToFrontend(lead: any): any {
-        const frontendData = { ...lead };
+    static prepareServiceRelationships(
+        leadId: string,
+        payload: any
+    ): Array<{
+        lead_id: string;
+        service_id: string;
+        sub_service_category_id: string;
+        sub_service_id: string;
+        selection_type: 'single' | 'multi';
+        service_specific: Record<string, any>;
+        attachments?: any[];
+    }> {
+        const relationships: any[] = [];
 
-        // Map to_location -> destination for frontend
-        if (lead.to_location) {
-            frontendData.destination = lead.to_location;
+        if (!payload.service_selections || !Array.isArray(payload.service_selections)) {
+            return relationships;
         }
 
-        // Extract service hierarchy from service_details
-        if (lead.service_details && lead.service_details.categories) {
-            frontendData.categories = lead.service_details.categories;
-            frontendData.service_id = lead.service_details.service_id;
-            frontendData.service_name = lead.service_details.service_name;
-            frontendData.service_category_id = lead.service_details.service_category_id;
-            frontendData.service_category_name = lead.service_details.service_category_name;
-        }
+        // Process each service selection
+        payload.service_selections.forEach((serviceSelection: any) => {
+            const { service_id, categories = [], service_specific = {} } = serviceSelection;
 
-        return frontendData;
+            // Process each category in the service
+            categories.forEach((category: any) => {
+                const { category_id, sub_service_ids = [], sub_service_single } = category;
+
+                // Handle multi-select sub-services
+                if (sub_service_ids.length > 0) {
+                    sub_service_ids.forEach((sub_service_id: string) => {
+                        relationships.push({
+                            lead_id: leadId,
+                            service_id,
+                            sub_service_category_id: category_id,
+                            sub_service_id,
+                            selection_type: 'multi',
+                            service_specific,
+                            attachments: service_specific.attachments || []
+                        });
+                    });
+                }
+
+                // Handle single-select sub-service
+                if (sub_service_single) {
+                    relationships.push({
+                        lead_id: leadId,
+                        service_id,
+                        sub_service_category_id: category_id,
+                        sub_service_id: sub_service_single,
+                        selection_type: 'single',
+                        service_specific,
+                        attachments: service_specific.attachments || []
+                    });
+                }
+            });
+        });
+
+        return relationships;
     }
 
     /**
@@ -124,14 +120,9 @@ export class LeadDataMapper {
 
         // Basic travel details
         requirements.from_location = payload.from_location;
-        requirements.to_location = payload.destination; // Map here
+        requirements.to_location = payload.destination;
         requirements.travel_date = payload.travel_date;
         requirements.return_date = payload.return_date;
-
-        // Service details
-        requirements.service_id = payload.service_id;
-        requirements.service_type = payload.service_type || payload.service_name;
-        requirements.sub_service = payload.sub_service;
 
         // Budget and travelers
         requirements.budget = payload.budget || 0;
@@ -153,32 +144,13 @@ export class LeadDataMapper {
         requirements.lead_type = payload.lead_type;
         requirements.notes = payload.notes;
 
-        // Service hierarchy in JSON format
-        if (payload.categories) {
-            requirements.service_details = {
-                categories: payload.categories,
-                service_id: payload.service_id,
-                service_name: payload.service_name,
-                service_category_id: payload.service_category_id,
-                service_category_name: payload.service_category_name
-            };
-
-            // Also store as comma-separated string
-            const servicesArray: string[] = [];
-            payload.categories.forEach((category: any) => {
-                if (category.sub_services) {
-                    category.sub_services.forEach((sub: any) => {
-                        if (sub.name) {
-                            servicesArray.push(sub.name);
-                        }
-                    });
-                }
-            });
-
-            if (servicesArray.length > 0) {
-                requirements.services = servicesArray.join(', ');
-            }
-        }
+        // Remove service-related fields from requirements
+        // (they'll be stored in lead_service_relationships)
+        delete requirements.service_id;
+        delete requirements.service_type;
+        delete requirements.services;
+        delete requirements.sub_service;
+        delete requirements.service_details;
 
         // Set defaults
         requirements.pricing_type = 'fixed';
@@ -186,5 +158,83 @@ export class LeadDataMapper {
         requirements.pricing_metadata = {};
 
         return requirements;
+    }
+
+    /**
+     * Transform database data to frontend format
+     */
+    static mapDatabaseToFrontend(lead: any): any {
+        const frontendData = { ...lead };
+
+        // Map to_location -> destination for frontend
+        if (lead.to_location) {
+            frontendData.destination = lead.to_location;
+        }
+
+        return frontendData;
+    }
+
+    /**
+     * Format service relationships for frontend response
+     */
+    static formatServiceRelationshipsForFrontend(
+        relationships: any[],
+        services: any[],
+        categories: any[],
+        subServices: any[]
+    ): any {
+        // Group relationships by service
+        const serviceMap = new Map();
+
+        relationships.forEach(rel => {
+            const serviceId = rel.service_id;
+
+            if (!serviceMap.has(serviceId)) {
+                const service = services.find(s => s.id === serviceId);
+                serviceMap.set(serviceId, {
+                    service_id: serviceId,
+                    service_name: service?.name || 'Unknown Service',
+                    service_type: service?.metadata?.service_type,
+                    categories: []
+                });
+            }
+
+            const serviceEntry = serviceMap.get(serviceId);
+            const categoryId = rel.sub_service_category_id;
+
+            // Find or create category entry
+            let categoryEntry = serviceEntry.categories.find((c: any) => c.category_id === categoryId);
+
+            if (!categoryEntry) {
+                const category = categories.find(c => c.id === categoryId);
+                categoryEntry = {
+                    category_id: categoryId,
+                    category_name: category?.name || 'Unknown Category',
+                    sub_service_ids: [],
+                    sub_service_single: ''
+                };
+                serviceEntry.categories.push(categoryEntry);
+            }
+
+            // Add sub-service based on selection type
+            const subService = subServices.find(s => s.id === rel.sub_service_id);
+            if (rel.selection_type === 'single') {
+                categoryEntry.sub_service_single = rel.sub_service_id;
+            } else {
+                if (!categoryEntry.sub_service_ids.includes(rel.sub_service_id)) {
+                    categoryEntry.sub_service_ids.push(rel.sub_service_id);
+                }
+            }
+
+            // Add service-specific fields
+            if (rel.service_specific && Object.keys(rel.service_specific).length > 0) {
+                serviceEntry.service_specific = {
+                    ...serviceEntry.service_specific,
+                    ...rel.service_specific
+                };
+            }
+        });
+
+        return Array.from(serviceMap.values());
     }
 }
