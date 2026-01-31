@@ -770,25 +770,45 @@ export const leadRepository = {
             attachments?: any[];
         }>
     ): Promise<boolean> {
+        console.log("🗄️ Creating service relationships:", {
+            leadId,
+            relationshipsCount: relationships.length,
+            relationships
+        });
+
         if (!relationships || relationships.length === 0) {
+            console.log("⚠️ No relationships to create");
             return true;
         }
 
         const relationshipsToInsert = relationships.map(rel => ({
             lead_id: leadId,
-            ...rel,
-            attachments: rel.attachments || []
+            service_id: rel.service_id,
+            sub_service_category_id: rel.sub_service_category_id,
+            sub_service_id: rel.sub_service_id,
+            selection_type: rel.selection_type,
+            service_specific: rel.service_specific || {},
+            attachments: rel.attachments || [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         }));
+
+        console.log("📤 Inserting relationships:", relationshipsToInsert);
 
         const { error } = await supabaseAdmin
             .from('lead_service_relationships')
             .insert(relationshipsToInsert);
 
         if (error) {
-            console.error('Failed to create service relationships:', error);
+            console.error('❌ Failed to create service relationships:', {
+                error: error.message,
+                details: error.details,
+                hint: error.hint
+            });
             throw new Error(`Failed to create service relationships: ${error.message}`);
         }
 
+        console.log("✅ Service relationships created successfully");
         return true;
     },
 
@@ -796,20 +816,50 @@ export const leadRepository = {
      * Get service relationships for a lead
      */
     async getLeadServiceRelationships(leadId: string): Promise<any[]> {
+        console.log("🔍 Fetching service relationships for lead:", leadId);
+
         const { data, error } = await supabaseAdmin
             .from('lead_service_relationships')
             .select(`
-                *,
-                service:service_id(name, code, metadata),
-                category:sub_service_category_id(name, code, input_type),
-                sub_service:sub_service_id(name, code, description)
-            `)
+            *,
+            service:services!lead_service_relationships_service_id_fkey(
+                id,
+                name,
+                code,
+                metadata
+            ),
+            category:sub_service_categories!lead_service_relationships_sub_service_category_id_fkey(
+                id,
+                name,
+                code,
+                input_type
+            ),
+            sub_service:sub_services!lead_service_relationships_sub_service_id_fkey(
+                id,
+                name,
+                code,
+                description
+            )
+        `)
             .eq('lead_id', leadId)
             .order('display_order', { ascending: true });
 
         if (error) {
-            console.error('Failed to fetch service relationships:', error);
+            console.error('❌ Failed to fetch service relationships:', error);
             return [];
+        }
+
+        console.log(`✅ Found ${data?.length || 0} service relationships`);
+
+        if (data && data.length > 0) {
+            console.log("📋 Sample relationship:", {
+                has_service: !!data[0].service,
+                service_name: data[0].service?.name,
+                has_category: !!data[0].category,
+                category_name: data[0].category?.name,
+                has_sub_service: !!data[0].sub_service,
+                sub_service_name: data[0].sub_service?.name
+            });
         }
 
         return data || [];
@@ -941,6 +991,8 @@ export const leadRepository = {
      * Get lead with full details including service relationships
      */
     async getLeadWithFullDetails(leadId: string): Promise<LeadWithRequirements> {
+        console.log("🔍 Getting full details for lead:", leadId);
+
         // Get lead
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
@@ -965,20 +1017,56 @@ export const leadRepository = {
             .eq('lead_id', leadId)
             .maybeSingle();
 
-        // Get service relationships
+        // Get service relationships with proper joins
         const serviceRelationships = await this.getLeadServiceRelationships(leadId);
+
+        console.log(`📊 Service relationships count: ${serviceRelationships.length}`);
+
+        // Extract arrays for services, categories, and sub-services
+        const services = serviceRelationships
+            .map(r => r.service)
+            .filter(Boolean)
+            .filter((service, index, self) =>
+                index === self.findIndex(s => s.id === service.id)
+            );
+
+        const categories = serviceRelationships
+            .map(r => r.category)
+            .filter(Boolean)
+            .filter((category, index, self) =>
+                index === self.findIndex(c => c.id === category.id)
+            );
+
+        const subServices = serviceRelationships
+            .map(r => r.sub_service)
+            .filter(Boolean)
+            .filter((subService, index, self) =>
+                index === self.findIndex(s => s.id === subService.id)
+            );
+
+        console.log(`📊 Unique services: ${services.length}`);
+        console.log(`📊 Unique categories: ${categories.length}`);
+        console.log(`📊 Unique sub-services: ${subServices.length}`);
 
         // Format for frontend
         const formattedRelationships = LeadDataMapper.formatServiceRelationshipsForFrontend(
             serviceRelationships,
-            serviceRelationships.map(r => r.service),
-            serviceRelationships.map(r => r.category),
-            serviceRelationships.map(r => r.sub_service)
+            services,
+            categories,
+            subServices
         );
 
         return {
             ...leadData,
             assigned_to: assignedToInfo,
+            assigned_user: assignedToInfo ? {
+                id: leadData.assigned_to,
+                email: assignedToInfo.email,
+                username: assignedToInfo.username,
+                full_name: assignedToInfo.full_name,
+                role_name: assignedToInfo.role_name,
+                team_id: assignedToInfo.team_id
+            } : undefined,
             requirements: reqData || undefined,
             service_relationships: serviceRelationships,
             service_selections: formattedRelationships,
