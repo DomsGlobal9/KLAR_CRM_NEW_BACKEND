@@ -136,7 +136,6 @@ export const leadController = {
             const { id } = req.params;
             const lead = await leadService.getLeadById(id as string);
 
-            // Transform to frontend format
             const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
 
             res.json({

@@ -21,8 +21,6 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
 
-  console.log("From auth middleware we get", {user, error});
-
   if (error || !user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
