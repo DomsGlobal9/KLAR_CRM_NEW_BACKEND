@@ -201,6 +201,7 @@ export interface UpdateLeadPayload {
 export interface LeadFilter {
     search?: string;
     stage?: string;
+    stage_id?: string;
     status?: string;
     customer_category?: string;
     assigned_to?: string;

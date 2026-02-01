@@ -404,9 +404,10 @@ export const leadRepository = {
      * @returns 
      */
     async getLeadsList(filter: LeadFilter = {}) {
+
         let query = supabaseAdmin
             .from('leads')
-            .select('id, name, source, stage, assigned_to')
+            .select('id, name, source, stage, stage_id, assigned_to')
             .order('created_at', { ascending: false });
 
         if (filter.search) {
@@ -415,6 +416,10 @@ export const leadRepository = {
 
         if (filter.stage) {
             query = query.eq('stage', filter.stage);
+        }
+
+        if (filter.stage_id) {
+            query = query.eq('stage_id', filter.stage_id);
         }
 
         if (filter.assigned_to) {
@@ -727,7 +732,7 @@ export const leadRepository = {
      */
     async updateLeadStageOnly(
         leadId: string,
-        stageId: string
+        stageName: string
     ): Promise<boolean> {
 
         const start = performance.now();
@@ -735,7 +740,7 @@ export const leadRepository = {
         const { error } = await supabaseAdmin
             .from('leads')
             .update({
-                stage_id: stageId,
+                stage: stageName,
                 updated_at: new Date().toISOString()
             })
             .eq('id', leadId);
@@ -747,7 +752,7 @@ export const leadRepository = {
         if (error) {
             console.error('Lead stage update error:', {
                 leadId,
-                stageId,
+                stageName,
                 error: error.message
             });
             throw new Error(`Failed to update lead stage: ${error.message}`);

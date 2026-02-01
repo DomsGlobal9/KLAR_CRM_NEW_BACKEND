@@ -90,7 +90,8 @@ export const stageRepository = {
    * Get stage name by stage ID
    */
   async getStageNameById(id: string): Promise<string | null> {
-    console.time(`getStageNameById-${id}`);
+
+    console.time(`getStageNameById- ${id}`);
 
     const { data, error } = await supabaseAdmin
       .from('stages')
@@ -98,7 +99,7 @@ export const stageRepository = {
       .eq('id', id)
       .single();
 
-    console.timeEnd(`getStageNameById-${id}`);
+    console.timeEnd(`getStageNameById- ${id}`);
 
     if (error) {
       if (error.code === 'PGRST116') {
