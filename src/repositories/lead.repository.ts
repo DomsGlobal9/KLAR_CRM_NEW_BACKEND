@@ -993,7 +993,6 @@ export const leadRepository = {
     async getLeadWithFullDetails(leadId: string): Promise<LeadWithRequirements> {
         console.log("🔍 Getting full details for lead:", leadId);
 
-        // Get lead
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')
             .select('*')
@@ -1004,25 +1003,21 @@ export const leadRepository = {
             throw new Error(`Failed to fetch lead: ${leadError.message}`);
         }
 
-        // Get assigned user info if exists
         let assignedToInfo = null;
         if (leadData.assigned_to) {
-            assignedToInfo = await AuthRepository.getUsernameById(leadData.assigned_to);
+            assignedToInfo = await AuthRepository.getUserInfoById(
+                leadData.assigned_to
+            );
         }
 
-        // Get requirements
         const { data: reqData } = await supabaseAdmin
             .from('lead_requirements')
             .select('*')
             .eq('lead_id', leadId)
             .maybeSingle();
 
-        // Get service relationships with proper joins
         const serviceRelationships = await this.getLeadServiceRelationships(leadId);
 
-        console.log(`📊 Service relationships count: ${serviceRelationships.length}`);
-
-        // Extract arrays for services, categories, and sub-services
         const services = serviceRelationships
             .map(r => r.service)
             .filter(Boolean)
@@ -1044,11 +1039,6 @@ export const leadRepository = {
                 index === self.findIndex(s => s.id === subService.id)
             );
 
-        console.log(`📊 Unique services: ${services.length}`);
-        console.log(`📊 Unique categories: ${categories.length}`);
-        console.log(`📊 Unique sub-services: ${subServices.length}`);
-
-        // Format for frontend
         const formattedRelationships = LeadDataMapper.formatServiceRelationshipsForFrontend(
             serviceRelationships,
             services,
@@ -1058,16 +1048,9 @@ export const leadRepository = {
 
         return {
             ...leadData,
-            assigned_to: assignedToInfo,
-            assigned_user: assignedToInfo ? {
-                id: leadData.assigned_to,
-                email: assignedToInfo.email,
-                username: assignedToInfo.username,
-                full_name: assignedToInfo.full_name,
-                role_name: assignedToInfo.role_name,
-                team_id: assignedToInfo.team_id
-            } : undefined,
-            requirements: reqData || undefined,
+            assigned_to: leadData.assigned_to,
+            assigned_user: assignedToInfo ?? undefined,
+            requirements: reqData ?? undefined,
             service_relationships: serviceRelationships,
             service_selections: formattedRelationships,
             metadata: leadData.metadata || {}

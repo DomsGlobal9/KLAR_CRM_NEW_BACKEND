@@ -58,6 +58,33 @@ export const AuthRepository = {
         }
     },
 
+    /**
+     * Get user info by ID
+     * @param userId 
+     * @returns 
+     */
+    async getUserInfoById(userId: string) {
+        try {
+            const { data, error } =
+                await supabaseAdmin.auth.admin.getUserById(userId);
+
+            if (error || !data?.user) return null;
+
+            const meta = data.user.user_metadata;
+
+            return {
+                id: data.user.id,
+                email: data.user.email ?? '',
+                username: meta?.username ?? '',
+                full_name: meta?.full_name ?? '',
+                role_name: meta?.role_name ?? '',
+                team_id: meta?.team_id ?? ''
+            };
+        } catch {
+            return null;
+        }
+    },
+
 
     /**
      * Get multiple usernames by IDs using direct SQL query (more efficient)
