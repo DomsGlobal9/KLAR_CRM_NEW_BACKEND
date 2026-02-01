@@ -295,7 +295,6 @@ export class LeadDataMapper {
      * Map database data to frontend format
      */
     static mapDatabaseToFrontend(lead: any): any {
-        console.log("🔄 Mapping database to frontend for lead:", lead.id);
 
         const frontendLead = {
             id: lead.id,

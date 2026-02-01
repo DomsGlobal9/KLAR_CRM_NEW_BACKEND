@@ -109,7 +109,6 @@ export const leadController = {
 
             const leads = await leadService.getAllLeads(filter);
 
-            // Transform database data to frontend format
             const frontendLeads = leads.map(lead =>
                 LeadDataMapper.mapDatabaseToFrontend(lead)
             );

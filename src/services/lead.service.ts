@@ -205,7 +205,7 @@ export const leadService = {
     }
 
     // const payload: UpdateLeadPayload = { stage: stageName };
-    return await leadRepository.updateLeadStageOnly(id, stageId);
+    return await leadRepository.updateLeadStageOnly(id, stageName);
   },
 
   /**
