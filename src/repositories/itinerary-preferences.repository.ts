@@ -1292,4 +1292,210 @@ export const itineraryPreferencesRepository = {
             throw new Error(`Failed to get leads by date range: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
+
+    /**
+     * Get all leads with minimal details and service relationships
+     */
+    async getAllLeadsMinimal(params?: {
+        page?: number;
+        limit?: number;
+        sort_by?: string;
+        sort_order?: 'asc' | 'desc';
+    }): Promise<{
+        leads: Array<{
+            lead_id: string;
+            lead_details: {
+                name: string;
+                email: string;
+                phone: string;
+                status: string;
+            };
+            services: Array<{
+                service_id: string;
+                service_name: string;
+                service_code: string;
+                categories: Array<{
+                    category_id: string;
+                    category_name: string;
+                    sub_services: Array<{
+                        sub_service_id: string;
+                        sub_service_name: string;
+                    }>;
+                }>;
+            }>;
+            summary: {
+                flight_preferences_added: boolean;
+                hotel_preferences_added: boolean;
+                visa_preferences_added: boolean;
+                last_updated: string;
+            };
+            created_at: string;
+        }>;
+        total_count: number;
+        page: number;
+        limit: number;
+        total_pages: number;
+    }> {
+        try {
+            const page = params?.page || 1;
+            const limit = params?.limit || 50;
+            const sortBy = params?.sort_by || 'updated_at';
+            const sortOrder = params?.sort_order || 'desc';
+
+            // Step 1: Get paginated summaries with basic lead details
+            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select(`
+        *,
+        leads!inner(
+          id,
+          name,
+          email,
+          phone,
+          status,
+          created_at
+        )
+      `)
+                .order(sortBy, { ascending: sortOrder === 'asc' })
+                .range((page - 1) * limit, page * limit - 1);
+
+            if (summariesError) {
+                throw new Error(`Failed to fetch summaries: ${summariesError.message}`);
+            }
+
+            if (!summaries || summaries.length === 0) {
+                return {
+                    leads: [],
+                    total_count: count || 0,
+                    page,
+                    limit,
+                    total_pages: Math.ceil((count || 0) / limit)
+                };
+            }
+
+            // Step 2: Extract all lead IDs
+            const leadIds = summaries.map(summary => summary.lead_id);
+
+            // Step 3: Get service relationships for these leads in one query
+            const { data: relationships, error: relError } = await supabaseAdmin
+                .from('lead_service_relationships')
+                .select(`
+        lead_id,
+        service:services!inner(
+          id,
+          name,
+          code
+        ),
+        category:sub_service_categories!inner(
+          id,
+          name
+        ),
+        sub_service:sub_services!inner(
+          id,
+          name
+        )
+      `)
+                .in('lead_id', leadIds)
+                .order('display_order', { ascending: true });
+
+            if (relError) {
+                console.warn('Error fetching service relationships:', relError.message);
+            }
+
+            // Step 4: Group relationships by lead_id and service
+            const relationshipsByLead = new Map<string, Map<string, any[]>>();
+
+            if (relationships) {
+                relationships.forEach(rel => {
+                    const leadId = rel.lead_id;
+                    const serviceId = rel.service.id;
+
+                    if (!relationshipsByLead.has(leadId)) {
+                        relationshipsByLead.set(leadId, new Map());
+                    }
+
+                    const serviceMap = relationshipsByLead.get(leadId)!;
+
+                    if (!serviceMap.has(serviceId)) {
+                        serviceMap.set(serviceId, {
+                            service_id: serviceId,
+                            service_name: rel.service.name,
+                            service_code: rel.service.code,
+                            categories: new Map()
+                        });
+                    }
+
+                    const serviceData = serviceMap.get(serviceId);
+                    const categoryId = rel.category.id;
+
+                    if (!serviceData.categories.has(categoryId)) {
+                        serviceData.categories.set(categoryId, {
+                            category_id: categoryId,
+                            category_name: rel.category.name,
+                            sub_services: []
+                        });
+                    }
+
+                    const categoryData = serviceData.categories.get(categoryId);
+                    categoryData.sub_services.push({
+                        sub_service_id: rel.sub_service.id,
+                        sub_service_name: rel.sub_service.name
+                    });
+                });
+            }
+
+            // Step 5: Format the response
+            const leads = summaries.map(summary => {
+                const leadId = summary.lead_id;
+                const leadDetails = summary.leads;
+
+                // Get service relationships for this lead
+                let services: Array<any> = [];
+                if (relationshipsByLead.has(leadId)) {
+                    const serviceMap = relationshipsByLead.get(leadId)!;
+                    services = Array.from(serviceMap.values()).map(service => ({
+                        service_id: service.service_id,
+                        service_name: service.service_name,
+                        service_code: service.service_code,
+                        categories: Array.from(service.categories.values()).map(cat => ({
+                            category_id: cat.category_id,
+                            category_name: cat.category_name,
+                            sub_services: cat.sub_services
+                        }))
+                    }));
+                }
+
+                return {
+                    lead_id: leadId,
+                    lead_details: {
+                        name: leadDetails.name,
+                        email: leadDetails.email,
+                        phone: leadDetails.phone,
+                        status: leadDetails.status
+                    },
+                    services,
+                    summary: {
+                        flight_preferences_added: summary.flight_preferences_added,
+                        hotel_preferences_added: summary.hotel_preferences_added,
+                        visa_preferences_added: summary.visa_preferences_added,
+                        last_updated: summary.last_updated
+                    },
+                    created_at: leadDetails.created_at
+                };
+            });
+
+            return {
+                leads,
+                total_count: count || 0,
+                page,
+                limit,
+                total_pages: Math.ceil((count || 0) / limit)
+            };
+        } catch (error) {
+            console.error('Error in getAllLeadsMinimal:', error);
+            throw new Error(
+                `Failed to get minimal lead details: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
+    },
 };

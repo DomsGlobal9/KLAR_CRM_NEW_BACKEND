@@ -438,4 +438,72 @@ export const itineraryPreferencesService = {
             };
         }
     },
+
+    /**
+     * Get all leads with minimal details
+     */
+    async getAllLeadsMinimal(params?: IPaginationParams): Promise<{
+        success: boolean;
+        data?: {
+            leads: Array<{
+                lead_id: string;
+                lead_details: {
+                    name: string;
+                    email: string;
+                    phone: string;
+                    status: string;
+                };
+                services: Array<{
+                    service_id: string;
+                    service_name: string;
+                    service_code: string;
+                    categories: Array<{
+                        category_id: string;
+                        category_name: string;
+                        sub_services: Array<{
+                            sub_service_id: string;
+                            sub_service_name: string;
+                        }>;
+                    }>;
+                }>;
+                summary: {
+                    flight_preferences_added: boolean;
+                    hotel_preferences_added: boolean;
+                    visa_preferences_added: boolean;
+                    last_updated: string;
+                };
+                created_at: string;
+            }>;
+            total_count: number;
+            pagination: {
+                page: number;
+                limit: number;
+                total_pages: number;
+            };
+        };
+        message?: string;
+    }> {
+        try {
+            const result = await itineraryPreferencesRepository.getAllLeadsMinimal(params);
+
+            return {
+                success: true,
+                data: {
+                    leads: result.leads,
+                    total_count: result.total_count,
+                    pagination: {
+                        page: result.page,
+                        limit: result.limit,
+                        total_pages: result.total_pages
+                    }
+                }
+            };
+        } catch (error) {
+            console.error('Error in getAllLeadsMinimal service:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to get leads'
+            };
+        }
+    },
 };
