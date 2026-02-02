@@ -303,6 +303,8 @@ export const itineraryPreferencesController = {
     async getAllLeads(req: Request, res: Response) {
         try {
             const leadId = req.query.id as string;
+            const minimal = req.query.minimal === 'true';
+            const detailed = req.query.detailed === 'true';
 
             // If specific lead ID is provided
             if (leadId) {
@@ -324,21 +326,41 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            // Get paginated results WITHOUT details (only basic info)
+            // Get pagination parameters
             const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 50;
+            const limit = parseInt(req.query.limit as string) || (minimal ? 100 : 50);
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
 
+            // If detailed view is requested
+            if (detailed) {
+                const paginationParams: IPaginationParams = {
+                    page: Math.max(1, page),
+                    limit: Math.min(Math.max(1, limit), 50),
+                    sort_by: 'updated_at',
+                    sort_order: sortOrder
+                };
+
+                const result = await itineraryPreferencesService.getAllLeads(paginationParams);
+                return res.status(200).json(result);
+            }
+
+            // Default: minimal view (optimized)
             const paginationParams: IPaginationParams = {
                 page: Math.max(1, page),
-                limit: Math.min(Math.max(1, limit), 100),
+                limit: Math.min(Math.max(1, limit), 100), // Allow more results for minimal view
                 sort_by: 'updated_at',
                 sort_order: sortOrder
             };
 
-            const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams);
-
-            return res.status(200).json(result);
+            if (minimal) {
+                // Use the new minimal endpoint
+                const result = await itineraryPreferencesService.getAllLeadsMinimal(paginationParams);
+                return res.status(200).json(result);
+            } else {
+                // Use existing basic endpoint
+                const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams);
+                return res.status(200).json(result);
+            }
 
         } catch (error) {
             console.error('Error in getAllLeads controller:', error);
