@@ -210,6 +210,10 @@ export interface LeadFilter {
     date_to?: string;
     limit?: number;
     offset?: number;
+    currentUser?: {
+        id: string;
+        role: string;
+    };
 }
 
 export interface LeadStats {

@@ -58,8 +58,11 @@ export const leadService = {
   //   return await leadRepository.getAllLeadsWithRequirements(filter);
   // },
 
-  async getAllLeads(filter: LeadFilter = {}): Promise<any[]> {
-    return await leadRepository.getLeadsList(filter);
+  async getAllLeads(filter: LeadFilter = {}, currentUser?: { id: string; role: string }): Promise<any[]> {
+    return await leadRepository.getLeadsList({
+      ...filter,
+      currentUser: currentUser
+    });
   },
 
   /**

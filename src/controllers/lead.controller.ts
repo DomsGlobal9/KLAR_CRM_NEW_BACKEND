@@ -3,6 +3,7 @@ import { leadService } from '../services';
 import { CreateLeadPayload, UpdateLeadPayload, LeadFilter } from '../interfaces';
 import { createLeadAuditLog } from '../helpers';
 import { LeadDataMapper } from '../utils/lead-data-mapper';
+import { AuthRequest } from '../middleware';
 
 export const leadController = {
     /**
@@ -92,7 +93,8 @@ export const leadController = {
     /**
      * Get all leads with filtering
      */
-    async getAllLeads(req: Request, res: Response) {
+    async getAllLeads(req: AuthRequest, res: Response) {
+
         try {
             const filter: LeadFilter = {
                 search: req.query.search as string,
@@ -107,7 +109,8 @@ export const leadController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const leads = await leadService.getAllLeads(filter);
+            // Pass current user info to filter leads
+            const leads = await leadService.getAllLeads(filter, req.user);
 
             const frontendLeads = leads.map(lead =>
                 LeadDataMapper.mapDatabaseToFrontend(lead)
@@ -118,6 +121,7 @@ export const leadController = {
                 data: frontendLeads,
                 count: leads.length
             });
+
         } catch (error: any) {
             console.error("❌ Get all leads error:", error);
             res.status(400).json({
