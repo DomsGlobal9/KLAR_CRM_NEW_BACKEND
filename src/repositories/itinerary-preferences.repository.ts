@@ -11,7 +11,7 @@ import {
 } from '../interfaces/itinerary-preferences.interface';
 
 export const itineraryPreferencesRepository = {
-    
+
     /**
      * Get lead_id from user preferences summary by summary ID
      */
@@ -703,7 +703,9 @@ export const itineraryPreferencesRepository = {
             const sortBy = params?.sort_by || 'updated_at';
             const sortOrder = params?.sort_order || 'desc';
 
-            // Step 1: Get paginated summaries from PARENT table first
+            /**
+             * Step 1: Get paginated summaries from PARENT table first
+             */
             const { data: summaries, error: summariesError, count } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('*', { count: 'exact' })
@@ -724,74 +726,98 @@ export const itineraryPreferencesRepository = {
                 };
             }
 
-            // Step 2: Extract all lead IDs from summaries
+            /**
+             * Step 2: Extract all lead IDs from summaries
+             */
             const leadIds = summaries.map(summary => summary.lead_id);
 
-            // Step 3: Fetch all related data in parallel - including lead details
+            /**
+             * Step 3: Fetch all related data in parallel - including lead details
+             */
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
-                // Get all flight preferences for these leads
+                /**
+                 * Get all flight preferences for these leads
+                 */
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                // Get all hotel preferences for these leads
+                /**
+                 * Get all hotel preferences for these leads
+                 */
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                // Get all visa preferences for these leads
+                /**
+                 * Get all visa preferences for these leads
+                 */
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                // Get lead details from leads table
+                /**
+                 * Get lead details from leads table
+                 */
                 supabaseAdmin
                     .from('leads')
                     .select('*')
                     .in('id', leadIds)
             ]);
 
-            // Step 4: Create maps for quick lookup
+            /**
+             * Step 4: Create maps for quick lookup
+             */
             const flightPreferencesMap = new Map<string, IFlightPreference[]>();
             const hotelPreferencesMap = new Map<string, IHotelPreference[]>();
             const visaPreferencesMap = new Map<string, IVisaPreference[]>();
             const leadDetailsMap = new Map<string, ILeadDetails>();
 
-            // Group flight preferences by lead_id
+            /**
+             * Group flight preferences by lead_id
+             */
             flightPreferencesResult.data?.forEach(fp => {
                 const existing = flightPreferencesMap.get(fp.lead_id) || [];
                 flightPreferencesMap.set(fp.lead_id, [...existing, fp as IFlightPreference]);
             });
 
-            // Group hotel preferences by lead_id
+            /**
+             * Group hotel preferences by lead_id
+             */
             hotelPreferencesResult.data?.forEach(hp => {
                 const existing = hotelPreferencesMap.get(hp.lead_id) || [];
                 hotelPreferencesMap.set(hp.lead_id, [...existing, hp as IHotelPreference]);
             });
 
-            // Group visa preferences by lead_id
+            /**
+             * Group visa preferences by lead_id
+             */
             visaPreferencesResult.data?.forEach(vp => {
                 const existing = visaPreferencesMap.get(vp.lead_id) || [];
                 visaPreferencesMap.set(vp.lead_id, [...existing, vp as IVisaPreference]);
             });
 
-            // Create lead details map
+            /**
+             * Create lead details map
+             */
             leadDetailsResult.data?.forEach(lead => {
                 leadDetailsMap.set(lead.id, lead as ILeadDetails);
             });
 
-            // Step 5: Combine all data
+            /**
+             * Step 5: Combine all data
+             */
             const leads = summaries.map(summary => ({
                 lead_id: summary.lead_id,
                 flight_preferences: flightPreferencesMap.get(summary.lead_id) || [],
@@ -811,6 +837,193 @@ export const itineraryPreferencesRepository = {
         } catch (error) {
             console.error('Error in getAllLeadsPaginated:', error);
             throw new Error(`Failed to get all leads: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
+
+    async getAllLeadsBasicPaginated(params?: {
+        page?: number;
+        limit?: number;
+        sort_by?: string;
+        sort_order?: 'asc' | 'desc';
+    }): Promise<{
+        leads: Array<{
+            lead_id: string;
+            lead_details?: {
+                name?: string;
+                email?: string;
+                phone?: string;
+                status?: string;
+            };
+            flight_preferences_count?: number;
+            hotel_preferences_count?: number;
+            visa_preferences_count?: number;
+            user_preferences_summary?: {
+                id: string;
+                lead_id: string;
+                created_at?: string;
+                updated_at?: string;
+            };
+        }>;
+        total_count: number;
+        page: number;
+        limit: number;
+        total_pages: number;
+    }> {
+        try {
+            const page = params?.page || 1;
+            const limit = params?.limit || 50;
+            const sortBy = params?.sort_by || 'updated_at';
+            const sortOrder = params?.sort_order || 'desc';
+
+            /**
+             * Step 1: Get paginated summaries from PARENT table first
+             */
+            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('*', { count: 'exact' })
+                .order(sortBy, { ascending: sortOrder === 'asc' })
+                .range((page - 1) * limit, page * limit - 1);
+
+            if (summariesError) {
+                throw new Error(`Failed to fetch summaries: ${summariesError.message}`);
+            }
+
+            if (!summaries || summaries.length === 0) {
+                return {
+                    leads: [],
+                    total_count: count || 0,
+                    page,
+                    limit,
+                    total_pages: Math.ceil((count || 0) / limit)
+                };
+            }
+
+            /**
+             * Step 2: Extract all lead IDs from summaries
+             */
+            const leadIds = summaries.map(summary => summary.lead_id);
+
+            /**
+             * Step 3: Fetch all data and count manually
+             */
+            const [
+                flightPreferencesResult,
+                hotelPreferencesResult,
+                visaPreferencesResult,
+                leadDetailsResult
+            ] = await Promise.all([
+                /**
+                 * Get all flight preferences (we'll count manually)
+                 */
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('lead_id, id')
+                    .in('lead_id', leadIds),
+
+                /**
+                 * Get all hotel preferences (we'll count manually)
+                 */
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('lead_id, id')
+                    .in('lead_id', leadIds),
+
+                /**
+                 * Get all visa preferences (we'll count manually)
+                 */
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('lead_id, id')
+                    .in('lead_id', leadIds),
+
+                /**
+                 * Get only basic lead details (name, email, phone, status)
+                 */
+                supabaseAdmin
+                    .from('leads')
+                    .select('id, name, email, phone, status')
+                    .in('id', leadIds)
+            ]);
+
+            /**
+             * Step 4: Create maps for quick lookup
+             */
+            const flightCountsMap = new Map<string, number>();
+            const hotelCountsMap = new Map<string, number>();
+            const visaCountsMap = new Map<string, number>();
+            const leadDetailsMap = new Map<string, { name?: string; email?: string; phone?: string; status?: string }>();
+
+            /**
+             * Count flight preferences manually
+             */
+            if (flightPreferencesResult.data) {
+                flightPreferencesResult.data.forEach(item => {
+                    const currentCount = flightCountsMap.get(item.lead_id) || 0;
+                    flightCountsMap.set(item.lead_id, currentCount + 1);
+                });
+            }
+
+            /**
+             * Count hotel preferences manually
+             */
+            if (hotelPreferencesResult.data) {
+                hotelPreferencesResult.data.forEach(item => {
+                    const currentCount = hotelCountsMap.get(item.lead_id) || 0;
+                    hotelCountsMap.set(item.lead_id, currentCount + 1);
+                });
+            }
+
+            /**
+             * Count visa preferences manually
+             */
+            if (visaPreferencesResult.data) {
+                visaPreferencesResult.data.forEach(item => {
+                    const currentCount = visaCountsMap.get(item.lead_id) || 0;
+                    visaCountsMap.set(item.lead_id, currentCount + 1);
+                });
+            }
+
+            /**
+             * Map lead details
+             */
+            if (leadDetailsResult.data) {
+                leadDetailsResult.data.forEach(lead => {
+                    leadDetailsMap.set(lead.id, {
+                        name: lead.name,
+                        email: lead.email,
+                        phone: lead.phone,
+                        status: lead.status
+                    });
+                });
+            }
+
+            /**
+             * Step 5: Combine all basic data
+             */
+            const leads = summaries.map(summary => ({
+                lead_id: summary.lead_id,
+                lead_details: leadDetailsMap.get(summary.lead_id) || undefined,
+                flight_preferences_count: flightCountsMap.get(summary.lead_id) || 0,
+                hotel_preferences_count: hotelCountsMap.get(summary.lead_id) || 0,
+                visa_preferences_count: visaCountsMap.get(summary.lead_id) || 0,
+                user_preferences_summary: {
+                    id: summary.id,
+                    lead_id: summary.lead_id,
+                    created_at: summary.created_at,
+                    updated_at: summary.updated_at
+                }
+            }));
+
+            return {
+                leads,
+                total_count: count || 0,
+                page,
+                limit,
+                total_pages: Math.ceil((count || 0) / limit)
+            };
+        } catch (error) {
+            console.error('Error in getAllLeadsBasicPaginated:', error);
+            throw new Error(`Failed to get all leads basic: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
 
