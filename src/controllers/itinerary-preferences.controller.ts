@@ -67,7 +67,7 @@ export const itineraryPreferencesController = {
                 ...result,
                 message: 'Preferences saved successfully'
             });
-            
+
         } catch (error) {
             console.error('Error in savePreferences controller:', error);
             return res.status(500).json({
@@ -324,7 +324,7 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            // Get paginated results
+            // Get paginated results WITHOUT details (only basic info)
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 50;
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
@@ -336,9 +336,10 @@ export const itineraryPreferencesController = {
                 sort_order: sortOrder
             };
 
-            const result = await itineraryPreferencesService.getAllLeads(paginationParams);
+            const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams);
 
             return res.status(200).json(result);
+
         } catch (error) {
             console.error('Error in getAllLeads controller:', error);
             return res.status(500).json({

@@ -140,9 +140,9 @@ export interface IAllRelatedDetailsResponse {
     success: boolean;
     type?: 'flight' | 'hotel' | 'visa' | 'summary' | 'lead';
     data?: {
-        preference?: IFlightPreference 
-        | IHotelPreference 
-        | IVisaPreference 
+        preference?: IFlightPreference
+        | IHotelPreference
+        | IVisaPreference
         | IUserPreferencesSummary;
         lead?: {
             id: string;
@@ -213,4 +213,47 @@ export interface ILeadSummary {
         hotel_preferences_added: boolean;
         visa_preferences_added: boolean;
     };
+}
+
+interface IBasicLeadInfo {
+    lead_id: string;
+    lead_details?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        status?: string;
+    };
+    flight_preferences_count?: number;
+    hotel_preferences_count?: number;
+    visa_preferences_count?: number;
+    user_preferences_summary?: {
+        id: string;
+        lead_id: string;
+        created_at?: string;
+        updated_at?: string;
+    };
+}
+
+interface IAllLeadsBasicResponse {
+    success: boolean;
+    data: {
+        leads: IBasicLeadInfo[];
+        total_count: number;
+        pagination?: {
+            page: number;
+            limit: number;
+            total_pages: number;
+        };
+    };
+    summary?: {
+        total_leads: number;
+        total_flight_preferences: number;
+        total_hotel_preferences: number;
+        total_visa_preferences: number;
+        leads_with_flight_prefs: number;
+        leads_with_hotel_prefs: number;
+        leads_with_visa_prefs: number;
+        complete_leads: number;
+    };
+    message?: string;
 }

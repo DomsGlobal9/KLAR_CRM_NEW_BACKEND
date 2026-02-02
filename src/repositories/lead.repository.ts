@@ -410,6 +410,15 @@ export const leadRepository = {
             .select('id, name, source, stage, stage_id, assigned_to')
             .order('created_at', { ascending: false });
 
+
+        /** Here Apply role-based filtering */
+        if (filter.currentUser?.role === 'rm' && filter.currentUser?.id) {
+            query = query.eq('assigned_to', filter.currentUser.id);
+        }
+        else if (filter.assigned_to) {
+            query = query.eq('assigned_to', filter.assigned_to);
+        }
+
         if (filter.search) {
             query = query.ilike('name', `%${filter.search}%`);
         }

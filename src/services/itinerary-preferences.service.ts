@@ -373,5 +373,69 @@ export const itineraryPreferencesService = {
                 message: error instanceof Error ? error.message : 'Failed to get all leads'
             };
         }
-    }
+    },
+
+    async getAllLeadsBasic(params?: IPaginationParams): Promise<IAllItinerariesResponse> {
+        try {
+            const result = await itineraryPreferencesRepository.getAllLeadsBasicPaginated(params);
+
+            // Create summary statistics
+            let totalFlightPrefs = 0;
+            let totalHotelPrefs = 0;
+            let totalVisaPrefs = 0;
+            let leadsWithFlightPrefs = 0;
+            let leadsWithHotelPrefs = 0;
+            let leadsWithVisaPrefs = 0;
+            let completeLeads = 0;
+
+            result.leads.forEach(lead => {
+                totalFlightPrefs += lead.flight_preferences_count || 0;
+                totalHotelPrefs += lead.hotel_preferences_count || 0;
+                totalVisaPrefs += lead.visa_preferences_count || 0;
+
+                if ((lead.flight_preferences_count || 0) > 0) leadsWithFlightPrefs++;
+                if ((lead.hotel_preferences_count || 0) > 0) leadsWithHotelPrefs++;
+                if ((lead.visa_preferences_count || 0) > 0) leadsWithVisaPrefs++;
+
+                if ((lead.flight_preferences_count || 0) > 0 &&
+                    (lead.hotel_preferences_count || 0) > 0 &&
+                    (lead.visa_preferences_count || 0) > 0) {
+                    completeLeads++;
+                }
+            });
+
+            return {
+                success: true,
+                data: {
+                    leads: result.leads,
+                    total_count: result.total_count,
+                    pagination: {
+                        page: result.page,
+                        limit: result.limit,
+                        total_pages: result.total_pages
+                    }
+                },
+                summary: {
+                    total_leads: result.total_count,
+                    total_flight_preferences: totalFlightPrefs,
+                    total_hotel_preferences: totalHotelPrefs,
+                    total_visa_preferences: totalVisaPrefs,
+                    leads_with_flight_prefs: leadsWithFlightPrefs,
+                    leads_with_hotel_prefs: leadsWithHotelPrefs,
+                    leads_with_visa_prefs: leadsWithVisaPrefs,
+                    complete_leads: completeLeads
+                }
+            };
+        } catch (error) {
+            console.error('Error in getAllLeadsBasic service:', error);
+            return {
+                success: false,
+                data: {
+                    leads: [],
+                    total_count: 0
+                },
+                message: error instanceof Error ? error.message : 'Failed to get all leads'
+            };
+        }
+    },
 };
