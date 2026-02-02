@@ -71,6 +71,12 @@ export interface ICombinedPreferenceData {
         flightPreferencesAdded: boolean;
         hotelPreferencesAdded: boolean;
         visaPreferencesAdded: boolean;
+        transferPreferencesAdded: boolean;
+        groupBookingPreferencesAdded: boolean;
+        tourPackagePreferencesAdded: boolean;
+        aircraftCharterPreferencesAdded: boolean;
+        eventManagementPreferencesAdded: boolean;
+        yachtCharterPreferencesAdded: boolean;
         lastUpdated: string;
         metadata?: Record<string, any>;
     };
@@ -91,10 +97,16 @@ export interface IUpdatePreferenceData {
     hotelPreferences?: Omit<IHotelPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
     visaPreferences?: Omit<IVisaPreference, 'id' | 'lead_id' | 'created_at' | 'updated_at'>[];
     userPreferences?: {
-        flightPreferencesAdded?: boolean;
-        hotelPreferencesAdded?: boolean;
-        visaPreferencesAdded?: boolean;
-        lastUpdated?: string;
+        flightPreferencesAdded: boolean;
+        hotelPreferencesAdded: boolean;
+        visaPreferencesAdded: boolean;
+        transferPreferencesAdded: boolean;
+        groupBookingPreferencesAdded: boolean;
+        tourPackagePreferencesAdded: boolean;
+        aircraftCharterPreferencesAdded: boolean;
+        eventManagementPreferencesAdded: boolean;
+        yachtCharterPreferencesAdded: boolean;
+        lastUpdated: string;
         metadata?: Record<string, any>;
     };
 }
@@ -109,7 +121,14 @@ export interface IFrontendFormData {
         flightPreferencesAdded: boolean;
         hotelPreferencesAdded: boolean;
         visaPreferencesAdded: boolean;
+        transferPreferencesAdded: boolean;
+        groupBookingPreferencesAdded: boolean;
+        tourPackagePreferencesAdded: boolean;
+        aircraftCharterPreferencesAdded: boolean;
+        eventManagementPreferencesAdded: boolean;
+        yachtCharterPreferencesAdded: boolean;
         lastUpdated: string;
+        metadata?: Record<string, any>;
     };
     metadata?: any;
 }
@@ -256,4 +275,49 @@ interface IAllLeadsBasicResponse {
         complete_leads: number;
     };
     message?: string;
+}
+
+export interface IServicePreference {
+    id: string;
+    lead_id: string;
+    service_type: string;
+    service_code: string;
+    preference_order: number;
+    title?: string;
+    description?: string;
+    estimated_price?: number;
+    currency?: string;
+    preferences: Record<string, any>;
+    is_active: boolean;
+    metadata?: Record<string, any>;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IFrontendFormData {
+    leadData?: any;
+    itineraryData: any;
+    flightOptions: any[];
+    hotelOptions: any[];
+    visaOptions: any[];
+    transferOptions: any[];
+    groupBookingOptions: any[];
+    tourPackageOptions: any[];
+    aircraftCharterOptions: any[];
+    eventManagementOptions: any[];
+    yachtCharterOptions: any[];
+    userPreferences: {
+        flightPreferencesAdded: boolean;
+        hotelPreferencesAdded: boolean;
+        visaPreferencesAdded: boolean;
+        transferPreferencesAdded: boolean;
+        groupBookingPreferencesAdded: boolean;
+        tourPackagePreferencesAdded: boolean;
+        aircraftCharterPreferencesAdded: boolean;
+        eventManagementPreferencesAdded: boolean;
+        yachtCharterPreferencesAdded: boolean;
+        lastUpdated: string;
+        metadata?: Record<string, any>;
+    };
+    metadata?: any;
 }
