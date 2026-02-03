@@ -1498,4 +1498,490 @@ export const itineraryPreferencesRepository = {
             );
         }
     },
+
+    /**
+     * Transform frontend form data to database format for service_preferences table
+     */
+    transformFormDataToServicePreferences(formData: IFrontendFormData): {
+        leadId: string;
+        servicePreferences: Array<{
+            service_type: string;
+            service_code: string;
+            preference_order: number;
+            title?: string;
+            description?: string;
+            estimated_price?: number;
+            preferences: Record<string, any>;
+            is_active?: boolean;
+            metadata?: Record<string, any>;
+        }>;
+        userPreferences: {
+            flightPreferencesAdded: boolean;
+            hotelPreferencesAdded: boolean;
+            visaPreferencesAdded: boolean;
+            lastUpdated: string;
+            metadata?: Record<string, any>;
+        };
+    } {
+        const { leadData, flightOptions = [], hotelOptions = [], visaOptions = [],
+            transferOptions = [], groupBookingOptions = [], tourPackageOptions = [],
+            aircraftCharterOptions = [], eventManagementOptions = [], yachtCharterOptions = [],
+            userPreferences } = formData;
+
+        const servicePreferences = [];
+
+        // Flight Service Preferences
+        if (flightOptions.length > 0) {
+            flightOptions.forEach((flight: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'FLIGHTS',
+                    service_code: 'FLIGHTS',
+                    preference_order: index + 1,
+                    title: `Flight Option ${index + 1}: ${flight.airline || 'Flight'}`,
+                    description: `Route: ${flight.route || 'N/A'}, Cabin: ${flight.cabinClass || 'N/A'}`,
+                    estimated_price: flight.estimatedPricePerPerson ? parseFloat(flight.estimatedPricePerPerson) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        airline: flight.airline || '',
+                        route: flight.route || '',
+                        stops: flight.stops || '',
+                        cabin_class: flight.cabinClass || '',
+                        estimated_price_per_person: flight.estimatedPricePerPerson ? parseFloat(flight.estimatedPricePerPerson) : 0,
+                        departure_arrival_time: flight.departureArrivalTime || '',
+                        fare_type: flight.fareType || '',
+                        preferred_time_slot: flight.preferredTimeSlot || '',
+                        better_connection_duration: flight.betterConnectionDuration || '',
+                        flexible_schedule: Boolean(flight.flexibleSchedule),
+                        date: flight.date || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: flight.id
+                    }
+                });
+            });
+        }
+
+        // Hotel Service Preferences
+        if (hotelOptions.length > 0) {
+            hotelOptions.forEach((hotel: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'HOTELS',
+                    service_code: 'HOTELS',
+                    preference_order: index + 1,
+                    title: `Hotel Option ${index + 1}: ${hotel.hotelName || 'Hotel'}`,
+                    description: `Category: ${hotel.hotelCategory || 'N/A'}, Room: ${hotel.roomType || 'N/A'}`,
+                    estimated_price: hotel.estimatedTotalStayCost ? parseFloat(hotel.estimatedTotalStayCost) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        hotel_name: hotel.hotelName || '',
+                        hotel_category: hotel.hotelCategory || '',
+                        room_type: hotel.roomType || '',
+                        stay_type: hotel.stayType || '',
+                        meal_plan: hotel.mealPlan || '',
+                        location: hotel.location || '',
+                        better_location: hotel.betterLocation || '',
+                        estimated_price_per_night: hotel.estimatedPricePerNight ? parseFloat(hotel.estimatedPricePerNight) : 0,
+                        estimated_total_stay_cost: hotel.estimatedTotalStayCost ? parseFloat(hotel.estimatedTotalStayCost) : 0,
+                        premium_amenities: hotel.premiumAmenities || '',
+                        experience_highlights: hotel.experienceHighlights || '',
+                        date: hotel.date || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: hotel.id
+                    }
+                });
+            });
+        }
+
+        // Visa Service Preferences
+        if (visaOptions.length > 0) {
+            visaOptions.forEach((visa: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'VISA_SERVICES',
+                    service_code: 'VISA_SERVICES',
+                    preference_order: index + 1,
+                    title: `Visa Option ${index + 1}: ${visa.visaType || 'Visa'}`,
+                    description: `Processing: ${visa.processingTime || 'N/A'}`,
+                    estimated_price: visa.estimatedTotalCost ? parseFloat(visa.estimatedTotalCost) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        visa_type: visa.visaType || '',
+                        processing_time: visa.processingTime || '',
+                        estimated_total_cost: visa.estimatedTotalCost ? parseFloat(visa.estimatedTotalCost) : 0,
+                        document_checklist: visa.documentChecklist || '',
+                        special_requirements: visa.specialRequirements || '',
+                        date: visa.date || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: visa.id
+                    }
+                });
+            });
+        }
+
+        // Transfer Service Preferences
+        if (transferOptions && transferOptions.length > 0) {
+            transferOptions.forEach((transfer: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'TRANSFERS',
+                    service_code: 'TRANSFERS',
+                    preference_order: index + 1,
+                    title: `Transfer Option ${index + 1}: ${transfer.vehicleType || 'Transfer'}`,
+                    description: `Type: ${transfer.transferType || 'N/A'}, Passengers: ${transfer.passengers || 'N/A'}`,
+                    estimated_price: transfer.estimatedPrice ? parseFloat(transfer.estimatedPrice) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        vehicle_type: transfer.vehicleType || '',
+                        transfer_type: transfer.transferType || '',
+                        passengers: parseInt(transfer.passengers) || 0,
+                        add_on_services: transfer.addOnServices || '',
+                        pickup_location: transfer.pickupLocation || '',
+                        drop_location: transfer.dropLocation || '',
+                        transfer_date_time: transfer.transferDateTime || '',
+                        estimated_price: transfer.estimatedPrice ? parseFloat(transfer.estimatedPrice) : 0,
+                        special_requirements: transfer.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: transfer.id
+                    }
+                });
+            });
+        }
+
+        // Group Booking Service Preferences
+        if (groupBookingOptions && groupBookingOptions.length > 0) {
+            groupBookingOptions.forEach((group: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'GROUP_BOOKINGS',
+                    service_code: 'GROUP_BOOKINGS',
+                    preference_order: index + 1,
+                    title: `Group Booking Option ${index + 1}: ${group.groupType || 'Group'}`,
+                    description: `Size: ${group.groupSize || 'N/A'}, Destination: ${group.destination || 'N/A'}`,
+                    estimated_price: group.estimatedPricePerPerson ? parseFloat(group.estimatedPricePerPerson) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        group_size: parseInt(group.groupSize) || 0,
+                        group_type: group.groupType || '',
+                        destination: group.destination || '',
+                        travel_date: group.travelDate || '',
+                        return_date: group.returnDate || '',
+                        estimated_price_per_person: group.estimatedPricePerPerson ? parseFloat(group.estimatedPricePerPerson) : 0,
+                        special_requirements: group.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: group.id
+                    }
+                });
+            });
+        }
+
+        // Tour Package Service Preferences
+        if (tourPackageOptions && tourPackageOptions.length > 0) {
+            tourPackageOptions.forEach((tour: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'TOUR_PACKAGES',
+                    service_code: 'TOUR_PACKAGES',
+                    preference_order: index + 1,
+                    title: `Tour Package Option ${index + 1}: ${tour.tourType || 'Tour'}`,
+                    description: `Duration: ${tour.duration || 'N/A'} days, Destination: ${tour.destination || 'N/A'}`,
+                    estimated_price: tour.estimatedPricePerPerson ? parseFloat(tour.estimatedPricePerPerson) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        tour_type: tour.tourType || '',
+                        duration: parseInt(tour.duration) || 0,
+                        destination: tour.destination || '',
+                        package_type: tour.packageType || '',
+                        tour_start_date: tour.tourStartDate || '',
+                        tour_end_date: tour.tourEndDate || '',
+                        inclusions: tour.inclusions || '',
+                        estimated_price_per_person: tour.estimatedPricePerPerson ? parseFloat(tour.estimatedPricePerPerson) : 0,
+                        special_requirements: tour.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: tour.id
+                    }
+                });
+            });
+        }
+
+        // Aircraft Charter Service Preferences
+        if (aircraftCharterOptions && aircraftCharterOptions.length > 0) {
+            aircraftCharterOptions.forEach((aircraft: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'CHARTER_SERVICES',
+                    service_code: 'CHARTER_SERVICES',
+                    preference_order: index + 1,
+                    title: `Aircraft Charter Option ${index + 1}: ${aircraft.aircraftType || 'Aircraft'}`,
+                    description: `Capacity: ${aircraft.passengerCapacity || 'N/A'}, Duration: ${aircraft.flightDuration || 'N/A'}`,
+                    estimated_price: aircraft.estimatedPrice ? parseFloat(aircraft.estimatedPrice) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        aircraft_type: aircraft.aircraftType || '',
+                        passenger_capacity: aircraft.passengerCapacity || '',
+                        flight_duration: aircraft.flightDuration || '',
+                        catering_services: aircraft.cateringServices || '',
+                        departure_port: aircraft.departurePort || '',
+                        arrival_port: aircraft.arrivalPort || '',
+                        charter_start: aircraft.charterStart || '',
+                        charter_end: aircraft.charterEnd || '',
+                        guests: parseInt(aircraft.guests) || 0,
+                        duration: parseInt(aircraft.duration) || 0,
+                        estimated_price: aircraft.estimatedPrice ? parseFloat(aircraft.estimatedPrice) : 0,
+                        special_requirements: aircraft.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: aircraft.id
+                    }
+                });
+            });
+        }
+
+        // Event Management Service Preferences
+        if (eventManagementOptions && eventManagementOptions.length > 0) {
+            eventManagementOptions.forEach((event: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'EVENT_MANAGEMENT',
+                    service_code: 'EVENT_MANAGEMENT',
+                    preference_order: index + 1,
+                    title: `Event Management Option ${index + 1}: ${event.eventType || 'Event'}`,
+                    description: `Scale: ${event.eventScale || 'N/A'}, Attendees: ${event.attendees || 'N/A'}`,
+                    estimated_price: event.estimatedPrice ? parseFloat(event.estimatedPrice) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        event_type: event.eventType || '',
+                        event_scale: event.eventScale || '',
+                        services_required: event.servicesRequired || '',
+                        catering_entertainment: event.cateringEntertainment || '',
+                        venue: event.venue || '',
+                        budget: event.budget || '',
+                        attendees: parseInt(event.attendees) || 0,
+                        event_date: event.eventDate || '',
+                        estimated_price: event.estimatedPrice ? parseFloat(event.estimatedPrice) : 0,
+                        special_requirements: event.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: event.id
+                    }
+                });
+            });
+        }
+
+        // Yacht Charter Service Preferences
+        if (yachtCharterOptions && yachtCharterOptions.length > 0) {
+            yachtCharterOptions.forEach((yacht: any, index: number) => {
+                servicePreferences.push({
+                    service_type: 'YACHT_CHARTER',
+                    service_code: 'YACHT_CHARTER',
+                    preference_order: index + 1,
+                    title: `Yacht Charter Option ${index + 1}: ${yacht.yachtType || 'Yacht'}`,
+                    description: `Duration: ${yacht.charterDuration || 'N/A'}, Guests: ${yacht.guests || 'N/A'}`,
+                    estimated_price: yacht.estimatedPrice ? parseFloat(yacht.estimatedPrice) : 0,
+                    currency: 'INR',
+                    preferences: {
+                        yacht_type: yacht.yachtType || '',
+                        charter_duration: yacht.charterDuration || '',
+                        crew_services: yacht.crewServices || '',
+                        yacht_amenities: yacht.yachtAmenities || '',
+                        departure_port: yacht.departurePort || '',
+                        arrival_port: yacht.arrivalPort || '',
+                        charter_start: yacht.charterStart || '',
+                        charter_end: yacht.charterEnd || '',
+                        guests: parseInt(yacht.guests) || 0,
+                        duration: parseInt(yacht.duration) || 0,
+                        estimated_price: yacht.estimatedPrice ? parseFloat(yacht.estimatedPrice) : 0,
+                        special_requirements: yacht.specialRequirements || '',
+                        notes: ''
+                    },
+                    is_active: true,
+                    metadata: {
+                        source: 'frontend_form',
+                        imported_at: new Date().toISOString(),
+                        frontend_option_id: yacht.id
+                    }
+                });
+            });
+        }
+
+        return {
+            leadId: leadData.id,
+            servicePreferences,
+            userPreferences: {
+                flightPreferencesAdded: userPreferences.flightPreferencesAdded || false,
+                hotelPreferencesAdded: userPreferences.hotelPreferencesAdded || false,
+                visaPreferencesAdded: userPreferences.visaPreferencesAdded || false,
+                lastUpdated: userPreferences.lastUpdated || new Date().toISOString(),
+                metadata: {
+                    source: 'frontend_form',
+                    imported_at: new Date().toISOString(),
+                    frontend_metadata: formData.metadata
+                }
+            }
+        };
+    },
+
+    /**
+     * Save all service preferences to service_preferences table
+     */
+    async saveAllServicePreferences(data: {
+        leadId: string;
+        servicePreferences: Array<{
+            service_type: string;
+            service_code: string;
+            preference_order: number;
+            title?: string;
+            description?: string;
+            estimated_price?: number;
+            currency?: string;
+            preferences: Record<string, any>;
+            is_active?: boolean;
+            metadata?: Record<string, any>;
+        }>;
+        userPreferences: {
+            flightPreferencesAdded: boolean;
+            hotelPreferencesAdded: boolean;
+            visaPreferencesAdded: boolean;
+            lastUpdated: string;
+            metadata?: Record<string, any>;
+        };
+    }): Promise<{
+        lead_id: string;
+        service_preferences: any[];
+        user_preferences_summary: any;
+        lead_details?: ILeadDetails;
+    }> {
+        const { leadId, servicePreferences, userPreferences } = data;
+
+        try {
+            // Check if preferences already exist
+            const exists = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('id')
+                .eq('lead_id', leadId)
+                .maybeSingle();
+
+            if (exists.data) {
+                throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
+            }
+
+            // Clear existing service preferences
+            await supabaseAdmin
+                .from('service_preferences')
+                .delete()
+                .eq('lead_id', leadId);
+
+            // Save service preferences
+            let savedServicePreferences: any[] = [];
+            if (servicePreferences.length > 0) {
+                const servicePrefsToInsert = servicePreferences.map(pref => ({
+                    ...pref,
+                    lead_id: leadId,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+
+                const { data: serviceData, error: serviceError } = await supabaseAdmin
+                    .from('service_preferences')
+                    .insert(servicePrefsToInsert)
+                    .select();
+
+                if (serviceError) throw new Error(`Failed to save service preferences: ${serviceError.message}`);
+                savedServicePreferences = serviceData || [];
+            }
+
+            // Save user preferences summary with service counts
+            const serviceCounts = {};
+            const servicesAdded = {};
+
+            servicePreferences.forEach(pref => {
+                const serviceType = pref.service_type;
+                if (!serviceCounts[serviceType]) {
+                    serviceCounts[serviceType] = 0;
+                    servicesAdded[serviceType] = true;
+                }
+                serviceCounts[serviceType]++;
+            });
+
+            const userPrefsSummary: any = {
+                lead_id: leadId,
+                flight_preferences_added: userPreferences.flightPreferencesAdded,
+                hotel_preferences_added: userPreferences.hotelPreferencesAdded,
+                visa_preferences_added: userPreferences.visaPreferencesAdded,
+                last_updated: userPreferences.lastUpdated || new Date().toISOString(),
+                metadata: {
+                    ...userPreferences.metadata,
+                    service_counts: serviceCounts,
+                    total_service_options: servicePreferences.length
+                },
+                services_added: servicesAdded,
+                service_counts: serviceCounts,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .insert(userPrefsSummary)
+                .select()
+                .single();
+
+            if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
+
+            // Fetch lead details
+            let leadDetailsResult: ILeadDetails | undefined;
+            try {
+                const { data: detailsData } = await supabaseAdmin
+                    .from('leads')
+                    .select('*')
+                    .eq('id', leadId)
+                    .single();
+
+                leadDetailsResult = detailsData as ILeadDetails;
+            } catch (error) {
+                console.warn('Could not fetch lead details:', error);
+            }
+
+            return {
+                lead_id: leadId,
+                service_preferences: savedServicePreferences,
+                user_preferences_summary: userPrefsData,
+                lead_details: leadDetailsResult
+            };
+
+        } catch (error) {
+            console.error('Error in saveAllServicePreferences:', error);
+            throw new Error(`Failed to save service preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
 };

@@ -37,11 +37,11 @@ export const itineraryPreferencesService = {
     },
 
     /**
-     * Save preferences from frontend form data
+     * Save preferences from frontend form data using service_preferences table
      */
     async savePreferences(formData: IFrontendFormData): Promise<{
         success: boolean;
-        data?: IItineraryPreferencesResponse;
+        data?: any;
         message?: string;
     }> {
         try {
@@ -55,11 +55,11 @@ export const itineraryPreferencesService = {
             const leadId = formData.leadData.id;
 
             /**
-             * Check if the lead is exist or not
+             * Check if the lead exists
              */
             const isLeadExist = await leadRepository.isLeadExists(leadId);
             if (!isLeadExist) {
-                throw new Error('Lead not found in Itenary preference Service');
+                throw new Error('Lead not found in Itinerary preference Service');
             }
 
             /**
@@ -73,9 +73,9 @@ export const itineraryPreferencesService = {
                 };
             }
 
-            // Transform and save
-            const preferenceData = itineraryPreferencesRepository.transformFormData(formData);
-            const data = await itineraryPreferencesRepository.saveAllPreferences(preferenceData);
+            // Transform and save to service_preferences table
+            const preferenceData = itineraryPreferencesRepository.transformFormDataToServicePreferences(formData);
+            const data = await itineraryPreferencesRepository.saveAllServicePreferences(preferenceData);
 
             return {
                 success: true,
