@@ -89,6 +89,7 @@ export interface IItineraryPreferencesResponse {
     hotel_preferences: IHotelPreference[];
     visa_preferences: IVisaPreference[];
     user_preferences_summary?: IUserPreferencesSummary | null;
+    service_preferences?: IServicePreference[];
     lead_details?: ILeadDetails;
 }
 
