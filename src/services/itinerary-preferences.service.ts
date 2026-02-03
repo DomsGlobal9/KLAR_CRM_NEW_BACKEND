@@ -7,7 +7,8 @@ import {
     IHotelPreference,
     IFlightPreference,
     IPaginationParams,
-    IAllItinerariesResponse
+    IAllItinerariesResponse,
+    IAllLeadsBasicResponse
 } from '../interfaces/itinerary-preferences.interface';
 import { leadRepository } from '../repositories';
 
@@ -375,7 +376,10 @@ export const itineraryPreferencesService = {
         }
     },
 
-    async getAllLeadsBasic(params?: IPaginationParams): Promise<IAllItinerariesResponse> {
+    /**
+     * Get all leads with basic details
+     */
+    async getAllLeadsBasic(params?: IPaginationParams): Promise<IAllLeadsBasicResponse> {
         try {
             const result = await itineraryPreferencesRepository.getAllLeadsBasicPaginated(params);
 
@@ -407,7 +411,14 @@ export const itineraryPreferencesService = {
             return {
                 success: true,
                 data: {
-                    leads: result.leads,
+                    leads: result.leads.map(lead => ({
+                        lead_id: lead.lead_id,
+                        lead_details: lead.lead_details,
+                        flight_preferences_count: lead.flight_preferences_count,
+                        hotel_preferences_count: lead.hotel_preferences_count,
+                        visa_preferences_count: lead.visa_preferences_count,
+                        user_preferences_summary: lead.user_preferences_summary
+                    })),
                     total_count: result.total_count,
                     pagination: {
                         page: result.page,
