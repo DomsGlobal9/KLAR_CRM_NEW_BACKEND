@@ -13,122 +13,19 @@ export const quoteService = {
     /**
      * Create a new quote
      */
-    async createQuote(payload: ICreateQuoteDTO): Promise<IQuoteResponse> {
+    async createQuote(payload: any): Promise<IQuoteResponse> {
         try {
-            /**
-             * Handle both new nested structure and old flat structure
-             */
-            let quoteData: any = {};
-            console.log("@@@@@@@@@@@@@@@@\nThe quote data we get", payload);
+            console.log("Raw payload:", JSON.stringify(payload, null, 2));
 
+            const transformedPayload: ICreateQuoteDTO = this.transformPayload(payload);
+            console.log("&&&&&&&&&&&&&&&&&&&&&The transformed payload:\n", JSON.stringify(transformedPayload, null, 2));
 
-            if (payload.client_information) {
-                quoteData = {
-                    ...quoteData,
-                    client_name: payload.client_information.name,
-                    client_email: payload.client_information.email,
-                    client_phone: payload.client_information.phone,
-                    client_address: payload.client_information.address,
-                    gst_number: payload.client_information.gst_number
-                };
-            } else {
-                quoteData = {
-                    ...quoteData,
-                    client_name: payload.client_name,
-                    client_email: payload.client_email,
-                    client_phone: payload.client_phone
-                };
-            }
-
-
-            if (payload.quote_information) {
-                quoteData = {
-                    ...quoteData,
-                    quote_number: payload.quote_information.quote_number,
-                    quote_title: payload.quote_information.quote_title,
-                    currency: payload.quote_information.currency || 'INR',
-                    validity_days: payload.quote_information.validity_days,
-                    valid_until: payload.quote_information.valid_until,
-                    notes: payload.quote_information.notes,
-                    terms_conditions: payload.quote_information.terms_conditions,
-                    discount_percent: payload.quote_information.discount_percent,
-                    discount_amount: payload.quote_information.discount_amount
-                };
-            } else {
-                quoteData = {
-                    ...quoteData,
-                    quote_number: payload.quote_number,
-                    quote_title: payload.quote_title,
-                    currency: payload.currency || 'INR',
-                    validity_days: payload.validity_days,
-                    valid_until: payload.valid_until
-                };
-            }
-
-
-            if (quoteData.quote_number) {
-                const exists = await quoteRepository.quoteNumberExists(quoteData.quote_number);
-                if (exists) {
-                    return {
-                        success: false,
-                        error: 'Quote number already exists'
-                    };
-                }
-            } else {
-
-                quoteData.quote_number = await quoteRepository.generateQuoteNumber();
-            }
-
-
-            const finalPayload: ICreateQuoteDTO = {
-                ...quoteData,
-
-
-                status: 'draft',
-                subtotal: payload.totals?.subtotal || payload.subtotal || 0,
-                tax_amount: payload.totals?.tax_amount || payload.tax_amount || 0,
-                tax_rate: payload.totals?.tax_rate || 18,
-                total: payload.totals?.final_amount || payload.total || 0,
-                final_amount: payload.totals?.final_amount || payload.final_amount || 0,
-                initial_amount: payload.totals?.subtotal || payload.initial_amount || 0,
-
-
-                line_items: payload.line_items || this.extractLineItemsFromQuoteInputs(payload),
-
-
-                meta: payload.meta,
-                identifiers: payload.identifiers,
-                itinerary_details: payload.itinerary_details,
-                services: payload.services,
-                quote_inputs: payload.quote_inputs,
-                totals: payload.totals,
-
-
-                discount_amount: payload.discount_amount || 0,
-                discount_percent: payload.discount_percent || 0
-            };
-
-
-            if (!finalPayload.client_name || !finalPayload.client_email || !finalPayload.client_phone) {
-                return {
-                    success: false,
-                    error: 'Client name, email, and phone are required'
-                };
-            }
-
-            if (!finalPayload.quote_number) {
-                return {
-                    success: false,
-                    error: 'Quote number is required'
-                };
-            }
-
-            const quote = await quoteRepository.createQuote(finalPayload);
+            const result = await quoteRepository.createQuote(transformedPayload);
 
             return {
                 success: true,
                 message: 'Quote created successfully',
-                data: quote
+                data: result
             };
         } catch (error: any) {
             console.error('Error creating quote:', error);
@@ -139,8 +36,223 @@ export const quoteService = {
         }
     },
 
+    transformPayload(frontendPayload: any): ICreateQuoteDTO {
+        console.log("^^^^^^^^^^^^^^^^^^^The payload we get", frontendPayload);
+
+        // Extract quote number - check both possible field names
+        const quoteNumber = frontendPayload.quote_number || frontendPayload.quoteNumber;
+        if (!quoteNumber) {
+            throw new Error('Quote number is required');
+        }
+
+        // Extract client information (flatten from nested structure)
+        const clientInfo = frontendPayload.client_information || {};
+        const clientName = frontendPayload.client_name || clientInfo.name || frontendPayload.lead?.name;
+        const clientEmail = frontendPayload.client_email || clientInfo.email || frontendPayload.lead?.email;
+        const clientPhone = frontendPayload.client_phone || clientInfo.phone || frontendPayload.lead?.phone;
+
+        // Validate required fields
+        if (!clientName || !clientEmail || !clientPhone) {
+            throw new Error('Client name, email, and phone are required');
+        }
+
+        // Create the DTO with all required fields (flattened structure)
+        const dto: ICreateQuoteDTO = {
+            // Required fields (direct columns)
+            quote_number: quoteNumber,
+            client_name: clientName,
+            client_email: clientEmail,
+            client_phone: clientPhone,
+            quote_title: frontendPayload.quote_title || frontendPayload.title || 'Untitled Quote',
+            valid_until: frontendPayload.valid_until || frontendPayload.quote_information?.valid_until || this.calculateValidUntil(frontendPayload.validity_days || frontendPayload.validityDays),
+            currency: frontendPayload.currency || 'INR',
+            subtotal: frontendPayload.subtotal || frontendPayload.totals?.subtotal || 0,
+            tax_amount: frontendPayload.tax_amount || frontendPayload.totals?.tax_amount || 0,
+            total: frontendPayload.total || frontendPayload.totals?.final_amount || 0,
+            final_amount: frontendPayload.final_amount || frontendPayload.totals?.final_amount || 0,
+            initial_amount: frontendPayload.initial_amount || frontendPayload.totals?.subtotal || 0,
+            line_items: frontendPayload.line_items || [],
+            status: frontendPayload.status || 'draft',
+
+            // Optional but recommended fields (direct columns)
+            validity_days: frontendPayload.validity_days || frontendPayload.validityDays || 30,
+            terms_conditions: frontendPayload.terms_conditions || frontendPayload.termsAndConditions,
+            notes: frontendPayload.notes || frontendPayload.description,
+
+            // JSON fields (as they are in database)
+            ...(frontendPayload.services && { services: frontendPayload.services }),
+            ...(frontendPayload.quote_inputs && { quote_inputs: frontendPayload.quote_inputs }),
+            ...(frontendPayload.totals && { totals: frontendPayload.totals }),
+            ...(frontendPayload.itinerary_details && { itinerary_details: frontendPayload.itinerary_details }),
+
+            // IDs
+            itinerary_id: frontendPayload.itinerary_id || frontendPayload.lead_id || frontendPayload.lead?.id,
+            lead_id: frontendPayload.lead_id || frontendPayload.lead?.id
+        };
+
+        console.log("&&&&&&&&&&&&&&&&&&&&&The transformed payload (flattened):\n", JSON.stringify(dto, null, 2));
+        return dto;
+    },
+
+    extractCost(service: any): number {
+        const formData = service.formData || service.details || {};
+
+        // Try to extract any cost-related fields
+        const costFields = [
+            formData.costPerPerson,
+            formData.charterCharges,
+            formData.fuelCharges,
+            formData.crewCharges,
+            formData.amount,
+            formData.total,
+            formData.price,
+            formData.baseFare,
+            formData.unit_price
+        ];
+
+        for (const cost of costFields) {
+            if (cost !== undefined && cost !== null) {
+                const num = parseFloat(cost);
+                if (!isNaN(num)) {
+                    return num;
+                }
+            }
+        }
+
+        return 0;
+    },
+
     /**
-     * Helper to extract line items from quote_inputs
+     * Transform frontend payload to backend format
+     */
+    transformFrontendPayloadToBackend(frontendPayload: any): any {
+        const quoteData: any = {};
+
+        // Basic quote info
+        quoteData.quote_title = frontendPayload.title || 'Untitled Quote';
+        quoteData.quote_number = frontendPayload.quoteNumber || undefined;
+        quoteData.description = frontendPayload.description || null;
+        quoteData.validity_days = frontendPayload.validityDays || 30;
+        quoteData.terms_conditions = frontendPayload.termsAndConditions || null;
+
+        // Client information from lead
+        if (frontendPayload.lead) {
+            quoteData.client_name = frontendPayload.lead.name;
+            quoteData.client_email = frontendPayload.lead.email;
+            quoteData.client_phone = frontendPayload.lead.phone;
+            quoteData.lead_id = frontendPayload.lead.id;
+
+            // Extract destination from services if available
+            if (frontendPayload.services && frontendPayload.services.length > 0) {
+                const firstService = frontendPayload.services[0];
+                if (firstService.formData?.destination) {
+                    quoteData.destination = firstService.formData.destination;
+                }
+            }
+        }
+
+        // Totals
+        if (frontendPayload.totals) {
+            quoteData.subtotal = frontendPayload.totals.subtotal || 0;
+            quoteData.tax_amount = frontendPayload.totals.taxes || 0;
+            quoteData.total = frontendPayload.totals.totalAmount || 0;
+            quoteData.final_amount = frontendPayload.totals.totalAmount || 0;
+            quoteData.initial_amount = frontendPayload.totals.subtotal || 0;
+        }
+
+        // Services information
+        if (frontendPayload.services) {
+            // Extract active service IDs
+            const activeServiceIds = frontendPayload.services.map((service: any) => service.serviceId);
+            quoteData.services_included = activeServiceIds;
+
+            // Create services JSON structure
+            quoteData.services = {
+                active_service_ids: activeServiceIds,
+                available_services: frontendPayload.services.map((service: any) => ({
+                    id: service.serviceId,
+                    name: service.serviceName,
+                    count: 1
+                }))
+            };
+
+            // Create quote_inputs structure
+            quoteData.quote_inputs = {};
+            frontendPayload.services.forEach((service: any) => {
+                const serviceType = service.serviceCode.toLowerCase();
+                quoteData.quote_inputs[serviceType] = {
+                    ...service.formData,
+                    categories: service.categories,
+                    serviceId: service.serviceId,
+                    serviceName: service.serviceName,
+                    serviceCode: service.serviceCode
+                };
+            });
+
+            // Create line items from services
+            quoteData.line_items = this.createLineItemsFromServices(frontendPayload.services);
+        }
+
+        // Status
+        quoteData.status = frontendPayload.status || 'draft';
+
+        return quoteData;
+    },
+
+    /**
+     * Create line items from services
+     */
+    createLineItemsFromServices(services: any[]): IQuoteLineItem[] {
+        const lineItems: IQuoteLineItem[] = [];
+
+        services.forEach((service, index) => {
+            // Try to extract cost from formData
+            let cost = 0;
+            const formData = service.formData || {};
+
+            if (formData.costPerPerson && formData.groupSize) {
+                cost = parseFloat(formData.costPerPerson) * parseInt(formData.groupSize);
+            } else if (formData.charterCharges) {
+                cost = parseFloat(formData.charterCharges);
+            } else if (formData.costPerPerson) {
+                cost = parseFloat(formData.costPerPerson);
+            }
+
+            // Determine service type based on service code
+            let serviceType: 'flight' | 'hotel' | 'visa' | 'other' = 'other';
+            if (service.serviceCode.includes('CHARTER')) {
+                serviceType = 'flight';
+            } else if (service.serviceCode.includes('GROUP')) {
+                serviceType = 'hotel'; // Could also be 'other'
+            }
+
+            lineItems.push({
+                service_type: serviceType,
+                description: service.serviceName || `Service ${index + 1}`,
+                quantity: 1,
+                unit_price: cost,
+                total: cost,
+                details: {
+                    ...service,
+                    service_type: serviceType
+                }
+            });
+        });
+
+        return lineItems;
+    },
+
+    /**
+     * Calculate valid until date based on validity days
+     */
+    calculateValidUntil(validityDays: number = 30): string {
+        const date = new Date();
+        date.setDate(date.getDate() + validityDays);
+        return date.toISOString();
+    },
+
+    /**
+     * Helper to extract line items from quote_inputs (for old structure)
      */
     extractLineItemsFromQuoteInputs(payload: ICreateQuoteDTO): IQuoteLineItem[] {
         const lineItems: IQuoteLineItem[] = [];
@@ -160,7 +272,6 @@ export const quoteService = {
             });
         }
 
-        
         if (payload.quote_inputs?.hotel) {
             const hotel = payload.quote_inputs.hotel;
             lineItems.push({
@@ -176,7 +287,6 @@ export const quoteService = {
             });
         }
 
-        
         if (payload.quote_inputs?.visa) {
             const visa = payload.quote_inputs.visa;
             lineItems.push({

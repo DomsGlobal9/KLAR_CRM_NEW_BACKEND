@@ -73,86 +73,57 @@ export interface ISelectedPreferences {
 }
 
 export interface ICreateQuoteDTO {
-    client_address?: string;
+    // Keep existing fields but add new optional ones for frontend structure
+    title?: string;
+    description?: string;
+    validityDays?: number;
+    termsAndConditions?: string;
 
-    itinerary_id?: string;
+    // Make existing fields optional since they might come from frontend structure
+    quote_number?: string;
+    quote_title?: string;
+    client_name?: string;
+    client_email?: string;
+    client_phone?: string;
+    status?: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
 
-
-    tax_rate?: number;
-    discount_percent?: number;
-    discount_amount?: number;
-
-
-    services_included?: string[];
-    active_service?: string;
-
-    selected_preferences?: ISelectedPreferences;
-
-    notes?: string;
-    terms_conditions?: string;
-    gst_number?: string;
-
-    service_counts?: Record<string, number>;
-
-    metadata?: Record<string, any>;
-
-    meta?: Record<string, any>;
-    identifiers?: Record<string, any>;
-    client_information?: {
+    // Add new fields for frontend structure
+    lead?: {
+        id: string;
         name: string;
         email: string;
         phone: string;
-        address?: string;
-        gst_number?: string;
-    };
-    quote_information?: {
-        quote_number: string;
-        quote_title: string;
-        currency: string;
-        validity_days: number;
-        valid_until: string;
-        notes?: string;
-        terms_conditions?: string;
-        discount_percent?: number;
-        discount_amount?: number;
-    };
-    itinerary_details?: Record<string, any>;
-    services?: {
-        active_service_ids: string[];
-        available_services: Array<{
-            id: string;
-            name: string;
-            count: number;
-        }>;
-    };
-    quote_inputs?: {
-        travel?: any;
-        hotel?: any;
-        visa?: any;
-    };
-    totals?: {
-        subtotal: number;
-        tax_rate: number;
-        tax_amount: number;
-        discount_amount: number;
-        final_amount: number;
+        status: string;
     };
 
-    quote_number: string;
-    client_name: string;
-    client_email: string;
-    client_phone: string;
-    quote_title: string;
-    valid_until: string;
-    currency: string;
-    subtotal: number;
-    tax_amount: number;
-    total: number;
-    final_amount: number;
-    initial_amount: number;
-    line_items: IQuoteLineItem[];
-    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
-    validity_days?: number;
+    services?: Array<{
+        serviceId: string;
+        serviceCode: string;
+        serviceName: string;
+        formData: Record<string, any>;
+        categories: Array<{
+            category_id: string;
+            category_name: string;
+            sub_services: Array<{
+                sub_service_id: string;
+                sub_service_name: string;
+            }>;
+        }>;
+    }>;
+
+    totals?: {
+        subtotal: number;
+        taxes: number;
+        serviceFees: number;
+        totalAmount: number;
+    };
+
+    quoteNumber?: string;
+    createdAt?: string;
+    updatedAt?: string;
+
+    // Keep original fields for backward compatibility
+    [key: string]: any;
 }
 
 export interface IUpdateQuoteDTO {
