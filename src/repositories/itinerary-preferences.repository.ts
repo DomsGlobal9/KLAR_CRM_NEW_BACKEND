@@ -47,15 +47,12 @@ export const itineraryPreferencesRepository = {
      */
     async getByLeadId(clientID: string): Promise<IItineraryPreferencesResponse> {
         try {
-
-            /**
-             * Fetch all data in parallel
-             */
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
-                // userPreferencesResult,
+                userPreferencesResult,
+                servicePreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
                 supabaseAdmin
@@ -83,46 +80,32 @@ export const itineraryPreferencesRepository = {
                     .single(),
 
                 supabaseAdmin
+                    .from('service_preferences')
+                    .select('*')
+                    .eq('lead_id', clientID),
+
+                supabaseAdmin
                     .from('leads')
                     .select('*')
                     .eq('id', clientID)
                     .single()
             ]);
 
-            // Handle errors
-            if (flightPreferencesResult.error && flightPreferencesResult.error.code !== 'PGRST116') {
-                throw new Error(`Failed to fetch flight preferences: ${flightPreferencesResult.error.message}`);
+            if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
+                throw new Error(`Failed to fetch service preferences: ${servicePreferencesResult.error.message}`);
             }
 
-            if (hotelPreferencesResult.error && hotelPreferencesResult.error.code !== 'PGRST116') {
-                throw new Error(`Failed to fetch hotel preferences: ${hotelPreferencesResult.error.message}`);
-            }
-
-            if (visaPreferencesResult.error && visaPreferencesResult.error.code !== 'PGRST116') {
-                throw new Error(`Failed to fetch visa preferences: ${visaPreferencesResult.error.message}`);
-            }
-
-            // Handle user preferences error (allow missing summary)
-            // const userPrefsError = userPreferencesResult.error;
-            // if (userPrefsError && userPrefsError.code !== 'PGRST116') {
-            //     console.warn('Error fetching user preferences summary:', userPrefsError.message);
-            // }
-
-            // Handle lead details error (lead might not exist in our table)
             let leadDetails: ILeadDetails | undefined;
-            const leadDetailsError = leadDetailsResult.error;
-            if (leadDetailsError && leadDetailsError.code !== 'PGRST116') {
-                console.warn('Error fetching lead details:', leadDetailsError.message);
-            } else if (leadDetailsResult.data) {
+            if (leadDetailsResult.data) {
                 leadDetails = leadDetailsResult.data as ILeadDetails;
             }
 
             return {
-                // lead_id: leadId,
-                flight_preferences: flightPreferencesResult.data as IFlightPreference[] || [],
-                hotel_preferences: hotelPreferencesResult.data as IHotelPreference[] || [],
-                visa_preferences: visaPreferencesResult.data as IVisaPreference[] || [],
-                // user_preferences_summary: userPreferencesResult.data as IUserPreferencesSummary || null,
+                flight_preferences: flightPreferencesResult.data ?? [],
+                hotel_preferences: hotelPreferencesResult.data ?? [],
+                visa_preferences: visaPreferencesResult.data ?? [],
+                service_preferences: servicePreferencesResult.data ?? [],
+                user_preferences_summary: userPreferencesResult.data ?? null,
                 lead_details: leadDetails
             };
         } catch (error) {
