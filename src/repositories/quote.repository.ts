@@ -38,53 +38,97 @@ export const quoteRepository = {
      * Create a new quote
      */
     async createQuote(payload: ICreateQuoteDTO): Promise<IQuote> {
-        const quoteNumber = payload.quote_number || await this.generateQuoteNumber();
+        console.log("^^^^^^^^^^^^^^^^^Repository Payload we get", JSON.stringify(payload, null, 2));
 
+        // Always use the quote_number from the transformed DTO
+        const quoteNumber = payload.quote_number;
+        if (!quoteNumber) {
+            throw new Error('Quote number is required');
+        }
+
+        // Extract client information - handle both structures
+        const clientInfo = payload.client_information || {};
+        const clientName = payload.client_name || clientInfo.name;
+        const clientEmail = payload.client_email || clientInfo.email;
+        const clientPhone = payload.client_phone || clientInfo.phone;
+        const clientAddress = payload.client_address || clientInfo.address;
+
+        // Extract totals - handle both structures safely
+        const totals = payload.totals || {};
+        const taxAmount = payload.tax_amount || (totals as any).tax_amount || (totals as any).taxes || 0;
+        const finalAmount = payload.final_amount || (totals as any).final_amount || (totals as any).totalAmount || 0;
+        const taxRate = payload.tax_rate || (totals as any).tax_rate || 18;
+        const subtotal = payload.subtotal || (totals as any).subtotal || 0;
+        const total = payload.total || finalAmount;
+
+        // Extract services with type safety
+        const services = payload.services as any;
+        const activeServiceIds = services?.active_service_ids || null;
+
+        // Prepare quote data that matches database schema
         const quoteData = {
+            // Required fields (matching database columns)
             quote_number: quoteNumber,
-            quote_title: payload.quote_title || payload.quote_information?.quote_title || 'Untitled Quote',
+            quote_title: payload.quote_title || 'Untitled Quote',
             status: payload.status || 'draft',
-            valid_until: payload.valid_until || payload.quote_information?.valid_until,
-            validity_days: payload.validity_days || payload.quote_information?.validity_days || 30,
-            currency: payload.currency || payload.quote_information?.currency || 'INR',
+            currency: payload.currency || 'INR',
 
-            client_name: payload.client_name || payload.client_information?.name,
-            client_email: payload.client_email || payload.client_information?.email,
-            client_phone: payload.client_phone || payload.client_information?.phone || null,
-            client_address: payload.client_address || payload.client_information?.address || null,
+            // Client fields (direct columns, not nested)
+            client_name: clientName,
+            client_email: clientEmail,
+            client_phone: clientPhone,
+            client_address: clientAddress || null,
+            gst_number: payload.gst_number || clientInfo.gst_number || null,
 
-            itinerary_id: payload.itinerary_id || payload.identifiers?.itinerary_id || null,
-            lead_id: payload.identifiers?.lead_id || null,
+            // Financial fields
+            subtotal: subtotal,
+            tax_amount: taxAmount,
+            tax_rate: taxRate,
+            total: total,
+            final_amount: finalAmount,
+            initial_amount: payload.initial_amount || subtotal,
+            discount_percent: payload.discount_percent || 0,
+            discount_amount: payload.discount_amount || 0,
 
-            subtotal: payload.subtotal || payload.totals?.subtotal || 0,
-            tax_amount: payload.tax_amount || payload.totals?.tax_amount || 0,
-            tax_rate: payload.tax_rate || payload.totals?.tax_rate || 18,
-            discount_percent: payload.discount_percent || payload.quote_information?.discount_percent || 0,
-            discount_amount: payload.discount_amount || payload.quote_information?.discount_amount || 0,
-            total: payload.total || payload.totals?.final_amount || 0,
-            final_amount: payload.final_amount || payload.totals?.final_amount || 0,
-            initial_amount: payload.initial_amount || payload.totals?.subtotal || 0,
+            // Dates and validity
+            validity_days: payload.validity_days || 30,
+            valid_until: payload.valid_until || (() => {
+                const date = new Date();
+                date.setDate(date.getDate() + (payload.validity_days || 30));
+                return date.toISOString();
+            })(),
 
-            services_included: payload.services?.active_service_ids || null,
-            active_service: payload.active_service || null,
+            // Text fields
+            notes: payload.notes || null,
+            terms_conditions: payload.terms_conditions || null,
 
+            // JSON fields (must match column names exactly)
             line_items: payload.line_items || [],
-            selected_preferences: payload.selected_preferences || null,
-
-            notes: payload.notes || payload.quote_information?.notes || null,
-            terms_conditions: payload.terms_conditions || payload.quote_information?.terms_conditions || null,
-            gst_number: payload.gst_number || payload.client_information?.gst_number || null,
-
             itinerary_details: payload.itinerary_details || null,
-            service_counts: payload.service_counts || null,
-
+            quote_inputs: payload.quote_inputs || null,
+            totals: totals,
+            services: services,
+            selected_preferences: payload.selected_preferences || null,
             meta: payload.meta || null,
             identifiers: payload.identifiers || null,
-            services: payload.services || null,
-            quote_inputs: payload.quote_inputs || null,
-            totals: payload.totals || null
+
+            // Array fields
+            services_included: activeServiceIds,
+
+            // Single value fields
+            active_service: payload.active_service || null,
+            itinerary_id: payload.itinerary_id || null,
+            lead_id: payload.lead_id || null,
+            user_preference_id: payload.user_preference_id || null,
+            destination: payload.destination || null,
+            template: payload.template || null,
+
+            created_at: new Date().toISOString()
         };
 
+        console.log("Inserting quote data (database compatible):", JSON.stringify(quoteData, null, 2));
+
+        // Insert into database
         const { data, error } = await supabaseAdmin
             .from('quotes')
             .insert(quoteData)
@@ -97,6 +141,38 @@ export const quoteRepository = {
         }
 
         return data as IQuote;
+    },
+
+    /**
+     * Helper method for repository
+     * @param services 
+     * @returns 
+     */
+    createLineItemsFromServices(services: any[]): any[] {
+        return services.map((service, index) => {
+            let cost = 0;
+            const formData = service.formData || {};
+
+            if (formData.costPerPerson && formData.groupSize) {
+                cost = parseFloat(formData.costPerPerson) * parseInt(formData.groupSize);
+            } else if (formData.charterCharges) {
+                cost = parseFloat(formData.charterCharges);
+            } else if (formData.costPerPerson) {
+                cost = parseFloat(formData.costPerPerson);
+            }
+
+            return {
+                service_type: service.serviceCode.includes('CHARTER') ? 'flight' : 'other',
+                description: service.serviceName || `Service ${index + 1}`,
+                quantity: 1,
+                unit_price: cost,
+                total: cost,
+                details: {
+                    ...service,
+                    service_type: service.serviceCode.includes('CHARTER') ? 'flight' : 'other'
+                }
+            };
+        });
     },
 
     /**

@@ -12,9 +12,15 @@ export const quoteController = {
      */
     async createQuote(req: Request, res: Response) {
         try {
-            const payload: ICreateQuoteDTO = req.body.quoteData ?? req.body;
+            
+            const payload = req.body;
 
-            const result = await quoteService.createQuote(payload);
+            console.log('Raw payload received:', JSON.stringify(payload, null, 2));
+
+            
+            const finalPayload = payload.quoteData || payload;
+
+            const result = await quoteService.createQuote(finalPayload);
 
             if (!result.success) {
                 return res.status(400).json(result);
