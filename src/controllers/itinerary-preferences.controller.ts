@@ -13,6 +13,7 @@ import {
 } from '../helpers';
 
 export const itineraryPreferencesController = {
+    
     /**
      * Get all preferences for a lead
      */

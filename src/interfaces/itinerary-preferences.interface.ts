@@ -253,7 +253,7 @@ interface IBasicLeadInfo {
     };
 }
 
-interface IAllLeadsBasicResponse {
+export interface IAllLeadsBasicResponse {
     success: boolean;
     data: {
         leads: IBasicLeadInfo[];
@@ -321,3 +321,4 @@ export interface IFrontendFormData {
     };
     metadata?: any;
 }
+

@@ -47,42 +47,6 @@ export const itineraryPreferencesRepository = {
      */
     async getByLeadId(clientID: string): Promise<IItineraryPreferencesResponse> {
         try {
-            /**
-             * Check if clientID is a user preference summary ID or lead ID
-             */
-            let leadId: string;
-
-            /**
-             * First check if it's a UUID (could be either)
-             */
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientID);
-
-            if (isUUID) {
-                /**
-                 * 
-                 */
-                const leadFromSummary = await this.getLeadIdByUserPreferenceId(clientID);
-                if (leadFromSummary) {
-                    leadId = leadFromSummary;
-                } else {
-                    /**
-                     * Check if it's a lead ID directly
-                     */
-                    const { data: leadData } = await supabaseAdmin
-                        .from('leads')
-                        .select('id')
-                        .eq('id', clientID)
-                        .single();
-
-                    if (leadData) {
-                        leadId = clientID;
-                    } else {
-                        throw new Error("Lead ID not found");
-                    }
-                }
-            } else {
-                throw new Error("Invalid ID format");
-            }
 
             /**
              * Fetch all data in parallel
@@ -97,31 +61,31 @@ export const itineraryPreferencesRepository = {
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('*')
-                    .eq('lead_id', leadId)
+                    .eq('lead_id', clientID)
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('*')
-                    .eq('lead_id', leadId)
+                    .eq('lead_id', clientID)
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('*')
-                    .eq('lead_id', leadId)
+                    .eq('lead_id', clientID)
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('user_itenary_preferences_summary')
                     .select('*')
-                    .eq('lead_id', leadId)
+                    .eq('lead_id', clientID)
                     .single(),
 
                 supabaseAdmin
                     .from('leads')
                     .select('*')
-                    .eq('id', leadId)
+                    .eq('id', clientID)
                     .single()
             ]);
 
@@ -499,6 +463,12 @@ export const itineraryPreferencesRepository = {
                 flightPreferencesAdded: userPreferences.flightPreferencesAdded || false,
                 hotelPreferencesAdded: userPreferences.hotelPreferencesAdded || false,
                 visaPreferencesAdded: userPreferences.visaPreferencesAdded || false,
+                transferPreferencesAdded: userPreferences.transferPreferencesAdded || false,
+                groupBookingPreferencesAdded: userPreferences.groupBookingPreferencesAdded || false,
+                tourPackagePreferencesAdded: userPreferences.tourPackagePreferencesAdded || false,
+                aircraftCharterPreferencesAdded: userPreferences.aircraftCharterPreferencesAdded || false,
+                eventManagementPreferencesAdded: userPreferences.eventManagementPreferencesAdded || false,
+                yachtCharterPreferencesAdded: userPreferences.yachtCharterPreferencesAdded || false,
                 lastUpdated: userPreferences.lastUpdated || new Date().toISOString(),
                 metadata: {
                     source: 'frontend_form',
@@ -1346,16 +1316,16 @@ export const itineraryPreferencesRepository = {
             const { data: summaries, error: summariesError, count } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select(`
-        *,
-        leads!inner(
-          id,
-          name,
-          email,
-          phone,
-          status,
-          created_at
-        )
-      `)
+                *,
+                leads!inner(
+                    id,
+                    name,
+                    email,
+                    phone,
+                    status,
+                    created_at
+                )
+            `)
                 .order(sortBy, { ascending: sortOrder === 'asc' })
                 .range((page - 1) * limit, page * limit - 1);
 
@@ -1380,21 +1350,21 @@ export const itineraryPreferencesRepository = {
             const { data: relationships, error: relError } = await supabaseAdmin
                 .from('lead_service_relationships')
                 .select(`
-        lead_id,
-        service:services!inner(
-          id,
-          name,
-          code
-        ),
-        category:sub_service_categories!inner(
-          id,
-          name
-        ),
-        sub_service:sub_services!inner(
-          id,
-          name
-        )
-      `)
+                lead_id,
+                service:services!inner(
+                    id,
+                    name,
+                    code
+                ),
+                category:sub_service_categories!inner(
+                    id,
+                    name
+                ),
+                sub_service:sub_services!inner(
+                    id,
+                    name
+                )
+            `)
                 .in('lead_id', leadIds)
                 .order('display_order', { ascending: true });
 
@@ -1403,10 +1373,10 @@ export const itineraryPreferencesRepository = {
             }
 
             // Step 4: Group relationships by lead_id and service
-            const relationshipsByLead = new Map<string, Map<string, any[]>>();
+            const relationshipsByLead = new Map<string, Map<string, any>>();
 
             if (relationships) {
-                relationships.forEach(rel => {
+                relationships.forEach((rel: any) => {
                     const leadId = rel.lead_id;
                     const serviceId = rel.service.id;
 
@@ -1425,7 +1395,7 @@ export const itineraryPreferencesRepository = {
                         });
                     }
 
-                    const serviceData = serviceMap.get(serviceId);
+                    const serviceData = serviceMap.get(serviceId)!;
                     const categoryId = rel.category.id;
 
                     if (!serviceData.categories.has(categoryId)) {
@@ -1436,7 +1406,7 @@ export const itineraryPreferencesRepository = {
                         });
                     }
 
-                    const categoryData = serviceData.categories.get(categoryId);
+                    const categoryData = serviceData.categories.get(categoryId)!;
                     categoryData.sub_services.push({
                         sub_service_id: rel.sub_service.id,
                         sub_service_name: rel.sub_service.name
@@ -1447,22 +1417,35 @@ export const itineraryPreferencesRepository = {
             // Step 5: Format the response
             const leads = summaries.map(summary => {
                 const leadId = summary.lead_id;
-                const leadDetails = summary.leads;
+                const leadDetails = summary.leads as any;
 
                 // Get service relationships for this lead
-                let services: Array<any> = [];
+                const services: Array<{
+                    service_id: string;
+                    service_name: string;
+                    service_code: string;
+                    categories: Array<{
+                        category_id: string;
+                        category_name: string;
+                        sub_services: Array<{
+                            sub_service_id: string;
+                            sub_service_name: string;
+                        }>;
+                    }>;
+                }> = [];
+
                 if (relationshipsByLead.has(leadId)) {
                     const serviceMap = relationshipsByLead.get(leadId)!;
-                    services = Array.from(serviceMap.values()).map(service => ({
+                    services.push(...Array.from(serviceMap.values()).map(service => ({
                         service_id: service.service_id,
                         service_name: service.service_name,
                         service_code: service.service_code,
-                        categories: Array.from(service.categories.values()).map(cat => ({
+                        categories: Array.from(service.categories.values()).map((cat: any) => ({
                             category_id: cat.category_id,
                             category_name: cat.category_name,
                             sub_services: cat.sub_services
                         }))
-                    }));
+                    })));
                 }
 
                 return {
@@ -1511,6 +1494,7 @@ export const itineraryPreferencesRepository = {
             title?: string;
             description?: string;
             estimated_price?: number;
+            currency?: string;
             preferences: Record<string, any>;
             is_active?: boolean;
             metadata?: Record<string, any>;
@@ -1519,6 +1503,12 @@ export const itineraryPreferencesRepository = {
             flightPreferencesAdded: boolean;
             hotelPreferencesAdded: boolean;
             visaPreferencesAdded: boolean;
+            transferPreferencesAdded: boolean;
+            groupBookingPreferencesAdded: boolean;
+            tourPackagePreferencesAdded: boolean;
+            aircraftCharterPreferencesAdded: boolean;
+            eventManagementPreferencesAdded: boolean;
+            yachtCharterPreferencesAdded: boolean;
             lastUpdated: string;
             metadata?: Record<string, any>;
         };
@@ -1528,7 +1518,18 @@ export const itineraryPreferencesRepository = {
             aircraftCharterOptions = [], eventManagementOptions = [], yachtCharterOptions = [],
             userPreferences } = formData;
 
-        const servicePreferences = [];
+        const servicePreferences: Array<{
+            service_type: string;
+            service_code: string;
+            preference_order: number;
+            title?: string;
+            description?: string;
+            estimated_price?: number;
+            currency?: string;
+            preferences: Record<string, any>;
+            is_active?: boolean;
+            metadata?: Record<string, any>;
+        }> = [];
 
         // Flight Service Preferences
         if (flightOptions.length > 0) {
@@ -1841,6 +1842,12 @@ export const itineraryPreferencesRepository = {
                 flightPreferencesAdded: userPreferences.flightPreferencesAdded || false,
                 hotelPreferencesAdded: userPreferences.hotelPreferencesAdded || false,
                 visaPreferencesAdded: userPreferences.visaPreferencesAdded || false,
+                transferPreferencesAdded: userPreferences.transferPreferencesAdded || false,
+                groupBookingPreferencesAdded: userPreferences.groupBookingPreferencesAdded || false,
+                tourPackagePreferencesAdded: userPreferences.tourPackagePreferencesAdded || false,
+                aircraftCharterPreferencesAdded: userPreferences.aircraftCharterPreferencesAdded || false,
+                eventManagementPreferencesAdded: userPreferences.eventManagementPreferencesAdded || false,
+                yachtCharterPreferencesAdded: userPreferences.yachtCharterPreferencesAdded || false,
                 lastUpdated: userPreferences.lastUpdated || new Date().toISOString(),
                 metadata: {
                     source: 'frontend_form',
@@ -1872,6 +1879,12 @@ export const itineraryPreferencesRepository = {
             flightPreferencesAdded: boolean;
             hotelPreferencesAdded: boolean;
             visaPreferencesAdded: boolean;
+            transferPreferencesAdded: boolean;
+            groupBookingPreferencesAdded: boolean;
+            tourPackagePreferencesAdded: boolean;
+            aircraftCharterPreferencesAdded: boolean;
+            eventManagementPreferencesAdded: boolean;
+            yachtCharterPreferencesAdded: boolean;
             lastUpdated: string;
             metadata?: Record<string, any>;
         };
@@ -1921,8 +1934,8 @@ export const itineraryPreferencesRepository = {
             }
 
             // Save user preferences summary with service counts
-            const serviceCounts = {};
-            const servicesAdded = {};
+            const serviceCounts: Record<string, number> = {};
+            const servicesAdded: Record<string, boolean> = {};
 
             servicePreferences.forEach(pref => {
                 const serviceType = pref.service_type;
