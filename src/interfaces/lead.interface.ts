@@ -141,6 +141,7 @@ export interface CreateLeadPayload {
 }
 
 export interface UpdateLeadPayload {
+    
     // Primary Details
     name?: string;
     email?: string;
@@ -153,15 +154,11 @@ export interface UpdateLeadPayload {
     source?: string;
     source_medium?: string;
 
-    // Requirements
+    // Requirements (direct fields)
     from_location?: string;
     destination?: string;
     travel_date?: string;
     return_date?: string;
-    service_type?: string;
-    services?: string;
-    sub_service?: string;
-    needs_visa?: boolean;
     budget?: number;
     travelers?: number;
     flight_class?: string;
@@ -174,6 +171,7 @@ export interface UpdateLeadPayload {
     lead_type?: string;
     notes?: string;
 
+    // Service selections from frontend
     service_selections?: Array<{
         service_id: string;
         service_name: string;
@@ -196,6 +194,9 @@ export interface UpdateLeadPayload {
     team_id?: string;
     team_name?: string;
     assigned_member_name?: string;
+
+    // Service relationships (for response)
+    service_relationships?: any[];
 }
 
 export interface LeadFilter {
@@ -236,6 +237,24 @@ export interface LeadWithRequirements extends Lead {
         role_name: string | null;
         team_id: string | null;
     };
+    team_id?: string;
+    budget_range?: string;
+    inquiry_source?: string;
+    from_location?: string;
+    destination?: string;
+    travel_date?: string;
+    return_date?: string;
+    budget?: number;
+    travelers?: number;
+    flight_class?: string;
+    customer_category?: string;
+    sub_category?: string;
+    company_name?: string;
+    company_address?: string;
+    company_details?: string;
+    gst_number?: string;
+    lead_type?: string;
+    notes?: string;
 }
 
 export interface LeadServiceRelationship {

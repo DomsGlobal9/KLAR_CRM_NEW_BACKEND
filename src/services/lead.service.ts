@@ -16,23 +16,23 @@ export const leadService = {
   async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
     console.log("🔧 Service received payload:", JSON.stringify(payload, null, 2));
 
-    // Validate payload
+
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-    // Sanitize data
+
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
 
-    // Check for existing lead
+
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
       console.log(`⚠️ Lead with email ${sanitizedData.email} already exists`);
-      // You might want to handle this differently (update or throw error)
+
     }
 
-    // Create lead with full details
+
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
     console.log("✅ Lead created successfully:", lead.id);
@@ -68,30 +68,30 @@ export const leadService = {
   /**
    * Update lead and requirements
    */
-  async updateLead(id: string, payload: UpdateLeadPayload): Promise<boolean> {
-    console.log("🔧 Update service payload:", payload);
+  async updateLead(id: string, payload: any): Promise<boolean> {
+    console.log("🔧 Service update received payload:", JSON.stringify(payload, null, 2));
 
-    // Get existing lead
+
     const existingLead = await leadRepository.getLeadById(id);
     if (!existingLead) {
       throw new Error('Lead not found');
     }
 
-    // Validate if email is being updated
+
     if (payload.email && payload.email !== existingLead.email) {
       const validation = ValidationUtils.validateEmail(payload.email);
       if (!validation) {
         throw new Error('Invalid email format');
       }
 
-      // Check if new email already exists
+
       const existingWithNewEmail = await leadRepository.getLeadByEmail(payload.email);
       if (existingWithNewEmail && existingWithNewEmail.id !== id) {
         throw new Error('Email already in use by another lead');
       }
     }
 
-    // Validate phone if being updated
+
     if (payload.phone && payload.phone !== existingLead.phone) {
       const validation = ValidationUtils.validatePhone(payload.phone);
       if (!validation) {
@@ -102,7 +102,7 @@ export const leadService = {
     // Sanitize data
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
 
-    // Update lead with full details
+    // Update lead with full details including service relationships
     return await leadRepository.updateLeadWithFullDetails(id, sanitizedData);
   },
 
@@ -207,7 +207,7 @@ export const leadService = {
       throw new Error('Stage name not found');
     }
 
-    // const payload: UpdateLeadPayload = { stage: stageName };
+
     return await leadRepository.updateLeadStageOnly(id, stageName);
   },
 
