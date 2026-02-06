@@ -158,22 +158,30 @@ export const leadController = {
      * Update lead
      */
     async updateLead(req: Request, res: Response) {
+
         try {
             const { id } = req.params;
             const payload: UpdateLeadPayload = req.body;
 
-            console.log("📥 Update payload:", payload);
+            console.log("📥 Update payload received:", JSON.stringify(payload, null, 2));
 
-            const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
+            const mappedPayload = LeadDataMapper.mapFrontendToDatabaseForUpdate(payload);
 
-            const lead = await leadService.updateLead(id as string, mappedPayload);
+            const updated = await leadService.updateLead(id as string, mappedPayload);
 
-            const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
+            if (!updated) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Lead not found or update failed'
+                });
+            }
 
             res.json({
                 success: true,
                 message: 'Lead updated successfully',
+                data: []
             });
+
         } catch (error: any) {
             console.error("❌ Update lead error:", error);
             res.status(400).json({

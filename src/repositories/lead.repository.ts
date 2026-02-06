@@ -1080,30 +1080,38 @@ export const leadRepository = {
     ): Promise<boolean> {
         console.log("🗄️ Updating lead with full details:", leadId);
 
-        // 1. Update lead
-        const leadData = LeadDataMapper.mapFrontendToDatabase(payload);
+
+        const metadata = {
+            inquiry_source: payload.inquiry_source,
+            preferred_contact_method: payload.preferred_contact_method,
+            country_city: payload.country_city,
+            team_id: payload.team_id,
+            budget_range: payload.budget_range,
+            timeline: payload.timeline,
+            ...(payload.metadata || {})
+        };
+
+
+        Object.keys(metadata).forEach(key => {
+            if (metadata[key] === undefined) {
+                delete metadata[key];
+            }
+        });
+
 
         const { error: leadError } = await supabaseAdmin
             .from('leads')
             .update({
-                name: leadData.name,
-                email: leadData.email,
-                phone: leadData.phone,
-                type: leadData.type,
-                status: leadData.status,
-                stage: leadData.stage,
-                assigned_to: leadData.assigned_to,
-                source: leadData.source,
-                source_medium: leadData.source_medium,
-                metadata: {
-                    inquiry_source: payload.inquiry_source,
-                    preferred_contact_method: payload.preferred_contact_method,
-                    country_city: payload.country_city,
-                    team_id: payload.team_id,
-                    budget_range: payload.budget_range,
-                    timeline: payload.timeline,
-                    ...(payload.metadata || {})
-                },
+                name: payload.name,
+                email: payload.email,
+                phone: payload.phone,
+                type: payload.type,
+                status: payload.status,
+                stage: payload.stage,
+                assigned_to: payload.assigned_to,
+                source: payload.source,
+                source_medium: payload.source_medium,
+                metadata: Object.keys(metadata).length > 0 ? metadata : null,
                 updated_at: new Date().toISOString()
             })
             .eq('id', leadId);
@@ -1115,7 +1123,7 @@ export const leadRepository = {
 
         console.log("✅ Lead updated successfully");
 
-        // 2. Update requirements
+
         const requirementsData = LeadDataMapper.prepareRequirements(payload);
 
         const { data: existingReq } = await supabaseAdmin
@@ -1124,35 +1132,36 @@ export const leadRepository = {
             .eq('lead_id', leadId)
             .maybeSingle();
 
-        if (existingReq) {
-            // Update existing requirements
-            const { error: reqError } = await supabaseAdmin
-                .from('lead_requirements')
-                .update(requirementsData)
-                .eq('lead_id', leadId);
+        if (Object.keys(requirementsData).length > 0) {
+            if (existingReq) {
 
-            if (reqError) {
-                console.error("❌ Requirements update error:", reqError);
-                throw new Error(`Failed to update requirements: ${reqError.message}`);
-            }
-        } else {
-            // Create new requirements
-            const { error: reqError } = await supabaseAdmin
-                .from('lead_requirements')
-                .insert({
-                    lead_id: leadId,
-                    ...requirementsData
-                });
+                const { error: reqError } = await supabaseAdmin
+                    .from('lead_requirements')
+                    .update(requirementsData)
+                    .eq('lead_id', leadId);
 
-            if (reqError) {
-                console.error("❌ Requirements creation error:", reqError);
-                throw new Error(`Failed to create requirements: ${reqError.message}`);
+                if (reqError) {
+                    console.error("❌ Requirements update error:", reqError);
+                    throw new Error(`Failed to update requirements: ${reqError.message}`);
+                }
+            } else {
+
+                const { error: reqError } = await supabaseAdmin
+                    .from('lead_requirements')
+                    .insert({
+                        lead_id: leadId,
+                        ...requirementsData
+                    });
+
+                if (reqError) {
+                    console.error("❌ Requirements creation error:", reqError);
+                    throw new Error(`Failed to create requirements: ${reqError.message}`);
+                }
             }
+            console.log("✅ Requirements updated successfully");
         }
 
-        console.log("✅ Requirements updated successfully");
 
-        // 3. Update service relationships
         if (payload.service_selections) {
             const relationships = LeadDataMapper.prepareServiceRelationships(leadId, payload);
             await this.updateLeadServiceRelationships(leadId, relationships);

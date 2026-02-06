@@ -27,4 +27,6 @@ router.patch('/:id/mark-paid', invoiceController.markAsPaid);
 // PATCH /api/invoices/:id/mark-sent
 router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
+router.post('/convert-from-quote', invoiceController.convertQuoteToInvoice);
+
 export default router;
