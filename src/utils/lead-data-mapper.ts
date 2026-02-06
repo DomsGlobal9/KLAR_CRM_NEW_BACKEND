@@ -383,74 +383,65 @@ export class LeadDataMapper {
      * Map frontend payload to database format for UPDATE
      */
     static mapFrontendToDatabaseForUpdate(payload: any): any {
-        console.log("🔄 Mapping frontend to database for UPDATE:", payload);
+        console.log("🔄 Mapping frontend → db for UPDATE:", payload);
 
-        // Define the type explicitly
-        const mappedData: Record<string, any> = {
-            // Primary details
-            name: payload.name,
-            email: payload.email,
-            phone: payload.phone,
-            type: payload.type,
+        const mapped: Record<string, any> = {};
 
-            // Status & stage
-            status: payload.status,
-            stage: payload.stage,
+        // ── Primary lead fields ─────────────────────────────────────
+        const leadFields = [
+            'name', 'email', 'phone', 'type',
+            'status', 'stage', 'assigned_to',
+            'source', 'source_medium',
+            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
+        ];
+        leadFields.forEach(f => {
+            if (payload[f] !== undefined) mapped[f] = payload[f];
+        });
 
-            // Assignment
-            assigned_to: payload.assigned_to,
+        // ── Metadata / extra top-level fields ───────────────────────
+        const metaFields = [
+            'inquiry_source', 'preferred_contact_method',
+            'budget_range', 'timeline', 'country_city',
+            'team_id', 'team_name', 'assigned_member_name'
+        ];
+        const metadata: Record<string, any> = {};
+        metaFields.forEach(f => {
+            if (payload[f] !== undefined) metadata[f] = payload[f];
+        });
+        if (Object.keys(metadata).length > 0) {
+            mapped.metadata = metadata;
+        }
 
-            // Marketing attribution
-            source: payload.source,
-            source_medium: payload.source_medium,
-            utm_source: payload.utm_source,
-            utm_medium: payload.utm_medium,
-            utm_campaign: payload.utm_campaign,
-            utm_term: payload.utm_term,
-            utm_content: payload.utm_content,
-
-            // Requirements fields
-            from_location: payload.from_location,
-            destination: payload.destination,
-            to_location: payload.destination || payload.country_city,
-            travel_date: payload.travel_date,
-            return_date: payload.return_date,
-            budget: payload.budget,
-            travelers: payload.travelers,
-            flight_class: payload.flight_class,
-            customer_category: payload.customer_category,
-            sub_category: payload.sub_category,
-            company_name: payload.company_name,
-            company_address: payload.company_address,
-            company_details: payload.company_details,
-            gst_number: payload.gst_number,
-            lead_type: payload.lead_type,
-            notes: payload.notes,
-
-            // Service selections (to be processed separately)
-            service_selections: payload.service_selections,
-
-            // Additional metadata
-            inquiry_source: payload.inquiry_source,
-            preferred_contact_method: payload.preferred_contact_method,
-            budget_range: payload.budget_range,
-            timeline: payload.timeline,
-            country_city: payload.country_city,
-            team_id: payload.team_id,
-            team_name: payload.team_name,
-            assigned_member_name: payload.assigned_member_name,
-
-            // Service relationships
-            _service_relationships: payload.service_selections
-        };
-
-        // Remove undefined values
-        Object.keys(mappedData).forEach(key => {
-            if (mappedData[key] === undefined) {
-                delete mappedData[key];
+        // ── Requirements-ish fields ─────────────────────────────────
+        const reqFields = [
+            'from_location', 'destination', 'travel_date', 'return_date',
+            'budget', 'travelers', 'flight_class',
+            'customer_category', 'sub_category',
+            'company_name', 'company_address', 'company_details', 'gst_number',
+            'lead_type', 'notes'
+        ];
+        reqFields.forEach(f => {
+            if (payload[f] !== undefined) {
+                if (f === 'destination') {
+                    mapped.to_location = payload[f];     // important mapping
+                } else {
+                    mapped[f] = payload[f];
+                }
             }
         });
 
-        return mappedData;
+        // ── The most important part – service_selections ────────────
+        if (payload.service_selections !== undefined) {
+            mapped.service_selections = payload.service_selections;
+            // Also keep the helper key the repo expects
+            mapped._service_relationships = payload.service_selections;
+        }
+
+        // Remove undefined / null fields (optional but clean)
+        Object.keys(mapped).forEach(k => {
+            if (mapped[k] === undefined || mapped[k] === null) delete mapped[k];
+        });
+
+        return mapped;
     }
 }
