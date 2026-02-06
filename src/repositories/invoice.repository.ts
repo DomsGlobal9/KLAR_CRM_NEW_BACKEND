@@ -1,27 +1,27 @@
 import { supabaseAdmin } from '../config';
-import { Invoice, CreateInvoiceDTO, UpdateInvoiceDTO, InvoiceStats } from '../interfaces/invoice.interface';
+import { IInvoice, ICreateInvoiceDTO, IUpdateInvoiceDTO, IInvoiceStats } from '../interfaces/invoice.interface';
 
 export const invoiceRepository = {
     /**
-     * Get all invoices
+     * Get all IInvoices
      */
-    async getAll(): Promise<Invoice[]> {
+    async getAll(): Promise<IInvoice[]> {
         const { data, error } = await supabaseAdmin
             .from('invoices')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) {
-            throw new Error(`Failed to fetch invoices: ${error.message}`);
+            throw new Error(`Failed to fetch IInvoices: ${error.message}`);
         }
 
-        return data as Invoice[];
+        return data as IInvoice[];
     },
 
     /**
-     * Get invoice by ID
+     * Get IInvoice by ID
      */
-    async getById(id: string): Promise<Invoice | null> {
+    async getById(id: string): Promise<IInvoice | null> {
         const { data, error } = await supabaseAdmin
             .from('invoices')
             .select('*')
@@ -32,46 +32,50 @@ export const invoiceRepository = {
             if (error.code === 'PGRST116') {
                 return null;
             }
-            throw new Error(`Failed to fetch invoice: ${error.message}`);
+            throw new Error(`Failed to fetch IInvoice: ${error.message}`);
         }
 
-        return data as Invoice;
+        return data as IInvoice;
     },
 
     /**
-     * Create new invoice
+     * Create new IInvoice
      */
-    async create(invoiceData: CreateInvoiceDTO): Promise<Invoice> {
-        const invoice: Omit<Invoice, 'id'> = {
-            ...invoiceData,
-            invoice_number: `INV-${Date.now()}`,
-            status: invoiceData.status || 'draft',
+    async create(IInvoiceData: ICreateInvoiceDTO): Promise<IInvoice> {
+        const IInvoice: any = {
+            ...IInvoiceData,
             created_at: new Date().toISOString(),
-            due_date: invoiceData.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             paid_amount: 0,
-            client_name: '',
-            client_email: '',
-            tax_amount: 0,
-            line_items: []
+            discount: IInvoiceData.discount || 0,
+            tax_amount: IInvoiceData.tax_amount || 0,
+            subtotal: IInvoiceData.subtotal || IInvoiceData.total,
+            include_quote_details: IInvoiceData.include_quote_details || false,
+            line_items: IInvoiceData.line_items || []
         };
+
+        Object.keys(IInvoice).forEach(key => {
+            if (IInvoice[key] === undefined) {
+                delete IInvoice[key];
+            }
+        });
 
         const { data, error } = await supabaseAdmin
             .from('invoices')
-            .insert(invoice)
+            .insert(IInvoice)
             .select()
             .single();
 
         if (error) {
-            throw new Error(`Failed to create invoice: ${error.message}`);
+            throw new Error(`Failed to create IInvoice: ${error.message}`);
         }
 
-        return data as Invoice;
+        return data as IInvoice;
     },
 
     /**
-     * Update invoice
+     * Update IInvoice
      */
-    async update(id: string, updateData: UpdateInvoiceDTO): Promise<Invoice> {
+    async update(id: string, updateData: IUpdateInvoiceDTO): Promise<IInvoice> {
         const { data, error } = await supabaseAdmin
             .from('invoices')
             .update(updateData)
@@ -80,14 +84,14 @@ export const invoiceRepository = {
             .single();
 
         if (error) {
-            throw new Error(`Failed to update invoice: ${error.message}`);
+            throw new Error(`Failed to update IInvoice: ${error.message}`);
         }
 
-        return data as Invoice;
+        return data as IInvoice;
     },
 
     /**
-     * Delete invoice
+     * Delete IInvoice
      */
     async delete(id: string): Promise<void> {
         const { error } = await supabaseAdmin
@@ -96,24 +100,24 @@ export const invoiceRepository = {
             .eq('id', id);
 
         if (error) {
-            throw new Error(`Failed to delete invoice: ${error.message}`);
+            throw new Error(`Failed to delete IInvoice: ${error.message}`);
         }
     },
 
     /**
-     * Get invoice statistics
+     * Get IInvoice statistics
      */
-    async getStats(): Promise<InvoiceStats> {
-        const { data: invoices, error } = await supabaseAdmin
+    async getStats(): Promise<IInvoiceStats> {
+        const { data: IInvoices, error } = await supabaseAdmin
             .from('invoices')
             .select('status, total, paid_amount');
 
         if (error) {
-            throw new Error(`Failed to fetch invoice stats: ${error.message}`);
+            throw new Error(`Failed to fetch IInvoice stats: ${error.message}`);
         }
 
-        const stats: InvoiceStats = {
-            totalInvoices: invoices.length,
+        const stats: IInvoiceStats = {
+            totalInvoices: IInvoices.length,
             totalAmount: 0,
             paidAmount: 0,
             pendingAmount: 0,
@@ -121,17 +125,17 @@ export const invoiceRepository = {
             draftAmount: 0
         };
 
-        invoices.forEach(invoice => {
-            stats.totalAmount += invoice.total || 0;
-            
-            if (invoice.status === 'paid') {
-                stats.paidAmount += invoice.total || 0;
-            } else if (invoice.status === 'pending' || invoice.status === 'sent') {
-                stats.pendingAmount += invoice.total || 0;
-            } else if (invoice.status === 'overdue') {
-                stats.overdueAmount += invoice.total || 0;
-            } else if (invoice.status === 'draft') {
-                stats.draftAmount += invoice.total || 0;
+        IInvoices.forEach(IInvoice => {
+            stats.totalAmount += IInvoice.total || 0;
+
+            if (IInvoice.status === 'paid') {
+                stats.paidAmount += IInvoice.total || 0;
+            } else if (IInvoice.status === 'pending' || IInvoice.status === 'sent') {
+                stats.pendingAmount += IInvoice.total || 0;
+            } else if (IInvoice.status === 'overdue') {
+                stats.overdueAmount += IInvoice.total || 0;
+            } else if (IInvoice.status === 'draft') {
+                stats.draftAmount += IInvoice.total || 0;
             }
         });
 

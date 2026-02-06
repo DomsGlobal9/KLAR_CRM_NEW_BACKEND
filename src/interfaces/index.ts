@@ -91,3 +91,12 @@ export {
     IQuoteResponse,
     ICreateQuoteDTO
 } from "./quote.interface";
+
+export { 
+    IConvertQuoteToInvoiceDTO,
+    IInvoiceStats,
+    IUpdateInvoiceDTO,
+    ICreateInvoiceDTO,
+    IInvoice,
+    ILineItem
+ } from './invoice.interface';

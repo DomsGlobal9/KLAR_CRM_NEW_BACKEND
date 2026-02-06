@@ -1,4 +1,4 @@
-import { CreateInvoiceDTO } from '../interfaces/invoice.interface';
+import { ICreateInvoiceDTO } from '../interfaces/invoice.interface';
 import { ICreateQuoteDTO } from '../interfaces/quote.interface';
 import { camelToSnakeCase } from './camelCase.validator';
 
@@ -20,7 +20,7 @@ export function validateGSTNumber(gstNumber: string): boolean {
     return gstRegex.test(gstNumber.toUpperCase());
 }
 
-export function validateInvoiceData(invoiceData: CreateInvoiceDTO): void {
+export function validateInvoiceData(invoiceData: ICreateInvoiceDTO): void {
     const errors: string[] = [];
 
     if (!invoiceData.client_name?.trim()) {
@@ -45,12 +45,16 @@ export function validateInvoiceData(invoiceData: CreateInvoiceDTO): void {
         errors.push('Total amount must be greater than 0');
     }
 
-    if (invoiceData.line_items.length === 0) {
-        errors.push('At least one line item is required');
-    }
-
     if (invoiceData.gst_number && !validateGSTNumber(invoiceData.gst_number)) {
         errors.push('Invalid GST number format');
+    }
+
+    // Validate due date
+    if (invoiceData.due_date) {
+        const dueDate = new Date(invoiceData.due_date);
+        if (isNaN(dueDate.getTime())) {
+            errors.push('Invalid due date format');
+        }
     }
 
     if (errors.length > 0) {
