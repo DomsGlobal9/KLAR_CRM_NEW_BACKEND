@@ -35,12 +35,36 @@ export const userRepository = {
         if (error) throw error;
 
         const user = data.user;
+        // console.log("&&&&&&&&&& User data we get", user);
+
+        let teamName: string | null = null;
+
+        const teamId = user.user_metadata?.team_id;
+
+        if (teamId) {
+            const { data: team, error: teamError } =
+                await supabaseAdmin
+                    .from('teams')
+                    .select('name')
+                    .eq('id', teamId)
+                    .single();
+
+            if (teamError && teamError.code !== 'PGRST116') {
+                throw teamError;
+            }
+
+            teamName = team?.name ?? null;
+        }
+
+        console.log("Team name", teamName);
 
         return {
             id: user.id,
             email: user.email,
             role: user.user_metadata?.role_name,
             username: user.user_metadata?.username,
+            team_id: user.user_metadata?.team_id,
+            team_name: teamName
         };
     }
 
