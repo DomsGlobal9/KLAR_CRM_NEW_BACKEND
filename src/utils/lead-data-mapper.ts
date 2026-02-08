@@ -225,7 +225,7 @@ export class LeadDataMapper {
 
         console.log(`🗺️ Map sizes: services=${serviceMap.size}, categories=${categoryMap.size}, subServices=${subServiceMap.size}`);
 
-        
+
         const serviceGroups = new Map();
 
         relationships.forEach(rel => {
@@ -251,7 +251,7 @@ export class LeadDataMapper {
             const categoryId = rel.sub_service_category_id;
             const subServiceId = rel.sub_service_id;
 
-            
+
             let categoryEntry = serviceGroup.categories.find((c: any) =>
                 c.category_id === categoryId
             );
@@ -267,10 +267,10 @@ export class LeadDataMapper {
                 serviceGroup.categories.push(categoryEntry);
             }
 
-            
+
             if (rel.selection_type === 'single') {
                 categoryEntry.sub_service_single = subServiceId;
-                
+
                 if (!categoryEntry.sub_service_ids.includes(subServiceId)) {
                     categoryEntry.sub_service_ids.push(subServiceId);
                 }
@@ -332,29 +332,116 @@ export class LeadDataMapper {
             service_selections: lead.service_selections || [],
             service_relationships: lead.service_relationships || [],
 
-            // Additional fields from metadata
+            // Team info
+            team_id: lead.team_id || (lead.assigned_user?.team_id),
+
+            // Additional fields
             ...(lead.metadata || {})
         };
 
         // Map requirements fields to top level for convenience
         if (lead.requirements) {
-            frontendLead.from_location = lead.requirements.from_location;
-            frontendLead.destination = lead.requirements.to_location || lead.requirements.destination;
-            frontendLead.travel_date = lead.requirements.travel_date;
-            frontendLead.return_date = lead.requirements.return_date;
-            frontendLead.budget = lead.requirements.budget;
-            frontendLead.travelers = lead.requirements.travelers;
-            frontendLead.flight_class = lead.requirements.flight_class;
-            frontendLead.customer_category = lead.requirements.customer_category;
-            frontendLead.sub_category = lead.requirements.sub_category;
-            frontendLead.company_name = lead.requirements.company_name;
-            frontendLead.company_address = lead.requirements.company_address;
-            frontendLead.company_details = lead.requirements.company_details;
-            frontendLead.gst_number = lead.requirements.gst_number;
-            frontendLead.lead_type = lead.requirements.lead_type;
-            frontendLead.notes = lead.requirements.notes;
+            const requirementMappings = {
+                from_location: lead.requirements.from_location,
+                destination: lead.requirements.to_location || lead.requirements.destination,
+                travel_date: lead.requirements.travel_date,
+                return_date: lead.requirements.return_date,
+                budget: lead.requirements.budget,
+                travelers: lead.requirements.travelers,
+                flight_class: lead.requirements.flight_class,
+                customer_category: lead.requirements.customer_category,
+                sub_category: lead.requirements.sub_category,
+                company_name: lead.requirements.company_name,
+                company_address: lead.requirements.company_address,
+                company_details: lead.requirements.company_details,
+                gst_number: lead.requirements.gst_number,
+                lead_type: lead.requirements.lead_type,
+                notes: lead.requirements.notes
+            };
+
+            Object.assign(frontendLead, requirementMappings);
+        }
+
+        // Add metadata fields to top level
+        if (lead.metadata) {
+            const metadataMappings = {
+                budget_range: lead.metadata.budget_range,
+                inquiry_source: lead.metadata.inquiry_source,
+                preferred_contact_method: lead.metadata.preferred_contact_method,
+                country_city: lead.metadata.country_city,
+                timeline: lead.metadata.timeline,
+                team_id: lead.metadata.team_id || frontendLead.team_id
+            };
+
+            Object.assign(frontendLead, metadataMappings);
         }
 
         return frontendLead;
+    }
+
+    /**
+     * Map frontend payload to database format for UPDATE
+     */
+    static mapFrontendToDatabaseForUpdate(payload: any): any {
+        console.log("🔄 Mapping frontend → db for UPDATE:", payload);
+
+        const mapped: Record<string, any> = {};
+
+        // ── Primary lead fields ─────────────────────────────────────
+        const leadFields = [
+            'name', 'email', 'phone', 'type',
+            'status', 'stage', 'assigned_to',
+            'source', 'source_medium',
+            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
+        ];
+        leadFields.forEach(f => {
+            if (payload[f] !== undefined) mapped[f] = payload[f];
+        });
+
+        // ── Metadata / extra top-level fields ───────────────────────
+        const metaFields = [
+            'inquiry_source', 'preferred_contact_method',
+            'budget_range', 'timeline', 'country_city',
+            'team_id', 'team_name', 'assigned_member_name'
+        ];
+        const metadata: Record<string, any> = {};
+        metaFields.forEach(f => {
+            if (payload[f] !== undefined) metadata[f] = payload[f];
+        });
+        if (Object.keys(metadata).length > 0) {
+            mapped.metadata = metadata;
+        }
+
+        // ── Requirements-ish fields ─────────────────────────────────
+        const reqFields = [
+            'from_location', 'destination', 'travel_date', 'return_date',
+            'budget', 'travelers', 'flight_class',
+            'customer_category', 'sub_category',
+            'company_name', 'company_address', 'company_details', 'gst_number',
+            'lead_type', 'notes'
+        ];
+        reqFields.forEach(f => {
+            if (payload[f] !== undefined) {
+                if (f === 'destination') {
+                    mapped.to_location = payload[f];     // important mapping
+                } else {
+                    mapped[f] = payload[f];
+                }
+            }
+        });
+
+        // ── The most important part – service_selections ────────────
+        if (payload.service_selections !== undefined) {
+            mapped.service_selections = payload.service_selections;
+            // Also keep the helper key the repo expects
+            mapped._service_relationships = payload.service_selections;
+        }
+
+        // Remove undefined / null fields (optional but clean)
+        Object.keys(mapped).forEach(k => {
+            if (mapped[k] === undefined || mapped[k] === null) delete mapped[k];
+        });
+
+        return mapped;
     }
 }
