@@ -163,9 +163,7 @@ export const teamMemberController = {
      */
     async sendAddMemberOTP(req: AuthRequest, res: Response) {
         try {
-            if (req.user?.role_name !== 'superadmin') {
-                return res.status(403).json({ error: 'Only superadmin can add team members' });
-            }
+            
 
             const { email, role_id, team_id } = req.body;
 
@@ -177,7 +175,7 @@ export const teamMemberController = {
                 email: email.toLowerCase(),
                 role_id,
                 team_id: team_id || null,
-                requested_by: req.user.id
+                requested_by: req.user?.id as string
             });
 
             res.json(result);
@@ -191,9 +189,7 @@ export const teamMemberController = {
      */
     async verifyOTPAndCreateMember(req: AuthRequest, res: Response) {
         try {
-            if (req.user?.role_name !== 'superadmin') {
-                return res.status(403).json({ error: 'Only superadmin can create team members' });
-            }
+            
             const owner = req.user;
 
             console.log("The frontend data we get", req.body);
@@ -210,11 +206,11 @@ export const teamMemberController = {
                 username,
                 full_name,
                 phone: phone || null,
-                created_by: req.user.id
+                created_by: req.user?.id as string
             });
 
             await createAuditLog({
-                user_id: req.user.id,
+                user_id: req.user?.id,
                 action: 'TEAM_MEMBER_ADDED',
                 entity_type: 'user',
                 entity_id: user.id,
