@@ -15,10 +15,9 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Use your custom CORS with logging already inside the origin function
 app.use(cors(corsOptions));
 
-// Optional: Add extra request logging for origin (in case of preflight or non-credential requests)
+
 app.use((req, res, next) => {
   const origin = req.get('Origin') || req.get('origin') || 'no-origin';
   if (origin !== 'no-origin') {

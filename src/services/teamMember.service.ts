@@ -84,33 +84,47 @@ export const teamMemberService = {
     /**
      * Get all team members with role and team details
      */
-    async getAllTeamMembers() {
+    async getAllTeamMembers(currentUser?: any) {
         const { data, error } = await teamMemberRepository.listUsers();
         if (error) throw error;
 
-        const users = data.users.filter(
+        let filteredUsers = data.users.filter(
             u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
         );
 
+        filteredUsers = this.applyRoleFilters(filteredUsers, currentUser);
 
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();
 
-        return users.map(user => {
-            const role = roles.find(r => r.id === user.user_metadata?.role_id);
-            const team = teams.find(t => t.id === user.user_metadata?.team_id);
+        return filteredUsers.map(user => ({
+            id: user.id,
+            email: user.email,
+            username: user.user_metadata?.username,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+            role: roles.find(r => r.id === user.user_metadata?.role_id) || null,
+            team: teams.find(t => t.id === user.user_metadata?.team_id) || null,
+            user_metadata: user.user_metadata
+        }));
+    },
 
-            return {
-                id: user.id,
-                email: user.email,
-                username: user.user_metadata?.username,
-                created_at: user.created_at,
-                last_sign_in_at: user.last_sign_in_at,
-                role: role ? { id: role.id, name: role.name } : null,
-                team: team ? { id: team.id, name: team.name } : null,
-                user_metadata: user.user_metadata
-            };
-        });
+    applyRoleFilters(users: any[], currentUser?: any) {
+        if (!currentUser || !currentUser.role) return users;
+
+        switch (currentUser.role) {
+            case 'admin':
+                return users.filter(u => u.user_metadata?.role_name === 'rm');
+
+            case 'rm':
+                return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
+
+            case 'superadmin':
+                return users;
+
+            default:
+                return users.filter(u => u.user_metadata?.role_name === currentUser.role);
+        }
     },
 
     /**

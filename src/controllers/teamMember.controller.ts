@@ -30,8 +30,9 @@ export const teamMemberController = {
     },
 
     async getAll(req: AuthRequest, res: Response) {
+
         try {
-            const users = await teamMemberService.getAllTeamMembers();
+            const users = await teamMemberService.getAllTeamMembers(req.user);
 
             if (!users || users.length === 0) {
                 return res.status(404).json({
@@ -163,7 +164,7 @@ export const teamMemberController = {
      */
     async sendAddMemberOTP(req: AuthRequest, res: Response) {
         try {
-            
+
 
             const { email, role_id, team_id } = req.body;
 
@@ -189,7 +190,7 @@ export const teamMemberController = {
      */
     async verifyOTPAndCreateMember(req: AuthRequest, res: Response) {
         try {
-            
+
             const owner = req.user;
 
             console.log("The frontend data we get", req.body);
