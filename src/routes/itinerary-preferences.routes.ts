@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { itineraryPreferencesController } from '../controllers/itinerary-preferences.controller';
+import { authenticate, requireRole } from '../middleware';
 
 const router = Router();
 
 /* =======================
    STATIC ROUTES FIRST
    ======================= */
+
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
 
 router.post('/', itineraryPreferencesController.savePreferences);
 router.post('/upsert', itineraryPreferencesController.saveOrUpdatePreferences);

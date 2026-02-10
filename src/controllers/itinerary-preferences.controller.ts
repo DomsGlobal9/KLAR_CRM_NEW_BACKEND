@@ -11,9 +11,10 @@ import {
     calculateFormStats,
     formatFormDataForDisplay
 } from '../helpers';
+import { AuthRequest } from '../middleware';
 
 export const itineraryPreferencesController = {
-    
+
     /**
      * Get all preferences for a lead
      */
@@ -301,14 +302,32 @@ export const itineraryPreferencesController = {
     /**
      * Get all leads with preferences (admin endpoint)
      */
-    async getAllLeads(req: Request, res: Response) {
+    async getAllLeads(req: AuthRequest, res: Response) {
         try {
             const leadId = req.query.id as string;
             const minimal = req.query.minimal === 'true';
             const detailed = req.query.detailed === 'true';
 
-            // If specific lead ID is provided
+            const userDetails = req.user;
+            const userRole = userDetails?.role;
+            const userId = userDetails?.id;
+
+            console.log("Get user details by id", req.user);
+            console.log("The user data we get", userDetails);
+
+            
             if (leadId) {
+                
+                if (userRole === 'rm') {
+                    const hasAccess = await itineraryPreferencesService.checkLeadAccess(leadId, userId as string);
+                    if (!hasAccess) {
+                        return res.status(403).json({
+                            success: false,
+                            message: 'You do not have permission to access this lead'
+                        });
+                    }
+                }
+
                 const singleResult = await itineraryPreferencesService.getPreferences(leadId);
 
                 if (!singleResult.success || !singleResult.data) {
@@ -327,12 +346,19 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            // Get pagination parameters
+            
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || (minimal ? 100 : 50);
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
 
-            // If detailed view is requested
+            
+            const roleFilter = {
+                role: userRole,
+                userId: userId,
+                assignedToField: 'assigned_to'
+            };
+
+            
             if (detailed) {
                 const paginationParams: IPaginationParams = {
                     page: Math.max(1, page),
@@ -341,25 +367,23 @@ export const itineraryPreferencesController = {
                     sort_order: sortOrder
                 };
 
-                const result = await itineraryPreferencesService.getAllLeads(paginationParams);
+                const result = await itineraryPreferencesService.getAllLeads(paginationParams, roleFilter);
                 return res.status(200).json(result);
             }
 
-            // Default: minimal view (optimized)
+            
             const paginationParams: IPaginationParams = {
                 page: Math.max(1, page),
-                limit: Math.min(Math.max(1, limit), 100), // Allow more results for minimal view
+                limit: Math.min(Math.max(1, limit), 100),
                 sort_by: 'updated_at',
                 sort_order: sortOrder
             };
 
             if (minimal) {
-                // Use the new minimal endpoint
-                const result = await itineraryPreferencesService.getAllLeadsMinimal(paginationParams);
+                const result = await itineraryPreferencesService.getAllLeadsMinimal(paginationParams, roleFilter);
                 return res.status(200).json(result);
             } else {
-                // Use existing basic endpoint
-                const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams);
+                const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams, roleFilter);
                 return res.status(200).json(result);
             }
 

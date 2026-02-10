@@ -323,3 +323,32 @@ export interface IFrontendFormData {
     metadata?: any;
 }
 
+export interface IRoleFilter {
+    role?: string;
+    userId?: string;
+    assignedToField?: string;
+}
+
+export interface IAllItinerariesResponse {
+    success: boolean;
+    data: {
+        leads: IItineraryPreferencesResponse[];
+        total_count: number;
+        pagination?: {
+            page: number;
+            limit: number;
+            total_pages: number;
+        };
+    };
+    summary?: {
+        total_leads: number;
+        total_flight_preferences: number;
+        total_hotel_preferences: number;
+        total_visa_preferences: number;
+        leads_with_flight_prefs: number;
+        leads_with_hotel_prefs: number;
+        leads_with_visa_prefs: number;
+        complete_leads: number;
+    };
+    message?: string;
+}

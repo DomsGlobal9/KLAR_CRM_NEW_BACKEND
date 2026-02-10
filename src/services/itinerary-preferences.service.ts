@@ -8,9 +8,11 @@ import {
     IFlightPreference,
     IPaginationParams,
     IAllItinerariesResponse,
-    IAllLeadsBasicResponse
+    IAllLeadsBasicResponse,
+    IRoleFilter
 } from '../interfaces/itinerary-preferences.interface';
 import { leadRepository } from '../repositories';
+import { supabaseAdmin } from '../config';
 
 export const itineraryPreferencesService = {
 
@@ -313,9 +315,9 @@ export const itineraryPreferencesService = {
     /**
      * Get all leads with pagination (admin)
      */
-    async getAllLeads(params?: IPaginationParams): Promise<IAllItinerariesResponse> {
+    async getAllLeads(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<IAllItinerariesResponse> {
         try {
-            const result = await itineraryPreferencesRepository.getAllLeadsPaginated(params);
+            const result = await itineraryPreferencesRepository.getAllLeadsPaginated(params, roleFilter);
 
             let totalFlightPrefs = 0;
             let totalHotelPrefs = 0;
@@ -379,11 +381,10 @@ export const itineraryPreferencesService = {
     /**
      * Get all leads with basic details
      */
-    async getAllLeadsBasic(params?: IPaginationParams): Promise<IAllLeadsBasicResponse> {
+    async getAllLeadsBasic(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<IAllLeadsBasicResponse> {
         try {
-            const result = await itineraryPreferencesRepository.getAllLeadsBasicPaginated(params);
+            const result = await itineraryPreferencesRepository.getAllLeadsBasicPaginated(params, roleFilter);
 
-            // Create summary statistics
             let totalFlightPrefs = 0;
             let totalHotelPrefs = 0;
             let totalVisaPrefs = 0;
@@ -453,7 +454,7 @@ export const itineraryPreferencesService = {
     /**
      * Get all leads with minimal details
      */
-    async getAllLeadsMinimal(params?: IPaginationParams): Promise<{
+    async getAllLeadsMinimal(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<{
         success: boolean;
         data?: {
             leads: Array<{
@@ -495,7 +496,7 @@ export const itineraryPreferencesService = {
         message?: string;
     }> {
         try {
-            const result = await itineraryPreferencesRepository.getAllLeadsMinimal(params);
+            const result = await itineraryPreferencesRepository.getAllLeadsMinimal(params, roleFilter);
 
             return {
                 success: true,
@@ -517,4 +518,25 @@ export const itineraryPreferencesService = {
             };
         }
     },
+
+    async checkLeadAccess(leadId: string, userId: string): Promise<boolean> {
+        try {
+            const { data, error } = await supabaseAdmin
+                .from('leads')
+                .select('assigned_to')
+                .eq('id', leadId)
+                .single();
+
+            if (error || !data) {
+                return false;
+            }
+
+            return data.assigned_to === userId;
+        } catch (error) {
+            console.error('Error checking lead access:', error);
+            return false;
+        }
+    },
+
+
 };

@@ -108,6 +108,7 @@ export const leadController = {
                 limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
+            console.log("The get all lead api", req.user);
 
             // Pass current user info to filter leads
             const leads = await leadService.getAllLeads(filter, req.user);

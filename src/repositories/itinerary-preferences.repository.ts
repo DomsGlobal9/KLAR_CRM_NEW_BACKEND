@@ -7,7 +7,8 @@ import {
     IItineraryPreferencesResponse,
     ICombinedPreferenceData,
     IFrontendFormData,
-    ILeadDetails
+    ILeadDetails,
+    IRoleFilter
 } from '../interfaces/itinerary-preferences.interface';
 
 export const itineraryPreferencesRepository = {
@@ -643,7 +644,7 @@ export const itineraryPreferencesRepository = {
         limit?: number;
         sort_by?: string;
         sort_order?: 'asc' | 'desc';
-    }): Promise<{
+    }, roleFilter?: IRoleFilter): Promise<{
         leads: IItineraryPreferencesResponse[];
         total_count: number;
         page: number;
@@ -657,12 +658,18 @@ export const itineraryPreferencesRepository = {
             const sortOrder = params?.sort_order || 'desc';
 
             /**
-             * Step 1: Get paginated summaries from PARENT table first
+             * Step 1: Build base query with role-based filtering
              */
-            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('*', { count: 'exact' })
-                .order(sortBy, { ascending: sortOrder === 'asc' })
+                .order(sortBy, { ascending: sortOrder === 'asc' });
+
+            if (roleFilter?.role === 'rm' && roleFilter?.userId) {
+                query = query.eq('leads.assigned_to', roleFilter.userId);
+            }
+
+            const { data: summaries, error: summariesError, count } = await query
                 .range((page - 1) * limit, page * limit - 1);
 
             if (summariesError) {
@@ -685,7 +692,7 @@ export const itineraryPreferencesRepository = {
             const leadIds = summaries.map(summary => summary.lead_id);
 
             /**
-             * Step 3: Fetch all related data in parallel - including lead details
+             * Step 3: Fetch all related data in parallel
              */
             const [
                 flightPreferencesResult,
@@ -693,36 +700,24 @@ export const itineraryPreferencesRepository = {
                 visaPreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
-                /**
-                 * Get all flight preferences for these leads
-                 */
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                /**
-                 * Get all hotel preferences for these leads
-                 */
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                /**
-                 * Get all visa preferences for these leads
-                 */
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('*')
                     .in('lead_id', leadIds)
                     .order('preference_order', { ascending: true }),
 
-                /**
-                 * Get lead details from leads table
-                 */
                 supabaseAdmin
                     .from('leads')
                     .select('*')
@@ -737,33 +732,21 @@ export const itineraryPreferencesRepository = {
             const visaPreferencesMap = new Map<string, IVisaPreference[]>();
             const leadDetailsMap = new Map<string, ILeadDetails>();
 
-            /**
-             * Group flight preferences by lead_id
-             */
             flightPreferencesResult.data?.forEach(fp => {
                 const existing = flightPreferencesMap.get(fp.lead_id) || [];
                 flightPreferencesMap.set(fp.lead_id, [...existing, fp as IFlightPreference]);
             });
 
-            /**
-             * Group hotel preferences by lead_id
-             */
             hotelPreferencesResult.data?.forEach(hp => {
                 const existing = hotelPreferencesMap.get(hp.lead_id) || [];
                 hotelPreferencesMap.set(hp.lead_id, [...existing, hp as IHotelPreference]);
             });
 
-            /**
-             * Group visa preferences by lead_id
-             */
             visaPreferencesResult.data?.forEach(vp => {
                 const existing = visaPreferencesMap.get(vp.lead_id) || [];
                 visaPreferencesMap.set(vp.lead_id, [...existing, vp as IVisaPreference]);
             });
 
-            /**
-             * Create lead details map
-             */
             leadDetailsResult.data?.forEach(lead => {
                 leadDetailsMap.set(lead.id, lead as ILeadDetails);
             });
@@ -793,12 +776,13 @@ export const itineraryPreferencesRepository = {
         }
     },
 
+
     async getAllLeadsBasicPaginated(params?: {
         page?: number;
         limit?: number;
         sort_by?: string;
         sort_order?: 'asc' | 'desc';
-    }): Promise<{
+    }, roleFilter?: IRoleFilter): Promise<{
         leads: Array<{
             lead_id: string;
             lead_details?: {
@@ -829,12 +813,19 @@ export const itineraryPreferencesRepository = {
             const sortOrder = params?.sort_order || 'desc';
 
             /**
-             * Step 1: Get paginated summaries from PARENT table first
+             * Step 1: Build base query with role-based filtering
              */
-            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('*', { count: 'exact' })
-                .order(sortBy, { ascending: sortOrder === 'asc' })
+                .order(sortBy, { ascending: sortOrder === 'asc' });
+
+            // Apply RM role filter
+            if (roleFilter?.role === 'rm' && roleFilter?.userId) {
+                query = query.eq('leads.assigned_to', roleFilter.userId);
+            }
+
+            const { data: summaries, error: summariesError, count } = await query
                 .range((page - 1) * limit, page * limit - 1);
 
             if (summariesError) {
@@ -865,33 +856,21 @@ export const itineraryPreferencesRepository = {
                 visaPreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
-                /**
-                 * Get all flight preferences (we'll count manually)
-                 */
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('lead_id, id')
                     .in('lead_id', leadIds),
 
-                /**
-                 * Get all hotel preferences (we'll count manually)
-                 */
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('lead_id, id')
                     .in('lead_id', leadIds),
 
-                /**
-                 * Get all visa preferences (we'll count manually)
-                 */
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('lead_id, id')
                     .in('lead_id', leadIds),
 
-                /**
-                 * Get only basic lead details (name, email, phone, status)
-                 */
                 supabaseAdmin
                     .from('leads')
                     .select('id, name, email, phone, status')
@@ -906,9 +885,6 @@ export const itineraryPreferencesRepository = {
             const visaCountsMap = new Map<string, number>();
             const leadDetailsMap = new Map<string, { name?: string; email?: string; phone?: string; status?: string }>();
 
-            /**
-             * Count flight preferences manually
-             */
             if (flightPreferencesResult.data) {
                 flightPreferencesResult.data.forEach(item => {
                     const currentCount = flightCountsMap.get(item.lead_id) || 0;
@@ -916,9 +892,6 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            /**
-             * Count hotel preferences manually
-             */
             if (hotelPreferencesResult.data) {
                 hotelPreferencesResult.data.forEach(item => {
                     const currentCount = hotelCountsMap.get(item.lead_id) || 0;
@@ -926,9 +899,6 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            /**
-             * Count visa preferences manually
-             */
             if (visaPreferencesResult.data) {
                 visaPreferencesResult.data.forEach(item => {
                     const currentCount = visaCountsMap.get(item.lead_id) || 0;
@@ -936,9 +906,6 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            /**
-             * Map lead details
-             */
             if (leadDetailsResult.data) {
                 leadDetailsResult.data.forEach(lead => {
                     leadDetailsMap.set(lead.id, {
@@ -1254,7 +1221,7 @@ export const itineraryPreferencesRepository = {
         limit?: number;
         sort_by?: string;
         sort_order?: 'asc' | 'desc';
-    }): Promise<{
+    }, roleFilter?: IRoleFilter): Promise<{
         leads: Array<{
             lead_id: string;
             lead_details: {
@@ -1295,8 +1262,8 @@ export const itineraryPreferencesRepository = {
             const sortBy = params?.sort_by || 'updated_at';
             const sortOrder = params?.sort_order || 'desc';
 
-            // Step 1: Get paginated summaries with basic lead details
-            const { data: summaries, error: summariesError, count } = await supabaseAdmin
+            // Step 1: Build base query with role-based filtering
+            let query = supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select(`
                 *,
@@ -1308,8 +1275,15 @@ export const itineraryPreferencesRepository = {
                     status,
                     created_at
                 )
-            `)
-                .order(sortBy, { ascending: sortOrder === 'asc' })
+            `, { count: 'exact' })
+                .order(sortBy, { ascending: sortOrder === 'asc' });
+
+            // Apply RM role filter
+            if (roleFilter?.role === 'rm' && roleFilter?.userId) {
+                query = query.eq('leads.assigned_to', roleFilter.userId);
+            }
+
+            const { data: summaries, error: summariesError, count } = await query
                 .range((page - 1) * limit, page * limit - 1);
 
             if (summariesError) {
@@ -1329,7 +1303,7 @@ export const itineraryPreferencesRepository = {
             // Step 2: Extract all lead IDs
             const leadIds = summaries.map(summary => summary.lead_id);
 
-            // Step 3: Get service relationships for these leads in one query
+            // Step 3: Get service relationships
             const { data: relationships, error: relError } = await supabaseAdmin
                 .from('lead_service_relationships')
                 .select(`
