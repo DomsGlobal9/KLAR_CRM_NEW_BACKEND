@@ -218,19 +218,41 @@ export const quoteRepository = {
     /**
      * Get all quotes with filtering
      */
-    async getAllQuotes(filter: IQuoteFilter = {}): Promise<{ quotes: IQuote[], total: number }> {
+    async getAllQuotes(filter: IQuoteFilter = {}, userRole?: string, userId?: string): Promise<{ quotes: IQuote[], total: number }> {
         let query = supabaseAdmin
             .from('quotes')
             .select('*', { count: 'exact' });
 
-        // Apply filters
+        if (userRole === 'rm' && userId) {
+
+            const { data: assignedLeads, error: leadsError } = await supabaseAdmin
+                .from('leads')
+                .select('id')
+                .eq('assigned_to', userId);
+
+            if (leadsError) {
+                throw new Error(`Failed to fetch assigned leads: ${leadsError.message}`);
+            }
+
+            const leadIds = assignedLeads?.map(lead => lead.id) || [];
+
+            if (leadIds.length === 0) {
+                return {
+                    quotes: [],
+                    total: 0
+                };
+            }
+
+            query = query.in('lead_id', leadIds);
+        }
+
         if (filter.search) {
             query = query.or(`
-        quote_number.ilike.%${filter.search}%,
-        client_name.ilike.%${filter.search}%,
-        client_email.ilike.%${filter.search}%,
-        quote_title.ilike.%${filter.search}%
-      `);
+            quote_number.ilike.%${filter.search}%,
+            client_name.ilike.%${filter.search}%,
+            client_email.ilike.%${filter.search}%,
+            quote_title.ilike.%${filter.search}%
+        `);
         }
 
         if (filter.status) {
@@ -253,7 +275,6 @@ export const quoteRepository = {
             query = query.lte('created_at', filter.to_date);
         }
 
-        // Apply sorting
         if (filter.sort_by) {
             query = query.order(filter.sort_by, {
                 ascending: filter.sort_order === 'asc'
@@ -262,7 +283,6 @@ export const quoteRepository = {
             query = query.order('created_at', { ascending: false });
         }
 
-        // Apply pagination
         const page = filter.page || 1;
         const limit = filter.limit || 20;
         const offset = (page - 1) * limit;

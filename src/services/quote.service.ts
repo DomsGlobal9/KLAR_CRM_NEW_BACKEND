@@ -362,9 +362,9 @@ export const quoteService = {
     /**
      * Get all quotes with filtering
      */
-    async getAllQuotes(filter: IQuoteFilter = {}): Promise<IQuoteResponse> {
+    async getAllQuotes(filter: IQuoteFilter = {}, userRole?: string, userId?: string): Promise<IQuoteResponse> {
         try {
-            const result = await quoteRepository.getAllQuotes(filter);
+            const result = await quoteRepository.getAllQuotes(filter, userRole, userId);
 
             return {
                 success: true,

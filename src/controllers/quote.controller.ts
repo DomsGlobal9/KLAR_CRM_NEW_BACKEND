@@ -5,6 +5,7 @@ import {
     IUpdateQuoteDTO,
     IQuoteFilter
 } from '../interfaces';
+import { AuthRequest } from '../middleware';
 
 export const quoteController = {
     /**
@@ -12,12 +13,12 @@ export const quoteController = {
      */
     async createQuote(req: Request, res: Response) {
         try {
-            
+
             const payload = req.body;
 
             console.log('Raw payload received:', JSON.stringify(payload, null, 2));
 
-            
+
             const finalPayload = payload.quoteData || payload;
 
             const result = await quoteService.createQuote(finalPayload);
@@ -85,8 +86,12 @@ export const quoteController = {
     /**
      * Get all quotes
      */
-    async getAllQuotes(req: Request, res: Response) {
+    async getAllQuotes(req: AuthRequest, res: Response) {
         try {
+            const userDetails = req.user;
+            const userRole = userDetails?.role;
+            const userId = userDetails?.id;
+
             const filter: IQuoteFilter = {
                 search: req.query.search as string,
                 status: req.query.status as string,
@@ -100,7 +105,7 @@ export const quoteController = {
                 sort_order: req.query.sort_order as 'asc' | 'desc'
             };
 
-            const result = await quoteService.getAllQuotes(filter);
+            const result = await quoteService.getAllQuotes(filter, userRole, userId);
 
             return res.status(200).json(result);
         } catch (error: any) {

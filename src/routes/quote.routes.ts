@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { quoteController } from '../controllers/quote.controller';
+import { authenticate, requireRole } from '../middleware';
 
 const router = Router();
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
 
 // Quote CRUD routes
 router.post('/', quoteController.createQuote);
