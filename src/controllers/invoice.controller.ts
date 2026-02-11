@@ -2,12 +2,17 @@ import { Request, Response } from 'express';
 import { invoiceService } from '../services';
 import { ICreateInvoiceDTO, IUpdateInvoiceDTO } from '../interfaces/invoice.interface';
 import { calculateDueDateFromCurrentDate, calculateDueDateWithTime, generateInvoiceNumber, parseClientString } from '../utils/date.utils';
+import { AuthRequest } from '../middleware';
 
 export const invoiceController = {
 
-    async getAllInvoices(req: Request, res: Response) {
+    async getAllInvoices(req: AuthRequest, res: Response) {
         try {
-            const invoices = await invoiceService.getAllInvoices();
+            const userDetails = req.user;
+            const userRole = userDetails?.role;
+            const userId = userDetails?.id;
+
+            const invoices = await invoiceService.getAllInvoices(userRole, userId);
             res.json({ success: true, data: invoices });
         } catch (error: any) {
             res.status(500).json({

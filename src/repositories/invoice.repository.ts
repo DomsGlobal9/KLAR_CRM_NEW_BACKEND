@@ -5,14 +5,50 @@ export const invoiceRepository = {
     /**
      * Get all IInvoices
      */
-    async getAll(): Promise<IInvoice[]> {
-        const { data, error } = await supabaseAdmin
+    async getAll(userRole?: string, userId?: string): Promise<IInvoice[]> {
+        let query = supabaseAdmin
             .from('invoices')
             .select('*')
             .order('created_at', { ascending: false });
 
+        if (userRole === 'rm' && userId) {
+            const { data: assignedLeads, error: leadsError } = await supabaseAdmin
+                .from('leads')
+                .select('id')
+                .eq('assigned_to', userId);
+
+            if (leadsError) {
+                throw new Error(`Failed to fetch assigned leads: ${leadsError.message}`);
+            }
+
+            const leadIds = assignedLeads?.map(lead => lead.id) || [];
+
+            if (leadIds.length === 0) {
+                return [];
+            }
+
+            const { data: quotes, error: quotesError } = await supabaseAdmin
+                .from('quotes')
+                .select('quote_number')
+                .in('lead_id', leadIds);
+
+            if (quotesError) {
+                throw new Error(`Failed to fetch quotes: ${quotesError.message}`);
+            }
+
+            const quoteNumbers = quotes?.map(quote => quote.quote_number) || [];
+
+            if (quoteNumbers.length === 0) {
+                return [];
+            }
+
+            query = query.in('quote_number', quoteNumbers);
+        }
+
+        const { data, error } = await query;
+
         if (error) {
-            throw new Error(`Failed to fetch IInvoices: ${error.message}`);
+            throw new Error(`Failed to fetch invoices: ${error.message}`);
         }
 
         return data as IInvoice[];

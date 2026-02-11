@@ -1,11 +1,17 @@
 import { invoiceRepository } from '../repositories';
-import { ICreateInvoiceDTO, IUpdateInvoiceDTO } from '../interfaces/invoice.interface';
+import { ICreateInvoiceDTO, IInvoice, IUpdateInvoiceDTO } from '../interfaces/invoice.interface';
 import { validateInvoiceData } from '../utils/invoice.validation';
 import { generateInvoiceNumber } from '../utils/date.utils';
 
 export const invoiceService = {
-    async getAllInvoices() {
-        return await invoiceRepository.getAll();
+
+    async getAllInvoices(userRole?: string, userId?: string): Promise<IInvoice[]> {
+        try {
+            return await invoiceRepository.getAll(userRole, userId);
+        } catch (error: any) {
+            console.error('Error fetching invoices:', error);
+            throw new Error(error.message || 'Failed to fetch invoices');
+        }
     },
 
     async getInvoiceById(id: string) {
@@ -17,13 +23,13 @@ export const invoiceService = {
     },
 
     async createInvoice(invoiceData: ICreateInvoiceDTO) {
-        
+
         validateInvoiceData(invoiceData);
-        
+
         if (!invoiceData.invoice_number) {
             invoiceData.invoice_number = generateInvoiceNumber(invoiceData.quote_number);
         }
-        
+
         const completeInvoiceData = {
             ...invoiceData,
             status: invoiceData.status || 'draft',
@@ -36,7 +42,7 @@ export const invoiceService = {
             include_quote_details: invoiceData.include_quote_details || false
         };
 
-        
+
         return await invoiceRepository.create(completeInvoiceData);
     },
 

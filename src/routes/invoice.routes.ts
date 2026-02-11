@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { invoiceController } from '../controllers';
+import { authenticate, requireRole } from '../middleware';
 
 const router = Router();
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
 
 // GET /api/invoices
 router.get('/', invoiceController.getAllInvoices); 
