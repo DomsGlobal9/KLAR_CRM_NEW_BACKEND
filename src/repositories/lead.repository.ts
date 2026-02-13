@@ -407,11 +407,9 @@ export const leadRepository = {
 
         let query = supabaseAdmin
             .from('leads')
-            .select('id, name, source, stage, stage_id, assigned_to')
+            .select('id, name, source, stage, stage_id, assigned_to, interest')
             .order('created_at', { ascending: false });
 
-
-        /** Here Apply role-based filtering */
         if (filter.currentUser?.role === 'rm' && filter.currentUser?.id) {
             query = query.eq('assigned_to', filter.currentUser.id);
         }
@@ -468,6 +466,8 @@ export const leadRepository = {
                 };
             })
         );
+
+        console.log("@@@@@@@@@@@@@@@@\nThe leads data we get", leadsWithUsernames);
 
         return leadsWithUsernames;
     },
@@ -880,7 +880,7 @@ export const leadRepository = {
     },
 
     /**
-     * Update lead service relationships (delete old, insert new)
+     * Update lead service relationships - FIXED VERSION
      */
     async updateLeadServiceRelationships(
         leadId: string,
@@ -893,23 +893,136 @@ export const leadRepository = {
             attachments?: any[];
         }>
     ): Promise<boolean> {
-        // Delete existing relationships
-        const { error: deleteError } = await supabaseAdmin
-            .from('lead_service_relationships')
-            .delete()
-            .eq('lead_id', leadId);
+        console.log(`🔄 Updating service relationships for lead: ${leadId}`);
+        console.log(`📊 Received ${relationships.length} relationships`);
 
-        if (deleteError) {
-            console.error('Failed to delete old relationships:', deleteError);
-            throw new Error(`Failed to update service relationships: ${deleteError.message}`);
+        if (!relationships || relationships.length === 0) {
+            console.log("⚠️ No relationships to update, skipping...");
+            return true;
         }
 
-        // Insert new relationships
-        if (relationships && relationships.length > 0) {
-            return await this.createLeadServiceRelationships(leadId, relationships);
-        }
+        try {
+            // 1. Remove ALL existing relationships for this lead
+            console.log(`🗑️ Removing existing relationships for lead: ${leadId}`);
+            const { error: deleteError } = await supabaseAdmin
+                .from('lead_service_relationships')
+                .delete()
+                .eq('lead_id', leadId);
 
-        return true;
+            if (deleteError) {
+                console.error("❌ Failed to delete existing relationships:", deleteError);
+                throw new Error(`Failed to delete existing relationships: ${deleteError.message}`);
+            }
+            console.log("✅ Existing relationships removed");
+
+            // 2. Remove duplicates from the new relationships array
+            const uniqueRelationships = this.removeDuplicateRelationships(relationships);
+            console.log(`📊 After deduplication: ${uniqueRelationships.length} unique relationships`);
+
+            if (uniqueRelationships.length === 0) {
+                console.log("⚠️ No unique relationships to insert");
+                return true;
+            }
+
+            // 3. Prepare data for insertion
+            const relationshipsToInsert = uniqueRelationships.map(rel => ({
+                lead_id: leadId,
+                service_id: rel.service_id,
+                sub_service_category_id: rel.sub_service_category_id,
+                sub_service_id: rel.sub_service_id,
+                selection_type: rel.selection_type,
+                service_specific: rel.service_specific || {},
+                attachments: rel.attachments || [],
+                display_order: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }));
+
+            console.log(`💾 Inserting ${relationshipsToInsert.length} new relationships`);
+
+            // 4. Insert all unique relationships
+            const { error: insertError } = await supabaseAdmin
+                .from('lead_service_relationships')
+                .insert(relationshipsToInsert);
+
+            if (insertError) {
+                console.error("❌ Failed to insert relationships:", insertError);
+
+                // Check specifically for duplicate key error
+                if (insertError.message?.includes('duplicate key') ||
+                    insertError.code === '23505') {
+                    console.error("⚠️ Duplicate key error even after deduplication!");
+
+                    // Fallback: Insert one by one to skip duplicates
+                    console.log("🔄 Attempting individual inserts...");
+
+                    for (const rel of relationshipsToInsert) {
+                        const { error: singleInsertError } = await supabaseAdmin
+                            .from('lead_service_relationships')
+                            .upsert(rel, {
+                                onConflict: 'lead_id,service_id,sub_service_category_id,sub_service_id',
+                                ignoreDuplicates: true
+                            });
+
+                        if (singleInsertError) {
+                            console.error(`❌ Failed to insert relationship:`, singleInsertError);
+                        }
+                    }
+                    console.log("✅ Individual inserts completed");
+                    return true;
+                }
+
+                throw new Error(`Failed to create service relationships: ${insertError.message}`);
+            }
+
+            console.log("✅ Service relationships updated successfully");
+            return true;
+
+        } catch (error) {
+            console.error("❌ Error updating service relationships:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * Remove duplicate relationships from array
+     */
+    removeDuplicateRelationships(
+        relationships: Array<{
+            service_id: string;
+            sub_service_category_id: string;
+            sub_service_id: string;
+            selection_type: 'single' | 'multi';
+            service_specific: Record<string, any>;
+            attachments?: any[];
+        }>
+    ): Array<{
+        service_id: string;
+        sub_service_category_id: string;
+        sub_service_id: string;
+        selection_type: 'single' | 'multi';
+        service_specific: Record<string, any>;
+        attachments?: any[];
+    }> {
+        const uniqueMap = new Map();
+
+        relationships.forEach(rel => {
+            // Create a unique key based on the 4 fields that form the unique constraint
+            const key = `${rel.service_id}|${rel.sub_service_category_id}|${rel.sub_service_id}|${rel.selection_type}`;
+
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, rel);
+            } else {
+                console.log(`⚠️ Duplicate relationship found:`, {
+                    service_id: rel.service_id,
+                    sub_service_category_id: rel.sub_service_category_id,
+                    sub_service_id: rel.sub_service_id,
+                    selection_type: rel.selection_type
+                });
+            }
+        });
+
+        return Array.from(uniqueMap.values());
     },
 
     /**
@@ -928,6 +1041,7 @@ export const leadRepository = {
                 email: leadData.email,
                 phone: leadData.phone,
                 type: leadData.type || 'travel',
+                interest: leadData.interest,
                 status: leadData.status || 'active',
                 stage: leadData.stage || 'lead',
                 captured_from: leadData.captured_from || 'manual',

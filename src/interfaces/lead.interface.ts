@@ -78,6 +78,7 @@ export interface CreateLeadPayload {
     email: string;
     phone: string;
     type: 'event' | 'travel' | 'visa' | 'other';
+    interest: 'event' | 'travel' | 'visa' | 'other';
 
     // Optional Primary Details
     source?: string;

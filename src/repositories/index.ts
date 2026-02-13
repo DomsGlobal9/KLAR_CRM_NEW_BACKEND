@@ -11,3 +11,4 @@ export { serviceRepository } from "./service.repository";
 export { stageRepository } from "./stage.repository";
 export { itineraryRepository } from "./itinerary.repository";
 export { itineraryPreferencesRepository } from "./itinerary-preferences.repository";
+export { inquirySourceRepository } from "./inquirySource.repository";

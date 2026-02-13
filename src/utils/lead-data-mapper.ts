@@ -6,35 +6,36 @@ export class LeadDataMapper {
         console.log("🔄 Mapping frontend to database:", payload);
 
         const mappedData = {
-            // Primary details
-            name: payload.name,
-            email: payload.email,
-            phone: payload.phone,
-            type: payload.type || 'travel',
 
-            // Status & stage
+            name: payload.name || payload.fullName,
+            email: payload.email || payload.emailAddress,
+            phone: payload.phone || payload.phoneNumber,
+            type: payload.type || 'travel',
+            interest: payload.interest,
+
+
             status: payload.status || 'active',
             stage: payload.stage || 'lead',
 
-            // Assignment
+
             assigned_to: payload.assigned_to,
             captured_from: payload.captured_from || 'manual',
 
-            // Marketing attribution
-            source: payload.source || payload.inquiry_source,
-            source_medium: payload.source_medium || payload.inquiry_source,
+
+            source: payload.source || payload.inquirySource || payload.inquiry_source,
+            source_medium: payload.source_medium || payload.inquirySource || payload.inquiry_source,
             utm_source: payload.utm_source,
             utm_medium: payload.utm_medium,
             utm_campaign: payload.utm_campaign,
             utm_term: payload.utm_term,
             utm_content: payload.utm_content,
 
-            // Requirements fields
+
             from_location: payload.from_location,
-            destination: payload.destination, // Keep for frontend compatibility
-            to_location: payload.destination || payload.country_city, // For database
-            travel_date: payload.travel_date,
-            return_date: payload.return_date,
+            destination: payload.destination,
+            to_location: payload.destination || payload.country_city || payload.location,
+            travel_date: payload.travel_date || payload.travelDate,
+            return_date: payload.return_date || payload.returnDate,
             budget: payload.budget,
             travelers: payload.travelers,
             flight_class: payload.flight_class,
@@ -45,25 +46,26 @@ export class LeadDataMapper {
             company_details: payload.company_details,
             gst_number: payload.gst_number,
             lead_type: payload.lead_type,
-            notes: payload.notes,
+            notes: payload.notes || payload.additionalNotes,
 
-            // Service selections (to be processed separately)
+
             service_selections: payload.service_selections,
 
-            // Additional metadata
-            inquiry_source: payload.inquiry_source,
-            preferred_contact_method: payload.preferred_contact_method,
-            budget_range: payload.budget_range,
-            timeline: payload.timeline,
-            country_city: payload.country_city,
-            team_id: payload.team_id,
+
+            inquiry_source: payload.inquiry_source || payload.inquirySource,
+            preferred_contact_method: payload.preferred_contact_method || payload.preferredContactMethod,
+            budget_range: payload.budget_range || payload.budgetRange,
+            timeline: payload.timeline || payload.travelTimeline,
+            country_city: payload.country_city || payload.location,
+            team_id: payload.team_id || payload.assignToTeam,
             team_name: payload.team_name,
             assigned_member_name: payload.assigned_member_name,
 
-            // Service relationships (will be processed in prepareServiceRelationships)
+
             _service_relationships: payload.service_selections
         };
 
+        console.log("✅ Mapped data:", mappedData);
         return mappedData;
     }
 
@@ -89,68 +91,58 @@ export class LeadDataMapper {
             attachments?: any[];
         }> = [];
 
-        // Check if we have service_selections in the payload
         if (!payload.service_selections || !Array.isArray(payload.service_selections)) {
             console.log("⚠️ No service_selections found in payload");
             return relationships;
         }
 
-        console.log(`📊 Processing ${payload.service_selections.length} service selections`);
+        // Use a Set to track unique combinations
+        const uniqueKeys = new Set();
 
-        // Process each service selection
-        payload.service_selections.forEach((serviceSelection: any, serviceIndex: number) => {
-            console.log(`🔧 Processing service ${serviceIndex + 1}:`, {
-                service_id: serviceSelection.service_id,
-                service_name: serviceSelection.service_name,
-                categories_count: serviceSelection.categories?.length || 0
-            });
-
-            // Process each category within the service
+        payload.service_selections.forEach((serviceSelection: any) => {
             if (serviceSelection.categories && Array.isArray(serviceSelection.categories)) {
-                serviceSelection.categories.forEach((category: any, categoryIndex: number) => {
-                    console.log(`  📋 Processing category ${categoryIndex + 1}:`, {
-                        category_id: category.category_id,
-                        category_name: category.category_name,
-                        has_single: !!category.sub_service_single,
-                        has_multi: category.sub_service_ids?.length > 0
-                    });
+                serviceSelection.categories.forEach((category: any) => {
 
                     // Handle single selection
                     if (category.sub_service_single) {
-                        relationships.push({
-                            service_id: serviceSelection.service_id,
-                            sub_service_category_id: category.category_id,
-                            sub_service_id: category.sub_service_single,
-                            selection_type: 'single',
-                            service_specific: serviceSelection.service_specific || {},
-                            attachments: []
-                        });
-                        console.log(`    ✅ Added single sub-service: ${category.sub_service_single}`);
+                        const key = `${serviceSelection.service_id}|${category.category_id}|${category.sub_service_single}|single`;
+
+                        if (!uniqueKeys.has(key)) {
+                            uniqueKeys.add(key);
+                            relationships.push({
+                                service_id: serviceSelection.service_id,
+                                sub_service_category_id: category.category_id,
+                                sub_service_id: category.sub_service_single,
+                                selection_type: 'single',
+                                service_specific: serviceSelection.service_specific || {},
+                                attachments: []
+                            });
+                        }
                     }
 
                     // Handle multiple selections
                     if (category.sub_service_ids && Array.isArray(category.sub_service_ids)) {
                         category.sub_service_ids.forEach((subServiceId: string) => {
-                            relationships.push({
-                                service_id: serviceSelection.service_id,
-                                sub_service_category_id: category.category_id,
-                                sub_service_id: subServiceId,
-                                selection_type: 'multi',
-                                service_specific: serviceSelection.service_specific || {},
-                                attachments: []
-                            });
-                            console.log(`    ✅ Added multi sub-service: ${subServiceId}`);
+                            const key = `${serviceSelection.service_id}|${category.category_id}|${subServiceId}|multi`;
+
+                            if (!uniqueKeys.has(key)) {
+                                uniqueKeys.add(key);
+                                relationships.push({
+                                    service_id: serviceSelection.service_id,
+                                    sub_service_category_id: category.category_id,
+                                    sub_service_id: subServiceId,
+                                    selection_type: 'multi',
+                                    service_specific: serviceSelection.service_specific || {},
+                                    attachments: []
+                                });
+                            }
                         });
                     }
                 });
-            } else {
-                console.log(`  ⚠️ No categories found for service ${serviceSelection.service_name}`);
             }
         });
 
-        console.log(`📊 Total relationships prepared: ${relationships.length}`);
-        console.log("📋 Relationships details:", relationships);
-
+        console.log(`📊 Total unique relationships prepared: ${relationships.length}`);
         return relationships;
     }
 

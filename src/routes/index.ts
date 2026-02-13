@@ -12,6 +12,7 @@ import quoteRoutes from './quote.routes';
 import serviceRoutes from './service.routes';
 import itenaryRoutes from './itinerary.routes';
 import itenaryUserPreference from "./itinerary-preferences.routes";
+import inquirySourcesRoutes from './inquirySources.routes';
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.use('/team', teamRoutes);
 router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
 router.use('/lead', leadRoutes);
+router.use('/inquiry-sources', inquirySourcesRoutes);
 router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);

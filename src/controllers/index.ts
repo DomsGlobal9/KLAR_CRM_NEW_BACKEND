@@ -10,3 +10,4 @@ export { teamMemberController } from "./teamMember.controller";
 export { serviceController } from "./service.controller";
 export { itineraryController } from "./itinerary.controller";
 export { itineraryPreferencesController } from "./itinerary-preferences.controller";
+export { inquirySourceController } from "./inquirySource.controller";

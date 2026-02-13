@@ -6,6 +6,36 @@ import { LeadDataMapper } from '../utils/lead-data-mapper';
 import { AuthRequest } from '../middleware';
 
 export const leadController = {
+
+    /**
+     * Create quick lead
+     */
+    async createQuickLead(req: Request, res: Response) {
+        try {
+            const payload = req.body;
+
+            const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
+
+            const lead = await leadService.createLead(mappedPayload);
+
+            const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
+
+            res.status(201).json({
+                success: true,
+                message: 'Quick lead created successfully',
+                data: frontendLead
+            });
+
+        } catch (error: any) {
+            console.error("❌ Quick Lead creation error:", error);
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+
     /**
      * Create a new lead
      */
@@ -54,7 +84,7 @@ export const leadController = {
         try {
             const payload: CreateLeadPayload = req.body;
 
-            // Add UTM parameters from query string
+
             const utmParams = {
                 utm_source: req.query.utm_source as string,
                 utm_medium: req.query.utm_medium as string,
@@ -65,7 +95,7 @@ export const leadController = {
                 source_medium: req.query.source_medium as string
             };
 
-            // Merge UTM params with payload
+
             const leadPayload = {
                 ...payload,
                 ...utmParams
@@ -108,7 +138,6 @@ export const leadController = {
                 limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
-            console.log("The get all lead api", req.user);
 
             // Pass current user info to filter leads
             const leads = await leadService.getAllLeads(filter, req.user);

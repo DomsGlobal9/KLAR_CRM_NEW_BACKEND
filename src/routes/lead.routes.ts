@@ -7,7 +7,7 @@ const router = express.Router();
 /**
  * Public routes
  */
-router.post('/capture', leadController.captureWebLead);
+router.post('/capture', leadController.createQuickLead);
 
 /**
  * Protected routes - require authentication and specific roles
