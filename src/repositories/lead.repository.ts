@@ -467,8 +467,6 @@ export const leadRepository = {
             })
         );
 
-        console.log("@@@@@@@@@@@@@@@@\nThe leads data we get", leadsWithUsernames);
-
         return leadsWithUsernames;
     },
 

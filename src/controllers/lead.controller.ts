@@ -139,7 +139,6 @@ export const leadController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            // Pass current user info to filter leads
             const leads = await leadService.getAllLeads(filter, req.user);
 
             const frontendLeads = leads.map(lead =>

@@ -311,10 +311,6 @@ export const itineraryPreferencesController = {
             const userDetails = req.user;
             const userRole = userDetails?.role;
             const userId = userDetails?.id;
-
-            console.log("Get user details by id", req.user);
-            console.log("The user data we get", userDetails);
-
             
             if (leadId) {
                 

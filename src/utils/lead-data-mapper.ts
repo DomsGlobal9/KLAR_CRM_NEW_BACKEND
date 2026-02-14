@@ -294,6 +294,7 @@ export class LeadDataMapper {
             email: lead.email,
             phone: lead.phone,
             type: lead.type,
+            interest: lead.interest,
 
             // Status & tracking
             status: lead.status,
