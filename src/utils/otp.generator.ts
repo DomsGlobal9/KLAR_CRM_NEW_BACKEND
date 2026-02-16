@@ -3,7 +3,8 @@ export class OTPGenerator {
      * Generate a 6-digit alphanumeric OTP
      */
     static generate(length: number = 6): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        // const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const chars = '0123456789';
         let otp = '';
 
         for (let i = 0; i < length; i++) {
