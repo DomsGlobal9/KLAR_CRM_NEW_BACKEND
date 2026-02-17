@@ -16,8 +16,7 @@ export const AuthRepository = {
         });
     },
 
-    async signIn(email: string, password: string) {
-        console.log("&&&&&&&&&&&&& Email and password get in repository", { email, password });
+    async signIn(email: string, password: string) {``
         return supabase.auth.signInWithPassword({ email, password });
     },
 

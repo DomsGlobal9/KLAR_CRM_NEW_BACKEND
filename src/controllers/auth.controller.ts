@@ -243,15 +243,24 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
+
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
-            console.log("********** The user details we get", user);
+
+            console.log("############### The users we get", user);
+
 
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered' });
             }
 
+            if (user.user_metadata.status !== "active") {
+                return res.status(403).json({
+                    error: `Account is not active. Please contact your admin.`
+                });
+            }
+
             const { data: authData, error: authError } = await AuthService.login(normalizedEmail, password);
-            console.log("######## The auth data we get", authData);
+
             if (authError) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
