@@ -7,6 +7,8 @@ import { envConfig, isDevelopment, supabaseAdmin } from '../config';
 export const otpService = {
     /**
      * Send OTP (used for both registration and login)
+     * For login: Always allows new OTP (invalidates old ones)
+     * For registration: Blocks if unexpired OTP exists (to prevent spam)
      */
     async sendOTP(email: string, type: 'registration' | 'login'): Promise<{ success: boolean; message: string }> {
         try {
@@ -21,14 +23,27 @@ export const otpService = {
                 };
             }
 
+            // Check for existing OTPs
             const existing = await otpRepository.findByEmailAndType(email, type);
 
-            if (existing && !OTPGenerator.isExpired(existing.expires_at)) {
-                throw new Error('OTP already sent. Please check your email or wait.');
+            // Different behavior based on type
+            if (type === 'registration') {
+                // For registration: Block if unexpired OTP exists
+                if (existing && !OTPGenerator.isExpired(existing.expires_at)) {
+                    throw new Error('OTP already sent. Please check your email or wait.');
+                }
+            } else {
+                // For login: Always allow new OTP, but clean up old ones first
+                if (existing) {
+                    console.log(`🧹 Cleaning up existing OTP for ${email} (new login device request)`);
+                    await otpRepository.deleteByEmailAndType(email, type);
+                }
             }
 
+            // Clean up expired OTPs (maintenance)
             await otpRepository.cleanupExpired();
 
+            // Generate and store new OTP
             const otp_code = OTPGenerator.generate(envConfig.OTP.LENGTH);
             const expires_at = OTPGenerator.getExpirationTime(envConfig.OTP.EXPIRY_MINUTES);
 
@@ -40,6 +55,7 @@ export const otpService = {
                 otp_code,
                 expires_at
             });
+
             if (!isOtpStored) {
                 throw new Error('Failed to store OTP');
             }
@@ -59,7 +75,12 @@ export const otpService = {
                 throw new Error('Failed to send email');
             }
 
-            return { success: true, message: 'OTP sent successfully' };
+            // Add a note in response for login type
+            const message = type === 'login' && existing
+                ? 'New OTP sent successfully (previous OTP invalidated)'
+                : 'OTP sent successfully';
+
+            return { success: true, message };
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send OTP');
         }
@@ -86,6 +107,7 @@ export const otpService = {
                 };
             }
 
+            // Rate limiting checks (apply to both types)
             const cooldownCheck = await otpRepository.canResendOTP(
                 email,
                 type,
@@ -109,12 +131,11 @@ export const otpService = {
                 };
             }
 
+            // Clean up and generate new OTP
             await otpRepository.cleanupExpired();
-
             await otpRepository.deleteByEmailAndType(email, type);
 
             const otp_code = OTPGenerator.generate(envConfig.OTP.LENGTH);
-
             const expires_at = OTPGenerator.getExpirationTime(envConfig.OTP.EXPIRY_MINUTES);
 
             const isOtpStored = await otpRepository.create({
@@ -153,7 +174,6 @@ export const otpService = {
         }
     },
 
-
     /**
      * Verify OTP
      */
@@ -165,12 +185,17 @@ export const otpService = {
             }
 
             const otp = await otpRepository.verify(email.toLowerCase(), otp_code, type);
+
+            // After successful verification, clean up used OTP
+            if (otp.verified) {
+                await otpRepository.deleteByEmailAndType(email, type);
+            }
+
             return otp.verified;
         } catch (error: any) {
             throw new Error(error.message || 'Invalid or expired OTP');
         }
     },
-
 
     /**
      * Count recent resend attempts
@@ -189,5 +214,47 @@ export const otpService = {
 
         if (error) throw error;
         return count || 0;
+    },
+
+    /**
+     * New method: Force send new OTP (useful for device switching)
+     */
+    async forceSendNewOTP(email: string, type: 'registration' | 'login'): Promise<{ success: boolean; message: string }> {
+        try {
+            email = email.toLowerCase();
+
+            // Delete any existing OTPs
+            await otpRepository.deleteByEmailAndType(email, type);
+
+            // Generate and send new OTP
+            const otp_code = OTPGenerator.generate(envConfig.OTP.LENGTH);
+            const expires_at = OTPGenerator.getExpirationTime(envConfig.OTP.EXPIRY_MINUTES);
+
+            await otpRepository.create({
+                email,
+                type,
+                otp_code,
+                expires_at
+            });
+
+            // Send email
+            const emailPayload: SendEmailPayload = {
+                to: email,
+                subject: type === 'registration'
+                    ? 'Your New Registration Verification Code'
+                    : 'Your New Login Verification Code',
+                html: generateOTPEmailTemplate(otp_code, type),
+                requireNewLead: false
+            };
+
+            await emailService.sendEmail(emailPayload);
+
+            return {
+                success: true,
+                message: 'New OTP sent successfully. Previous OTP has been invalidated.'
+            };
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to send new OTP');
+        }
     }
 };
