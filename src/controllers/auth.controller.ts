@@ -178,6 +178,12 @@ export const authController = {
             }
 
             const result = await otpService.resendOTP(email.toLowerCase(), 'registration');
+
+            // Handle rate limiting case (when success is false)
+            if (!result.success) {
+                return res.status(429).json(result); // 429 Too Many Requests
+            }
+
             res.json(result);
         } catch (err: any) {
             console.error('Resend registration OTP failed:', err);
@@ -243,11 +249,7 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
-
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
-
-            console.log("############### The users we get", user);
-
 
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered' });
@@ -266,7 +268,6 @@ export const authController = {
             }
 
             const result = await otpService.sendOTP(normalizedEmail, 'login');
-
             res.json({ success: true, message: 'Login OTP sent to your email' });
         } catch (err: any) {
             console.error('Send login OTP failed:', err);
@@ -287,7 +288,6 @@ export const authController = {
 
             const normalizedEmail = email.toLowerCase();
 
-
             const { data: userList } = await AuthRepository.listUsers();
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
@@ -301,6 +301,12 @@ export const authController = {
             }
 
             const result = await otpService.resendOTP(normalizedEmail, 'login');
+
+            // Handle rate limiting case (when success is false)
+            if (!result.success) {
+                return res.status(429).json(result); // 429 Too Many Requests
+            }
+
             res.json(result);
         } catch (err: any) {
             console.error('Resend login OTP failed:', err);
@@ -331,26 +337,8 @@ export const authController = {
 
             const user = data.user;
             const session = data.session;
-            const metadata = user.user_metadata || {};
 
-            /**
-             * Send ONLY tokens to UI
-             */
-            res.json({
-                success: true,
-                session_details: {
-                    access_token: session.access_token,
-                    refresh_token: session.refresh_token,
-                    expires_at: session.expires_at,
-                }
-            });
-
-            if (error) {
-                console.error('Supabase signInWithOtp failed:', error);
-                return res.status(500).json({ error: 'Failed to create session' });
-            }
-
-            if (!data.session) {
+            if (!session) {
                 return res.status(500).json({ error: 'No session returned after OTP login' });
             }
 
@@ -362,6 +350,18 @@ export const authController = {
                 details: 'Login via custom OTP verification',
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
+            });
+
+            /**
+             * Send ONLY tokens to UI
+             */
+            res.json({
+                success: true,
+                session_details: {
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at,
+                }
             });
         } catch (err: any) {
             console.error('Login OTP verification failed:', err);

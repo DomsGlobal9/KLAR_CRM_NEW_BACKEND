@@ -58,6 +58,21 @@ interface EnvConfig {
     SUPABASE_URL: string;
     SUPABASE_ANON_KEY: string;
     SUPABASE_SERVICE_ROLE: string;
+
+    /**
+     * OTP Configuration
+     */
+    OTP: {
+        LENGTH: number;
+        EXPIRY_MINUTES: number;
+        BYPASS_IN_DEV: boolean;
+        USE_NUMERIC_ONLY: boolean;
+        MAX_RESEND_ATTEMPTS: number;
+        DEV_STATIC_CODE: string;
+        RESEND_WINDOW_MINUTES: number;
+        RESEND_COOLDOWN_SECONDS: number;
+        MAX_VERIFICATION_ATTEMPTS: number;
+    };
 }
 
 /**
@@ -121,6 +136,16 @@ const validateRequired = (value: string | undefined, fieldName: string): string 
 };
 
 /**
+ * Validate optional field with default
+ */
+const validateOptional = (value: string | undefined, defaultValue: string): string => {
+    if (!value || value.trim() === '') {
+        return defaultValue;
+    }
+    return value.trim();
+};
+
+/**
  * Validate required fields with custom error messages
  */
 const validateRequiredFields = (): void => {
@@ -157,6 +182,16 @@ const validateRequiredFields = (): void => {
         validateRequired(process.env.SUPABASE_DEVELOPMENT_URL, 'SUPABASE_DEVELOPMENT_URL');
         validateRequired(process.env.SUPABASE_DEVELOPMENT_ANON_KEY, 'SUPABASE_DEVELOPMENT_ANON_KEY');
         validateRequired(process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE, 'SUPABASE_DEVELOPMENT_SERVICE_ROLE');
+    }
+
+    /**
+     * OTP validation - only validate DEV_STATIC_CODE in development
+     */
+    if (nodeEnv === 'development') {
+        // DEV_STATIC_CODE is recommended but not required in development
+        if (!process.env.OTP_DEV_STATIC_CODE) {
+            console.warn('⚠️  OTP_DEV_STATIC_CODE not set. Using default "123456" for development.');
+        }
     }
 };
 
@@ -268,6 +303,21 @@ export const envConfig: EnvConfig = {
     SUPABASE_URL: getSupabaseUrl(),
     SUPABASE_ANON_KEY: getSupabaseAnonKey(),
     SUPABASE_SERVICE_ROLE: getSupabaseServiceRole(),
+
+    /**
+     * OTP Configuration
+     */
+    OTP: {
+        LENGTH: parseNumber(process.env.OTP_LENGTH, 6),
+        EXPIRY_MINUTES: parseNumber(process.env.OTP_EXPIRY_MINUTES, 10),
+        BYPASS_IN_DEV: parseBoolean(process.env.OTP_BYPASS_IN_DEV, true),
+        USE_NUMERIC_ONLY: parseBoolean(process.env.OTP_USE_NUMERIC_ONLY, true),
+        MAX_RESEND_ATTEMPTS: parseNumber(process.env.OTP_MAX_RESEND_ATTEMPTS, 3),
+        DEV_STATIC_CODE: validateOptional(process.env.OTP_DEV_STATIC_CODE, '123456'),
+        RESEND_WINDOW_MINUTES: parseNumber(process.env.OTP_RESEND_WINDOW_MINUTES, 30),
+        RESEND_COOLDOWN_SECONDS: parseNumber(process.env.OTP_RESEND_COOLDOWN_SECONDS, 60),
+        MAX_VERIFICATION_ATTEMPTS: parseNumber(process.env.OTP_MAX_VERIFICATION_ATTEMPTS, 5),
+    },
 };
 
 /**
@@ -326,6 +376,33 @@ export const validateConfig = (): void => {
     if (!supabaseKeyRegex.test(config.SUPABASE_ANON_KEY)) {
         console.warn(`⚠️  SUPABASE_ANON_KEY may not be in correct format. Expected JWT token starting with 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'`);
     }
+
+    /**
+     * Validate OTP configuration
+     */
+    if (config.OTP.LENGTH < 4 || config.OTP.LENGTH > 8) {
+        console.warn(`⚠️  OTP_LENGTH is ${config.OTP.LENGTH}. Recommended length is between 4 and 8 characters.`);
+    }
+
+    if (config.OTP.EXPIRY_MINUTES < 1 || config.OTP.EXPIRY_MINUTES > 30) {
+        console.warn(`⚠️  OTP_EXPIRY_MINUTES is ${config.OTP.EXPIRY_MINUTES}. Recommended expiry is between 1 and 30 minutes.`);
+    }
+
+    if (config.OTP.RESEND_COOLDOWN_SECONDS < 30) {
+        console.warn(`⚠️  OTP_RESEND_COOLDOWN_SECONDS is ${config.OTP.RESEND_COOLDOWN_SECONDS}. Values less than 30 seconds may lead to spam.`);
+    }
+
+    if (config.OTP.MAX_RESEND_ATTEMPTS > 5) {
+        console.warn(`⚠️  OTP_MAX_RESEND_ATTEMPTS is ${config.OTP.MAX_RESEND_ATTEMPTS}. High values may lead to abuse.`);
+    }
+
+    if (config.NODE_ENV === 'production' && config.OTP.BYPASS_IN_DEV) {
+        console.warn(`⚠️  OTP_BYPASS_IN_DEV is true in production. This setting only affects development environment.`);
+    }
+
+    if (config.NODE_ENV === 'production' && config.OTP.DEV_STATIC_CODE) {
+        console.warn(`⚠️  OTP_DEV_STATIC_CODE is set in production. This is only meant for development.`);
+    }
 };
 
 /**
@@ -345,9 +422,14 @@ export const getCurrentSupabaseServiceRole = (): string => {
  */
 export const logEnvironmentInfo = (): void => {
     console.log(`🚀 Environment: ${envConfig.NODE_ENV}`);
-    // console.log(`🔗 Supabase URL: ${envConfig.SUPABASE_URL.substring(0, 30)}...`);
-    // console.log(`🔑 Supabase Key: ${envConfig.SUPABASE_ANON_KEY.substring(0, 20)}...`);
     console.log(`🌐 CORS Origin: ${envConfig.CORS_ORIGIN.join(', ')}`);
+
+    console.log(`🔐 OTP Config: Length=${envConfig.OTP.LENGTH}, Expiry=${envConfig.OTP.EXPIRY_MINUTES}min, Cooldown=${envConfig.OTP.RESEND_COOLDOWN_SECONDS}s`);
+
+    if (isDevelopment()) {
+        console.log(`🧪 Dev OTP Static Code: ${envConfig.OTP.DEV_STATIC_CODE}`);
+        console.log(`🧪 Dev OTP Bypass: ${envConfig.OTP.BYPASS_IN_DEV ? 'Enabled' : 'Disabled'}`);
+    }
 };
 
 /**
