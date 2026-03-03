@@ -15,8 +15,53 @@ export const AuthRepository = {
             user_metadata: metadata,
         });
     },
+     async getUserByEmail(email: string) {
+        try {
+            const normalizedEmail = email.toLowerCase();
 
-    async signIn(email: string, password: string) {``
+            let page = 1;
+            const perPage = 100;
+            let foundUser = null;
+
+            while (!foundUser) {
+                const { data, error } =
+                    await supabaseAdmin.auth.admin.listUsers({
+                        page,
+                        perPage
+                    });
+
+                if (error) {
+                    return { user: null, error };
+                }
+
+                // No more users → stop
+                if (!data || data.users.length === 0) break;
+
+                // Search in current batch
+                foundUser = data.users.find(
+                    (u: any) => u.email?.toLowerCase() === normalizedEmail
+                );
+
+                if (foundUser) {
+                    return { user: foundUser, error: null };
+                }
+
+                page++;
+            }
+
+            return { user: null, error: null };
+
+        } catch (err: any) {
+            console.error("❌ Exception in getUserByEmail:", err.message);
+            return {
+                user: null,
+                error: { message: err.message || "Failed to fetch user" }
+            };
+        }
+    },
+
+    async signIn(email: string, password: string) {
+        
         return supabase.auth.signInWithPassword({ email, password });
     },
 

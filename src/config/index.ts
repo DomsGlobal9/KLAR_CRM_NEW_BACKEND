@@ -8,3 +8,4 @@ export {
     getSupabaseConfig,
     supabaseAdmin, 
 } from "./supabase.config";
+

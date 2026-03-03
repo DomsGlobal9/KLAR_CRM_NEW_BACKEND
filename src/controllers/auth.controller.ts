@@ -445,7 +445,7 @@ export const authController = {
 
      /**
      * Resend password reset OTP
-     * POST /api/auth/resend-password-otp
+     * POST /resend-password-otp
      */
     async resendPasswordResetOTP(req: Request, res: Response) {
         try {
@@ -500,7 +500,7 @@ export const authController = {
 
       /**
      * Step 2: Verify OTP and prepare for password reset
-     * POST /api/auth/verify-password-otp
+     * POST /verify-password-otp
      */
     async verifyPasswordResetOTP(req: Request, res: Response) {
         try {
@@ -566,11 +566,12 @@ export const authController = {
 
     /**
      * Step 3: Reset password (after OTP verification)
-     * POST /api/auth/reset-password
+     * POST /reset-password
      */
     async resetPassword(req: Request, res: Response) {
         try {
             const { email, newPassword } = req.body;
+            console.log("32434",email, newPassword);
 
             if (!email || !newPassword) {
                 return res.status(400).json({ 
@@ -582,21 +583,21 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             // Validate password strength
-            if (newPassword.length < 8) {
+            if (newPassword.length < 6) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Password must be at least 8 characters long'
+                    error: 'Password must be at least 6 characters long'
                 });
             }
 
             // Check if user exists
-            const { data: userList } = await AuthRepository.listUsers();
-            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+          const { user } = await AuthRepository.getUserByEmail(email);
+          
 
             if (!user) {
                 return res.status(404).json({ 
                     success: false, 
-                    error: 'User not found' 
+                    error: `User not found` 
                 });
             }
 
