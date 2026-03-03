@@ -10,7 +10,7 @@ export const otpService = {
     /**
      * Send OTP (used for both registration and login)
      */
-    async sendOTP(email: string, type: 'registration' | 'login'): Promise<{ success: boolean; message: string }> {
+    async sendOTP(email: string, type: 'registration' | 'login' | 'password_reset'): Promise<{ success: boolean; message: string }> {
         try {
             email = email.toLowerCase();
 
@@ -43,12 +43,29 @@ export const otpService = {
                 expires_at
             });
 
+             let subject: string;
+            let html: string;
+
+            switch (type) {
+                case 'registration':
+                    subject = 'Your Registration Verification Code';
+                    html = generateOTPEmailTemplate(otp_code, type);
+                    break;
+                case 'login':
+                    subject = 'Your Login Verification Code';
+                    html = generateOTPEmailTemplate(otp_code, type);
+                    break;
+                case 'password_reset':
+                    subject = 'Password Reset Verification Code';
+                    html = generateOTPEmailTemplate(otp_code,type);
+                    break;
+            }
+
+
             const emailPayload: SendEmailPayload = {
                 to: email,
-                subject: type === 'registration'
-                    ? 'Your Registration Verification Code'
-                    : 'Your Login Verification Code',
-                html: generateOTPEmailTemplate(otp_code, type),
+                subject,
+                html,
                 requireNewLead: false
             };
 
