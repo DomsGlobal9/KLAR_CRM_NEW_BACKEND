@@ -83,7 +83,7 @@ export const otpService = {
     /**
      * Verify OTP
      */
-    async verifyOTP(email: string, otp_code: string, type: 'registration' | 'login'): Promise<boolean> {
+    async verifyOTP(email: string, otp_code: string, type: 'registration' | 'login' | 'password_reset'): Promise<boolean> {
         try {
 
             /**
@@ -99,11 +99,49 @@ export const otpService = {
         }
     },
 
+     /**
+     * Verify OTP and return success with additional context for password reset
+     */
+    async verifyOTPForPasswordReset(email: string, otp_code: string): Promise<{ 
+        success: boolean; 
+        resetToken?: string;
+        message: string 
+    }> {
+        try {
+            const isValid = await this.verifyOTP(email, otp_code, 'password_reset');
+            
+            if (!isValid) {
+                return { 
+                    success: false, 
+                    message: 'Invalid or expired OTP' 
+                };
+            }
+
+            // Generate a temporary reset token (optional but more secure)
+            const resetToken = OTPGenerator.generateTemporaryToken();
+            
+            // Store reset token in database or cache with short expiry
+            await otpRepository.storeResetToken(email, resetToken);
+
+            return {
+                success: true,
+                resetToken,
+                message: 'OTP verified successfully'
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Verification failed'
+            };
+        }
+    },
+
     /**
      * Resend OTP (convenience wrapper)
      */
-    async resendOTP(email: string, type: 'registration' | 'login'): Promise<{ success: boolean; message: string }> {
+    async resendOTP(email: string, type: 'registration' | 'login' | 'password_reset'): Promise<{ success: boolean; message: string }> {
         await otpRepository.resend(email.toLowerCase(), type);
         return this.sendOTP(email, type);
     }
+
 };
