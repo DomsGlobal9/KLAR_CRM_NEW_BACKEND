@@ -7,7 +7,7 @@ export const teamRepository = {
      * Create a new team
      * @param name 
      * @param description 
-     * @returns 
+     * @returns   
      */
     async createTeam(name: string, description?: string) {
         const { data, error } = await supabaseAdmin

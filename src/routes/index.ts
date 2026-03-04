@@ -25,7 +25,7 @@ router.use('/user', userRoutes);
 router.use('/team', teamRoutes);
 router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
-router.use('/lead', leadRoutes);
+router.use('/lead', leadRoutes); 
 router.use('/inquiry-sources', inquirySourcesRoutes);
 router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);

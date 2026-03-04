@@ -44,7 +44,7 @@ export interface UpdateUserInput {
 
 export interface ChangePasswordInput {
     currentPassword: string;
-    newPassword: string;
+    newPassword: string; 
 }
 
 export interface AdminRMAssignment {

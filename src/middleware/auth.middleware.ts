@@ -18,6 +18,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   }
 
   const token = authHeader.split(' ')[1];
+  console.log("21auth.middleware.ts", token)
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
 

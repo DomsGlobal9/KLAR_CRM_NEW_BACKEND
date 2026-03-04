@@ -4,6 +4,7 @@ import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
 import { AuthRepository, roleRepository } from '../repositories';
 import { supabase, supabaseAdmin } from '../config';
+import { request } from 'node:http';
 
 export const authController = {
 
@@ -19,7 +20,7 @@ export const authController = {
             await createAuditLog({
                 user_id: req.user?.id || result.data.user?.id,
                 action: 'USER_CREATED',
-                entity_type: 'user',
+                entity_type: 'user', 
                 entity_id: result.data.user?.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
@@ -145,15 +146,18 @@ export const authController = {
     async sendRegistrationOTP(req: Request, res: Response) {
         try {
             const { email } = req.body;
+            console.log("149auth.controller, sendRegistrationOTP", req.body)
             if (!email || typeof email !== 'string') {
                 return res.status(400).json({ error: 'Valid email is required' });
             }
 
             const result = await otpService.sendOTP(email.toLowerCase(), 'registration');
+            console.log("155auth.controller, sendRegistrationOTP", result)
             res.json(result);
         } catch (err: any) {
             console.error('Send registration OTP failed:', err);
             res.status(400).json({ error: err.message || 'Failed to send OTP' });
+            console.log("160auth.controller, sendRegistrationOTP", err)
         }
     },
 
@@ -163,6 +167,7 @@ export const authController = {
     async resendRegistrationOTP(req: Request, res: Response) {
         try {
             const { email } = req.body;
+            console.log("166auth.controller", email, req.body)
 
             if (!email || typeof email !== 'string') {
                 return res.status(400).json({ error: 'Valid email is required' });

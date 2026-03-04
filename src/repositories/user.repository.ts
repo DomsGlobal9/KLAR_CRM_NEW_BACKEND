@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { User } from '../models/user.model';
 
 export const userRepository = {
 
@@ -69,4 +70,14 @@ export const userRepository = {
     }
 
 
+    export const findRMsByTL = async (tlId: string) => {
+  return await User.find({ 
+    teamLeadId: tlId, 
+    role: 'RM' 
+  });
 };
+
+
+
+};
+
