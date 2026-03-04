@@ -4,6 +4,7 @@ import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
 import { AuthRepository, roleRepository } from '../repositories';
 import { supabase, supabaseAdmin } from '../config';
+import { OTPChannel } from '../interfaces/auth.interface';
 
 export const authController = {
 
@@ -15,6 +16,9 @@ export const authController = {
     async register(req: AuthRequest, res: Response) {
         try {
             const result = await AuthService.register(req.body);
+            console.log("im in");
+            console.log(req.body);
+            console.log(result);
 
             await createAuditLog({
                 user_id: req.user?.id || result.data.user?.id,
@@ -137,36 +141,48 @@ export const authController = {
         }
     },
 
-    /**
-     * forgot Password
-     * @param req 
-     * @param res 
-     * @returns 
-     */
 
+     /**
+     * forgot Password - Supports both Email and SMS
+     * POST /api/auth/forgot-password
+     */
     async forgotPassword(req: Request, res: Response) {
         try {
-            const { email } = req.body;
+            const { identifier, channel } = req.body; // Changed from 'email' to 'identifier'
 
-            if (!email || typeof email !== 'string') {
+            if (!identifier || typeof identifier !== 'string') {
                 return res.status(400).json({
                     success: false,
-                    error: 'Valid email is required'
+                    error: 'Valid email or phone number is required'
                 });
             }
 
-            const normalizedEmail = email.toLowerCase();
+            // Determine channel if not provided
+            const deliveryChannel: OTPChannel = channel || (identifier.includes('@') ? 'email' : 'sms');
+            
+            // Normalize based on channel
+            const normalizedIdentifier = deliveryChannel === 'email' 
+                ? identifier.toLowerCase() 
+                : identifier; // Phone numbers will be formatted in service
 
-            // Check if user exists (using your existing AuthRepository)
+            // Check if user exists (you'll need to update this to search by email OR phone)
             const { data: userList } = await AuthRepository.listUsers();
-            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+            
+            let user;
+            if (deliveryChannel === 'email') {
+                user = userList.users.find((u: any) => u.email?.toLowerCase() === normalizedIdentifier);
+            } else {
+                // Search by phone number (you'll need to add phone field to users table)
+                user = userList.users.find((u: any) => 
+                    u.phone && u.phone.replace(/\D/g, '') === normalizedIdentifier.replace(/\D/g, '')
+                );
+            }
 
             // Security best practice: Don't reveal if user exists or not
             if (!user) {
-                // Still return success to prevent email enumeration
                 return res.status(200).json({
                     success: true,
-                    message: 'If the email exists in our system, you will receive a password reset code'
+                    message: `If the ${deliveryChannel} exists in our system, you will receive a reset code`
                 });
             }
 
@@ -174,27 +190,32 @@ export const authController = {
             if (user.user_metadata?.status !== "active") {
                 return res.status(200).json({
                     success: true,
-                    message: 'If the email exists in our system, you will receive a password reset code'
+                    message: `If the ${deliveryChannel} exists in our system, you will receive a reset code`
                 });
             }
 
-            // Send password reset OTP
-            const result = await otpService.sendOTP(normalizedEmail, 'password_reset');
+            // Send password reset OTP via specified channel
+            const result = await otpService.sendOTP(
+                normalizedIdentifier, 
+                'password_reset',
+                deliveryChannel
+            );
 
-            // // Create audit log
-            // await createAuditLog({
-            //     user_id: user.id,
-            //     action: 'PASSWORD_RESET_REQUESTED',
-            //     entity_type: 'user',
-            //     entity_id: user.id,
-            //     ip_address: req.ip,
-            //     user_agent: req.headers['user-agent'],
-            //     details: 'Password reset OTP requested'
-            // });
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_REQUESTED',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+                details: `Password reset OTP requested via ${deliveryChannel}`
+            });
 
             return res.status(200).json({
                 success: true,
-                message: 'Password reset code sent to your email'
+                message: `Reset code sent to your ${deliveryChannel}`,
+                channel: deliveryChannel
             });
 
         } catch (err: any) {
@@ -202,7 +223,7 @@ export const authController = {
             // Return success even on error for security
             return res.status(200).json({
                 success: true,
-                message: 'If the email exists in our system, you will receive a password reset code'
+                message: 'If the contact method exists, you will receive a reset code'
             });
         }
     },
@@ -443,36 +464,54 @@ export const authController = {
     },
 
 
-     /**
-     * Resend password reset OTP
-     * POST /resend-password-otp
+
+    /**
+     * Resend password reset OTP - Supports both Email and SMS
+     * POST /api/auth/resend-password-otp
      */
     async resendPasswordResetOTP(req: Request, res: Response) {
         try {
-            const { email } = req.body;
+            const { identifier, channel } = req.body;
 
-            if (!email || typeof email !== 'string') {
+            if (!identifier || typeof identifier !== 'string') {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Valid email is required' 
+                    error: 'Valid email or phone number is required' 
                 });
             }
 
-            const normalizedEmail = email.toLowerCase();
+            // Determine channel if not provided
+            const deliveryChannel: OTPChannel = channel || (identifier.includes('@') ? 'email' : 'sms');
+            
+            const normalizedIdentifier = deliveryChannel === 'email' 
+                ? identifier.toLowerCase() 
+                : identifier;
 
             // Check if user exists
             const { data: userList } = await AuthRepository.listUsers();
-            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+            
+            let user;
+            if (deliveryChannel === 'email') {
+                user = userList.users.find((u: any) => u.email?.toLowerCase() === normalizedIdentifier);
+            } else {
+                user = userList.users.find((u: any) => 
+                    u.phone && u.phone.replace(/\D/g, '') === normalizedIdentifier.replace(/\D/g, '')
+                );
+            }
 
             if (!user) {
                 return res.status(200).json({ 
                     success: true, 
-                    message: 'If the email exists in our system, you will receive a password reset code' 
+                    message: `If the ${deliveryChannel} exists, you will receive a reset code` 
                 });
             }
 
             // Resend OTP
-            const result = await otpService.resendOTP(normalizedEmail, 'password_reset');
+            const result = await otpService.resendOTP(
+                normalizedIdentifier, 
+                'password_reset',
+                deliveryChannel
+            );
 
             // Create audit log
             await createAuditLog({
@@ -482,11 +521,12 @@ export const authController = {
                 entity_id: user.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
+                details: `Password reset OTP resent via ${deliveryChannel}`
             });
 
             return res.status(200).json({ 
                 success: true, 
-                message: 'Password reset code resent to your email' 
+                message: `Reset code resent to your ${deliveryChannel}` 
             });
 
         } catch (err: any) {
@@ -498,26 +538,39 @@ export const authController = {
         }
     },
 
-      /**
-     * Step 2: Verify OTP and prepare for password reset
-     * POST /verify-password-otp
+    /**
+     * Step 2: Verify OTP and prepare for password reset - Supports both Email and SMS
+     * POST /api/auth/verify-password-otp
      */
     async verifyPasswordResetOTP(req: Request, res: Response) {
         try {
-            const { email, otp_code } = req.body;
+            const { identifier, otp_code, channel } = req.body;
 
-            if (!email || !otp_code) {
+            if (!identifier || !otp_code) {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Email and OTP code are required' 
+                    error: 'Identifier and OTP code are required' 
                 });
             }
 
-            const normalizedEmail = email.toLowerCase();
+            // Determine channel if not provided
+            const deliveryChannel: OTPChannel = channel || (identifier.includes('@') ? 'email' : 'sms');
+            
+            const normalizedIdentifier = deliveryChannel === 'email' 
+                ? identifier.toLowerCase() 
+                : identifier;
 
             // Check if user exists
             const { data: userList } = await AuthRepository.listUsers();
-            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+            
+            let user;
+            if (deliveryChannel === 'email') {
+                user = userList.users.find((u: any) => u.email?.toLowerCase() === normalizedIdentifier);
+            } else {
+                user = userList.users.find((u: any) => 
+                    u.phone && u.phone.replace(/\D/g, '') === normalizedIdentifier.replace(/\D/g, '')
+                );
+            }
 
             if (!user) {
                 return res.status(400).json({ 
@@ -526,8 +579,13 @@ export const authController = {
                 });
             }
 
-            // Verify OTP using your existing service
-            const isValid = await otpService.verifyOTP(normalizedEmail, otp_code, 'password_reset');
+            // Verify OTP
+            const isValid = await otpService.verifyOTP(
+                normalizedIdentifier, 
+                otp_code, 
+                'password_reset',
+                deliveryChannel
+            );
             
             if (!isValid) {
                 return res.status(400).json({ 
@@ -536,6 +594,12 @@ export const authController = {
                 });
             }
 
+            // Generate a temporary reset token (optional but more secure)
+            const resetToken = Math.random().toString(36).substring(2, 15) + 
+                              Math.random().toString(36).substring(2, 15);
+            
+            // Store reset token (you can implement this in your repository)
+            // await otpRepository.storeResetToken(normalizedIdentifier, resetToken);
 
             // Create audit log
             await createAuditLog({
@@ -545,14 +609,15 @@ export const authController = {
                 entity_id: user.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
-                details: 'Password reset OTP verified successfully'
+                details: `Password reset OTP verified successfully via ${deliveryChannel}`
             });
 
             // OTP verified - ready to show password reset form
             return res.status(200).json({
                 success: true,
                 message: 'OTP verified successfully',
-                email: normalizedEmail // Return email for confirmation
+                resetToken, // Send this if you implement token storage
+                identifier: deliveryChannel === 'email' ? user.email : user.phone // Return identifier for next step
             });
 
         } catch (err: any) {
@@ -565,22 +630,41 @@ export const authController = {
     },
 
     /**
-     * Step 3: Reset password (after OTP verification)
-     * POST /reset-password
+     * Step 3: Reset password (after OTP verification) - Supports both Email and SMS
+     * POST /api/auth/reset-password
      */
     async resetPassword(req: Request, res: Response) {
         try {
-            const { email, newPassword } = req.body;
-            console.log("32434",email, newPassword);
+            const { identifier, newPassword, resetToken } = req.body;
+            console.log("Resetting password for:", identifier, newPassword);
 
-            if (!email || !newPassword) {
+            if (!identifier || !newPassword) {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Email and new password are required' 
+                    error: 'Identifier and new password are required' 
                 });
             }
 
-            const normalizedEmail = email.toLowerCase();
+            // Determine if identifier is email or phone
+            const isEmail = identifier.includes('@');
+            
+            // Find user by email or phone
+            let user;
+            if (isEmail) {
+                const result = await AuthRepository.getUserByEmail(identifier.toLowerCase());
+                user = result.user;
+            } else {
+                // You'll need to implement getUserByPhone in your repository
+                const result = await AuthRepository.getUserByPhone(identifier);
+                user = result?.user;
+            }
+
+            if (!user) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: `User not found` 
+                });
+            }
 
             // Validate password strength
             if (newPassword.length < 6) {
@@ -590,18 +674,7 @@ export const authController = {
                 });
             }
 
-            // Check if user exists
-          const { user } = await AuthRepository.getUserByEmail(email);
-          
-
-            if (!user) {
-                return res.status(404).json({ 
-                    success: false, 
-                    error: `User not found` 
-                });
-            }
-
-
+        
             // Update password using Supabase Admin API
             const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
                 user.id,
@@ -613,7 +686,6 @@ export const authController = {
                 throw new Error('Failed to update password');
             }
 
-
             // Create audit log
             await createAuditLog({
                 user_id: user.id,
@@ -624,9 +696,6 @@ export const authController = {
                 user_agent: req.headers['user-agent'],
                 details: 'Password reset completed successfully'
             });
-
-            // Optional: Send confirmation email
-            // You can add this later using your email service
 
             return res.status(200).json({
                 success: true,
@@ -641,7 +710,4 @@ export const authController = {
             });
         }
     },
-
-   
-    
 };

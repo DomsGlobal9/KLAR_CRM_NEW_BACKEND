@@ -29,4 +29,16 @@ export class OTPGenerator {
     static isExpired(expiresAt: Date): boolean {
         return new Date() > new Date(expiresAt);
     }
+
+    /**
+     * Generate a temporary alphanumeric token
+     */
+    static generateTemporaryToken(length: number = 32): string {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let token = '';
+        for (let i = 0; i < length; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return token;
+    }
 }

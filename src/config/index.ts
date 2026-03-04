@@ -9,3 +9,4 @@ export {
     supabaseAdmin, 
 } from "./supabase.config";
 
+export { twilioClient, twilioVerifyServiceSid } from "./twilio.config";

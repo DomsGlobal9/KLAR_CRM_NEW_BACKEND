@@ -1,6 +1,9 @@
+// otp.interface.ts
 export interface OTP {
     id?: string;
-    email: string;
+    email?: string;        // Made optional (backward compatibility)
+    identifier: string;     // New field for email or phone
+    channel: 'email' | 'sms'; // New field to specify delivery method
     otp_code: string;
     type: 'registration' | 'password_reset' | 'login' | 'email_verification';
     expires_at: Date;
@@ -11,14 +14,17 @@ export interface OTP {
 }
 
 export interface CreateOTPPayload {
-    email: string;
+    identifier: string;     // Changed from email to identifier
     type: OTP['type'];
+    channel: 'email' | 'sms'; // Added channel
+    email?: string;         // Optional for backward compatibility
 }
 
 export interface VerifyOTPPayload {
-    email: string;
+    identifier: string;     // Changed from email to identifier
     otp_code: string;
     type: OTP['type'];
+    channel?: 'email' | 'sms'; // Optional channel
 }
 
 export interface UserRegistrationPayload {

@@ -12,6 +12,7 @@ export const AuthService = {
      */
     async register(payload: RegisterPayload) {
         const { email, password, username, full_name, phone } = payload;
+        console.log(payload);
 
         if (!email || !password || !username) {
             throw new Error('Email, password, and username are required');

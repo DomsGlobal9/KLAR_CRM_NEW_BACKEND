@@ -14,6 +14,11 @@ interface EnvConfig {
 
     
 
+ TWILIO_ACCOUNT_SID: string;
+ TWILIO_AUTH_TOKEN : string;
+ TWILIO_VERIFY_SERVICE_SID : string;
+ TWILIO_PHONE_NUMBER : number;
+
     /**
      * SMTP
      */
@@ -221,6 +226,11 @@ export const envConfig: EnvConfig = {
      */
     PORT: parseNumber(process.env.PORT, 3000),
     NODE_ENV: nodeEnv,
+
+    TWILIO_ACCOUNT_SID: validateRequired(process.env.TWILIO_ACCOUNT_SID, 'TWILIO_ACCOUNT_SID'),
+    TWILIO_AUTH_TOKEN: validateRequired(process.env.TWILIO_AUTH_TOKEN, 'TWILIO_AUTH_TOKEN'),
+    TWILIO_VERIFY_SERVICE_SID: validateRequired(process.env.TWILIO_VERIFY_SERVICE_SID, 'TWILIO_VERIFY_SERVICE_SID'),
+    TWILIO_PHONE_NUMBER: parseNumber(process.env.TWILIO_PHONE_NUMBER, 0),
 
     /**
      * SMTP

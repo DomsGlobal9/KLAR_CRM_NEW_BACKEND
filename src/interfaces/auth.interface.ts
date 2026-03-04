@@ -24,3 +24,21 @@ export interface AuthUser {
     status: string;
     full_name?: string;
 }
+
+
+// types/otp.types.ts
+export type OTPType = 'registration' | 'login' | 'password_reset';
+export type OTPChannel = 'email' | 'sms';
+
+export interface OTPSendRequest {
+    identifier: string; 
+    type: OTPType;
+    channel: OTPChannel; // New: specify delivery method
+}
+
+export interface OTPVerifyRequest {
+    identifier: string;
+    code: string;
+    type: OTPType;
+    channel?: OTPChannel; 
+}
