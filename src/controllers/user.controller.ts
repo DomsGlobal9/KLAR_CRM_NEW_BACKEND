@@ -58,27 +58,7 @@ export const userController = {
                 error: err.message || 'Failed to fetch user'
             });
         }
-    },
-
-   /**
-     * Get RMs by Team Lead ID
-     */
-    async getRMsByTLId(req: AuthRequest, res: Response) {
-        try {
-            const { tlId } = req.params;
-            const rms = await userService.getRMsUnderTL(tlId);
-            
-            return res.status(200).json({
-                success: true,
-                data: rms
-            });
-        } catch (error: any) {
-            return res.status(400).json({ 
-                success: false, 
-                message: error.message 
-            });
-        }
-    } 
+    }
   
 }
 

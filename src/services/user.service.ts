@@ -48,14 +48,5 @@ export const userService = {
         };
 
         return userRepository.updateUserMetadata(userId, updatedMetadata);
-    },
-
-
-    /**
-     * Get all RMs under a specific TL
-     */
-    async getRMsUnderTL(tlId: string)  {
-        if (!tlId) throw new Error("TL ID is required");
-        return await userRepository.findRMsByTL(tlId);
     }
 };
