@@ -9,8 +9,8 @@ export const teamLeadController = {
      */
     async getRMsByTLId(req: AuthRequest, res: Response) {
         try {
-            const { tlId } = req.params;
-            const rms = await teamLeadService.getRMsUnderTL(tlId);
+            const tlId = req.user?.id;
+            const rms = await teamLeadService.getRMsUnderTL(tlId as string);
             
             return res.status(200).json({
                 success: true,
