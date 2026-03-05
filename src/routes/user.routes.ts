@@ -21,4 +21,12 @@ router.get('/me', userController.getMe);
 router.put('/me', userController.updateMe);
 
 
+/**
+ * Get all RMs under a specific TL
+ * Path: GET /api/users/rms/tl/USER_ID
+ */
+
+router.get('/rms/tl/:tlId', userController.getRMsByTLId)
+console.log("30user.routes.ts", authenticate)
+
 export default router;
