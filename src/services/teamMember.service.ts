@@ -428,6 +428,8 @@ export const teamMemberService = {
             if (!team) throw new Error('Team not found');
         }
 
+        
+
         const { data } = await teamMemberRepository.listUsers();
         const existing = data.users.find((u: any) => u.email.toLowerCase() === email);
         if (existing) throw new Error('Email already registered');
