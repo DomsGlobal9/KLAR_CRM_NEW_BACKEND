@@ -5,30 +5,37 @@ import { authenticate, requireRole } from '../middleware';
 const router = Router();
 router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
 
-// GET /api/invoices
-router.get('/', invoiceController.getAllInvoices); 
+// ─── Specific named routes FIRST (before any /:id wildcard) ─────────────────
 
-// GET /api/invoices/stats/overview
-router.get('/stats/overview', invoiceController.getInvoiceStats);
+// GET  /api/v1/invoice
+router.get('/', invoiceController.getAllInvoices);
 
-// GET /api/invoices/:id
-router.get('/:id', invoiceController.getInvoiceById);
 
-// POST /api/invoices
+// POST /api/v1/invoice/convert-from-quote  ← MUST stay above /:id routes
+router.post('/convert-from-quote', invoiceController.convertQuoteToInvoice);
+
+// POST /api/v1/invoice
 router.post('/', invoiceController.createInvoice);
 
-// PATCH /api/invoices/:id
+// GET  /api/v1/invoice/stats/overview
+router.get('/stats/overview', invoiceController.getInvoiceStats);
+
+
+// ─── Dynamic /:id routes AFTER all named routes ───────────────────────────────
+
+// GET    /api/v1/invoice/:id
+router.get('/:id', invoiceController.getInvoiceById);
+
+// PATCH  /api/v1/invoice/:id
 router.patch('/:id', invoiceController.updateInvoice);
 
-// DELETE /api/invoices/:id
+// DELETE /api/v1/invoice/:id
 router.delete('/:id', invoiceController.deleteInvoice);
 
-// PATCH /api/invoices/:id/mark-paid
+// PATCH  /api/v1/invoice/:id/mark-paid
 router.patch('/:id/mark-paid', invoiceController.markAsPaid);
 
-// PATCH /api/invoices/:id/mark-sent
+// PATCH  /api/v1/invoice/:id/mark-sent
 router.patch('/:id/mark-sent', invoiceController.markAsSent);
-
-router.post('/convert-from-quote', invoiceController.convertQuoteToInvoice);
 
 export default router;

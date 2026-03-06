@@ -22,9 +22,16 @@ export const invoiceService = {
         return invoice;
     },
 
-    async createInvoice(invoiceData: ICreateInvoiceDTO) {
+    async createInvoice(invoiceData: ICreateInvoiceDTO, skipValidation = false) {
+        console.log(`invoiceService.createInvoice - skipValidation: ${skipValidation}`, {
+            client_name: invoiceData.client_name,
+            currency: invoiceData.currency,
+            total: invoiceData.total
+        });
 
-        validateInvoiceData(invoiceData);
+        if (!skipValidation) {
+            validateInvoiceData(invoiceData);
+        }
 
         if (!invoiceData.invoice_number) {
             invoiceData.invoice_number = generateInvoiceNumber(invoiceData.quote_number);

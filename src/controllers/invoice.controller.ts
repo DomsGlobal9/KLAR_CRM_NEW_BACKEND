@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { invoiceService } from '../services';
 import { ICreateInvoiceDTO, IUpdateInvoiceDTO } from '../interfaces/invoice.interface';
-import { calculateDueDateFromCurrentDate, calculateDueDateWithTime, generateInvoiceNumber, parseClientString } from '../utils/date.utils';
+import { generateInvoiceNumber, parseClientString } from '../utils/date.utils';
 import { AuthRequest } from '../middleware';
 
 export const invoiceController = {
@@ -41,10 +41,19 @@ export const invoiceController = {
 
     async createInvoice(req: Request, res: Response) {
         try {
-            const invoiceData: ICreateInvoiceDTO = req.body;
-            const invoice = await invoiceService.createInvoice(invoiceData);
+            const invoiceData: any = req.body;
+
+
+            // Smart Fallback: If this payload looks like a quote conversion (has quote_number and client string but no client_name)
+            if (invoiceData.quote_number && !invoiceData.client_name && (invoiceData.client || invoiceData.quote_currency)) {
+                console.log('>>> Detected quote conversion payload in generic createInvoice endpoint. Redirecting to convertQuoteToInvoice...');
+                return await invoiceController.convertQuoteToInvoice(req, res);
+            }
+
+            const invoice = await invoiceService.createInvoice(invoiceData as ICreateInvoiceDTO);
             res.status(201).json({ success: true, data: invoice });
         } catch (error: any) {
+            console.error('Error in createInvoice:', error);
             res.status(400).json({
                 success: false,
                 message: error.message || 'Failed to create invoice'
@@ -142,16 +151,19 @@ export const invoiceController = {
             const clientInfo = parseClientString(quoteData.client);
             console.log('Parsed client info:', clientInfo);
 
-            const { dueDate, dueDateTime } = calculateDueDateFromCurrentDate(
-                quoteData.payment_deadline,
-                quoteData.payment_deadline_time
-            );
+            // Due date fixed at 30 days from today (frontend does not send payment_deadline)
+            const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            const dueDateTime = '23:59';
 
-            console.log('Calculated due date from current date:', {
-                currentDate: new Date().toISOString(),
-                dueDate,
-                dueDateTime
-            });
+            // Log cash payment breakdown from frontend (informational)
+            if (quoteData.payment_method === 'Cash') {
+                console.log('Cash payment details:', {
+                    payment_type: quoteData.payment_type,   
+                    paid_percentage: quoteData.paid_percentage, 
+                    paid_amount: quoteData.paid_amount,    
+                    rest_amount: quoteData.rest_amount,    
+                });
+            }
 
             const invoiceNumber = generateInvoiceNumber(quoteData.quote_number);
             console.log('Generated invoice number:', invoiceNumber);
@@ -161,6 +173,7 @@ export const invoiceController = {
                 quote_number: quoteData.quote_number,
                 client_name: clientInfo.name,
                 client_email: clientInfo.email,
+                client_phone: quoteData.client_mobile,
                 billing_address: quoteData.billing_address,
                 total: quoteData.quote_total || 0,
                 currency: quoteData.quote_currency || 'INR',
@@ -169,9 +182,11 @@ export const invoiceController = {
                 due_date_time: dueDateTime,
                 quote_reference: quoteData.quote_reference || quoteData.quote_number,
                 payment_method: quoteData.payment_method?.toLowerCase(),
-                // Wire cash paid_amount from the frontend payload
                 paid_amount: quoteData.paid_amount ? parseFloat(String(quoteData.paid_amount)) : 0,
                 gst_number: quoteData.gst_number,
+                paid_percentage: quoteData.paid_percentage,
+                payment_type: quoteData.payment_type,
+                rest_amount: quoteData.rest_amount,
                 include_quote_details: quoteData.include_quote_details === true ||
                     quoteData.include_quote_details === 'Yes',
                 line_items: quoteData.line_items || [],
@@ -181,7 +196,7 @@ export const invoiceController = {
 
             console.log('Creating invoice with data:', JSON.stringify(invoiceData, null, 2));
 
-            const invoice = await invoiceService.createInvoice(invoiceData);
+            const invoice = await invoiceService.createInvoice(invoiceData, true);
 
             if (quoteData.send_invoice === true || quoteData.send_invoice === 'Yes') {
                 await invoiceService.markInvoiceAsSent(invoice.id);
@@ -191,7 +206,8 @@ export const invoiceController = {
                 success: true,
                 message: quoteData.send_invoice ?
                     'Invoice created and sent successfully' :
-                    'Invoice created successfully'
+                    'Invoice created successfully',
+                data: invoice,
             });
 
         } catch (error: any) {

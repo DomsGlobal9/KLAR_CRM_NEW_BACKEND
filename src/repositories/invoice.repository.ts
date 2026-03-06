@@ -114,6 +114,9 @@ export const invoiceRepository = {
             notes: IInvoiceData.notes,
             terms_conditions: IInvoiceData.terms_conditions,
             gst_number: IInvoiceData.gst_number,
+            paid_percentage: (IInvoiceData as any).paid_percentage,
+            payment_type: (IInvoiceData as any).payment_type,
+            rest_amount: (IInvoiceData as any).rest_amount,
         };
 
         // Strip undefined values so Supabase uses column defaults
