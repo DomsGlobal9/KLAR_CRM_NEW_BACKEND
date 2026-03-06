@@ -32,7 +32,7 @@ export const cronSchedules = {
     everyMinute: '* * * * *',
 
     /**
-     * Runs every 30 seconds
+     * Runs every 30 seconds (for testing)
      */
     every30Seconds: '*/30 * * * * *',
 
@@ -51,10 +51,6 @@ export const cronSchedules = {
      */
     every6Hours: '0 */6 * * *',
 
-    /**
-     * Runs every hour
-     */
-    everyHour: '0 * * * *',
 };
 
 /**
