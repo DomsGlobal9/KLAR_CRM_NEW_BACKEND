@@ -169,6 +169,9 @@ export const invoiceController = {
                 due_date_time: dueDateTime,
                 quote_reference: quoteData.quote_reference || quoteData.quote_number,
                 payment_method: quoteData.payment_method?.toLowerCase(),
+                // Wire cash paid_amount from the frontend payload
+                paid_amount: quoteData.paid_amount ? parseFloat(String(quoteData.paid_amount)) : 0,
+                gst_number: quoteData.gst_number,
                 include_quote_details: quoteData.include_quote_details === true ||
                     quoteData.include_quote_details === 'Yes',
                 line_items: quoteData.line_items || [],

@@ -55,6 +55,8 @@ export interface ICreateInvoiceDTO {
     due_date_time?: string;
     quote_reference?: string;
     payment_method?: string;
+ 
+    paid_amount?: number;
     include_quote_details?: boolean;
     line_items: ILineItem[];
     notes?: string;
@@ -81,19 +83,21 @@ export interface IInvoiceStats {
 
 export interface IConvertQuoteToInvoiceDTO {
     quote_number: string;
-    invoice_date: string; 
+    invoice_date: string;
     payment_method: string;
-    payment_deadline: string; 
-    payment_deadline_time?: string; 
+    payment_deadline: string;
+    payment_deadline_time?: string;
     include_quote_details: boolean;
     send_invoice: boolean;
     quote_total: number;
     quote_currency: string;
-    client: string; 
+    client: string;
     client_name: string;
     client_email: string;
     billing_address?: string;
     notes?: string;
     terms_conditions?: string;
     quote_reference?: string;
+    paid_amount?: number;
+    gst_number?: string;
 }
