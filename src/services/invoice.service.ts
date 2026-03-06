@@ -22,26 +22,52 @@ export const invoiceService = {
         return invoice;
     },
 
-    async createInvoice(invoiceData: ICreateInvoiceDTO) {
+    async createInvoice(invoiceData: ICreateInvoiceDTO, skipValidation = false) {
+        console.log(`invoiceService.createInvoice - skipValidation: ${skipValidation}`, {
+            client_name: invoiceData.client_name,
+            currency: invoiceData.currency,
+            total: invoiceData.total
+        });
 
-        validateInvoiceData(invoiceData);
+        if (!skipValidation) {
+            validateInvoiceData(invoiceData);
+        }
 
         if (!invoiceData.invoice_number) {
             invoiceData.invoice_number = generateInvoiceNumber(invoiceData.quote_number);
         }
 
+        // Honour the paid_amount coming from the frontend (e.g. cash upfront).
+        const paidAmount = invoiceData.paid_amount ?? 0;
+
+        // Auto-determine status based on paid amount vs total.
+        let resolvedStatus: ICreateInvoiceDTO['status'];
+        let paidDate: string | undefined;
+
+        if (paidAmount >= invoiceData.total && paidAmount > 0) {
+            // Full payment received
+            resolvedStatus = 'paid';
+            paidDate = new Date().toISOString();
+        } else if (paidAmount > 0) {
+            // Partial payment received
+            resolvedStatus = 'partial';
+        } else {
+            // No payment — respect caller's choice or default to draft
+            resolvedStatus = invoiceData.status || 'draft';
+        }
+
         const completeInvoiceData = {
             ...invoiceData,
-            status: invoiceData.status || 'draft',
+            status: resolvedStatus,
             created_at: new Date().toISOString(),
             due_date: invoiceData.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            paid_amount: 0,
+            paid_amount: paidAmount,
+            paid_date: paidDate,
             discount: invoiceData.discount || 0,
             tax_amount: invoiceData.tax_amount || 0,
             subtotal: invoiceData.subtotal || invoiceData.total,
             include_quote_details: invoiceData.include_quote_details || false
         };
-
 
         return await invoiceRepository.create(completeInvoiceData);
     },

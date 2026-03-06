@@ -78,17 +78,48 @@ export const invoiceRepository = {
      * Create new IInvoice
      */
     async create(IInvoiceData: ICreateInvoiceDTO): Promise<IInvoice> {
-        const IInvoice: any = {
-            ...IInvoiceData,
-            created_at: new Date().toISOString(),
-            paid_amount: 0,
+        // Explicitly pick only columns that exist in the Supabase `invoices` table.
+        // NEVER use a raw spread of req.body-derived objects — extra fields (e.g.
+        // invoice_date, payment_deadline, send_invoice) will cause a schema-cache error.
+        const IInvoice: Record<string, any> = {
+            // identifiers
+            invoice_number: IInvoiceData.invoice_number,
+            quote_number: IInvoiceData.quote_number,
+            quote_reference: IInvoiceData.quote_reference,
+            // client
+            client_name: IInvoiceData.client_name,
+            client_email: IInvoiceData.client_email,
+            client_phone: IInvoiceData.client_phone,
+            client_address: IInvoiceData.client_address,
+            billing_address: IInvoiceData.billing_address,
+            // financials
+            total: IInvoiceData.total,
+            subtotal: IInvoiceData.subtotal || IInvoiceData.total,
             discount: IInvoiceData.discount || 0,
             tax_amount: IInvoiceData.tax_amount || 0,
-            subtotal: IInvoiceData.subtotal || IInvoiceData.total,
+            currency: IInvoiceData.currency,
+            paid_amount: IInvoiceData.paid_amount ?? 0,
+            paid_date: (IInvoiceData as any).paid_date,
+            // status & dates
+            status: IInvoiceData.status || 'draft',
+            created_at: new Date().toISOString(),
+            due_date: IInvoiceData.due_date,
+            due_date_time: IInvoiceData.due_date_time,
+            sent_at: (IInvoiceData as any).sent_at,
+            // payment
+            payment_method: IInvoiceData.payment_method,
+            // content
             include_quote_details: IInvoiceData.include_quote_details || false,
-            line_items: IInvoiceData.line_items || []
+            line_items: IInvoiceData.line_items || [],
+            notes: IInvoiceData.notes,
+            terms_conditions: IInvoiceData.terms_conditions,
+            gst_number: IInvoiceData.gst_number,
+            paid_percentage: (IInvoiceData as any).paid_percentage,
+            payment_type: (IInvoiceData as any).payment_type,
+            rest_amount: (IInvoiceData as any).rest_amount,
         };
 
+        // Strip undefined values so Supabase uses column defaults
         Object.keys(IInvoice).forEach(key => {
             if (IInvoice[key] === undefined) {
                 delete IInvoice[key];

@@ -57,17 +57,18 @@ export function calculateDueDateWithTime(
 }
 
 export function generateInvoiceNumber(quoteNumber?: string): string {
+    const timestamp = Date.now(); // guarantees uniqueness even for the same quote
+
     if (quoteNumber) {
-
-        return quoteNumber.replace('QT-', 'INV-');
+        // e.g. QT-2026-001  →  INV-2026-001-1709710387123
+        const base = quoteNumber.replace('QT-', 'INV-');
+        return `${base}-${timestamp}`;
     }
-
 
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `INV-${year}${month}-${random}`;
+    return `INV-${year}${month}-${timestamp}`;
 }
 
 export function parseClientString(clientString: string): { name: string; email: string } {
@@ -154,70 +155,70 @@ export function parsePaymentDeadline(paymentDeadline: string): {
     let daysToAdd = 14;
     let hour = 23;
     let minute = 59;
-    
+
     try {
-        
+
         const dateMatch = paymentDeadline.match(/(\d{4}-\d{2}-\d{2})/);
         if (dateMatch) {
             const targetDate = new Date(dateMatch[1]);
             const currentDate = new Date();
-            
+
             const timeDiff = targetDate.getTime() - currentDate.getTime();
             daysToAdd = Math.max(0, Math.ceil(timeDiff / (1000 * 3600 * 24)));
-            
+
             const timeMatch = paymentDeadline.match(/at\s+(\d{1,2}):?(\d{2})?/);
             if (timeMatch) {
                 hour = parseInt(timeMatch[1]) || 23;
                 minute = parseInt(timeMatch[2]) || 59;
             }
         } else if (paymentDeadline.includes('days') || paymentDeadline.includes('day')) {
-            
+
             const daysMatch = paymentDeadline.match(/(\d+)\s*days?/i);
             if (daysMatch) {
                 daysToAdd = parseInt(daysMatch[1]) || 14;
             }
-            
+
             const timeMatch = paymentDeadline.match(/at\s+(\d{1,2}):?(\d{2})?/);
             if (timeMatch) {
                 hour = parseInt(timeMatch[1]) || 23;
                 minute = parseInt(timeMatch[2]) || 59;
             }
         } else if (paymentDeadline.includes('hours') || paymentDeadline.includes('hour')) {
-            
+
             const hoursMatch = paymentDeadline.match(/(\d+)\s*hours?/i);
             if (hoursMatch) {
                 const hoursToAdd = parseInt(hoursMatch[1]) || 24;
                 daysToAdd = Math.ceil(hoursToAdd / 24);
-                
+
                 if (hoursToAdd < 24) {
                     const currentHour = new Date().getHours();
                     hour = (currentHour + hoursToAdd) % 24;
                 }
             }
         }
-        
+
         hour = Math.min(23, Math.max(0, hour));
         minute = Math.min(59, Math.max(0, minute));
-        
+
     } catch (error) {
         console.error('Error parsing payment deadline:', error);
     }
-    
+
     return { daysToAdd, hour, minute };
 }
 
 export function calculateDueDateFromCurrentDate(
-    paymentDeadline: string, 
-    paymentDeadlineTime?: string 
+    paymentDeadline: string,
+    paymentDeadlineTime?: string
 ): { dueDate: string; dueDateTime: string } {
     try {
-        
+
         const { daysToAdd, hour: parsedHour, minute: parsedMinute } = parsePaymentDeadline(paymentDeadline);
-        
-        
+
+
         let hour = parsedHour;
         let minute = parsedMinute;
-        
+
         if (paymentDeadlineTime) {
             if (paymentDeadlineTime.includes(':')) {
                 const [h, m] = paymentDeadlineTime.split(':').map(Number);
@@ -229,34 +230,34 @@ export function calculateDueDateFromCurrentDate(
                 minute = parsedMinute;
             }
         }
-        
-        
+
+
         const currentDate = new Date();
         const dueDate = new Date(currentDate);
-        
-        
+
+
         dueDate.setDate(dueDate.getDate() + daysToAdd);
-        
-        
+
+
         dueDate.setHours(hour, minute, 0, 0);
-        
-        
+
+
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        
+
         return {
             dueDate: dueDate.toISOString(),
             dueDateTime: timeStr
         };
-        
+
     } catch (error) {
         console.error('Error calculating due date:', error);
-        
-        
+
+
         const currentDate = new Date();
         const dueDate = new Date(currentDate);
         dueDate.setDate(dueDate.getDate() + 14);
         dueDate.setHours(23, 59, 0, 0);
-        
+
         return {
             dueDate: dueDate.toISOString(),
             dueDateTime: '23:59'

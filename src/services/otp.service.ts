@@ -10,7 +10,7 @@ export const otpService = {
      * For login: Always allows new OTP (invalidates old ones)
      * For registration: Blocks if unexpired OTP exists (to prevent spam)
      */
-    async sendOTP(email: string, type: 'registration' | 'login'): Promise<{ success: boolean; message: string }> {
+    async sendOTP(email: string, type: 'registration' | 'login' | 'password_reset'): Promise<{ success: boolean; message: string }> {
         try {
             email = email.toLowerCase();
 
@@ -82,7 +82,7 @@ export const otpService = {
 
             return { success: true, message };
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to send OTP');
+            throw new Error(error.message || 'Failed to resend OTP');
         }
     },
 
@@ -177,7 +177,7 @@ export const otpService = {
     /**
      * Verify OTP
      */
-    async verifyOTP(email: string, otp_code: string, type: 'registration' | 'login'): Promise<boolean> {
+    async verifyOTP(email: string, otp_code: string, type: 'registration' | 'login' | 'password_reset'): Promise<boolean> {
         try {
             // Development mode bypass
             if (isDevelopment() && envConfig.OTP.BYPASS_IN_DEV) {
@@ -257,4 +257,5 @@ export const otpService = {
             throw new Error(error.message || 'Failed to send new OTP');
         }
     }
+
 };
