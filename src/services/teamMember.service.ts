@@ -19,6 +19,39 @@ const pendingMemberCreations = new Map<string, {
 export const teamMemberService = {
 
     /**
+    * Validate that a team doesn't already have a Team Lead
+    */
+    async validateTeamLeadLimit(teamId: string, excludeUserId?: string) {
+        const { data, error } = await teamMemberRepository.listUsers();
+        if (error) throw error;
+
+        console.log(`Validating TL limit for team: ${teamId}`);
+        console.log(`Total users: ${data.users.length}`);
+
+        const existingTL = data.users.find(u => {
+            if (excludeUserId && u.id === excludeUserId) return false;
+
+            // Handle nested metadata properly
+            const metadata = u.user_metadata?.user_metadata || u.user_metadata;
+
+            // Check if this user has the TL role and belongs to the team
+            const hasTLRole = metadata?.role_name === 'tl';
+            const belongsToTeam = metadata?.team_id === teamId;
+
+            if (hasTLRole && belongsToTeam) {
+                console.log(`Found existing TL: ${u.email} for team: ${teamId}`);
+                return true;
+            }
+            return false;
+        });
+
+        if (existingTL) {
+            throw new Error(`Team has already Team Lead.`);
+        }
+        console.log(`No existing TL found for team: ${teamId}`);
+    },
+
+    /**
      * Add a new team member
      */
     async addTeamMember(payload: CreateTeamMemberPayload) {
@@ -29,6 +62,10 @@ export const teamMemberService = {
 
         if (role.name === 'superadmin') {
             throw new Error('Cannot create superadmin');
+        }
+
+        if (role.name === 'tl' && payload.team_id) {
+            await this.validateTeamLeadLimit(payload.team_id);
         }
 
 
@@ -114,7 +151,10 @@ export const teamMemberService = {
 
         switch (currentUser.role) {
             case 'admin':
-                return users.filter(u => u.user_metadata?.role_name === 'rm');
+                return users.filter(u =>
+                    u.user_metadata?.role_name === 'rm' ||
+                    u.user_metadata?.role_name === 'tl'
+                );
 
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
@@ -204,6 +244,7 @@ export const teamMemberService = {
         }
 
         const oldRoleId = currentMetadata?.role_id;
+        const oldRoleName = currentMetadata?.role_name;
         const oldTeamId = currentMetadata?.team_id;
         const updateMetadata: any = {};
 
@@ -214,6 +255,13 @@ export const teamMemberService = {
 
             if (newRole.name === 'superadmin') {
                 throw new Error('Cannot assign superadmin role');
+            }
+
+            if (newRole.name === 'tl') {
+                const targetTeamId = payload.team_id !== undefined ? payload.team_id : oldTeamId;
+                if (targetTeamId) {
+                    await this.validateTeamLeadLimit(targetTeamId, userId);
+                }
             }
 
             updateMetadata.role_id = payload.role_id;
@@ -228,6 +276,16 @@ export const teamMemberService = {
 
 
         if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
+            let userRoleName = oldRoleName;
+            if (payload.role_id && payload.role_id !== oldRoleId) {
+                const newRole = await roleRepository.getById(payload.role_id);
+                userRoleName = newRole?.name;
+            }
+
+            // If user is or becoming TL, check limit on new team
+            if (userRoleName === 'tl' && payload.team_id) {
+                await this.validateTeamLeadLimit(payload.team_id, userId);
+            }
             if (payload.team_id) {
 
                 const newTeam = await teamRepository.getById(payload.team_id);
@@ -423,6 +481,13 @@ export const teamMemberService = {
         if (!role) throw new Error('Role not found');
         if (role.name === 'superadmin') throw new Error('Cannot assign superadmin role');
 
+        console.log(`Sending OTP for: ${email}, role: ${role.name}, team: ${team_id}`);
+
+        if (role.name === 'tl' && team_id) {
+            console.log(`Validating TL limit for team: ${team_id}`);
+            await this.validateTeamLeadLimit(team_id);
+        }
+
         if (team_id) {
             const team = await teamRepository.getById(team_id);
             if (!team) throw new Error('Team not found');
@@ -432,6 +497,7 @@ export const teamMemberService = {
 
         const { data } = await teamMemberRepository.listUsers();
         const existing = data.users.find((u: any) => u.email.toLowerCase() === email);
+
         if (existing) throw new Error('Email already registered');
 
         const result = await otpService.sendOTP(email, 'registration');
@@ -477,6 +543,13 @@ export const teamMemberService = {
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role no longer valid');
+
+        if (role.name === 'tl' && team_id) {
+            console.log(`Double-checking TL limit for team: ${team_id} before creation`);
+            await this.validateTeamLeadLimit(team_id);
+        }
+
+        pendingMemberCreations.delete(email);
 
         const { data, error } = await teamMemberRepository.createUser({
             email,
