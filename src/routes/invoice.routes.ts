@@ -3,7 +3,7 @@ import { invoiceController } from '../controllers';
 import { authenticate, requireRole } from '../middleware';
 
 const router = Router();
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
 
 // ─── Specific named routes FIRST (before any /:id wildcard) ─────────────────
 
