@@ -75,6 +75,23 @@ export const invoiceRepository = {
     },
 
     /**
+     * Find IInvoice by quote_number
+     */
+    async findByQuoteNumber(quoteNumber: string): Promise<IInvoice | null> {
+        const { data, error } = await supabaseAdmin
+            .from('invoices')
+            .select('*')
+            .eq('quote_number', quoteNumber)
+            .maybeSingle();
+
+        if (error) {
+            throw new Error(`Failed to find invoice by quote number: ${error.message}`);
+        }
+
+        return data as IInvoice | null;
+    },
+
+    /**
      * Create new IInvoice
      */
     async create(IInvoiceData: ICreateInvoiceDTO): Promise<IInvoice> {

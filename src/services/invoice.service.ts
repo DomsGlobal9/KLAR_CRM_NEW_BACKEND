@@ -105,6 +105,8 @@ export const invoiceService = {
         const updateData: IUpdateInvoiceDTO = {
             status: 'paid',
             paid_amount: invoice.total,
+            paid_percentage: 100,
+            rest_amount: 0,
             paid_date: new Date().toISOString()
         };
 
