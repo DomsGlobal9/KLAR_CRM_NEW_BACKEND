@@ -151,7 +151,10 @@ export const teamMemberService = {
 
         switch (currentUser.role) {
             case 'admin':
-                return users.filter(u => u.user_metadata?.role_name === 'rm');
+                return users.filter(u =>
+                    u.user_metadata?.role_name === 'rm' ||
+                    u.user_metadata?.role_name === 'tl'
+                );
 
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
