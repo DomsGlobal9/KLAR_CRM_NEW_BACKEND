@@ -5,7 +5,6 @@ import { authenticate, requireRole } from '../middleware';
 const router = Router();
 router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
 
-// ─── Specific named routes FIRST (before any /:id wildcard) ─────────────────
 
 // GET  /api/v1/invoice
 router.get('/', invoiceController.getAllInvoices);
