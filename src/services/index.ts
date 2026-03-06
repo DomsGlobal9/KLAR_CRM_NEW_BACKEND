@@ -18,3 +18,4 @@ export { serviceService } from "./service.service";
 export { itineraryService } from "./itinerary.service";
 export { itineraryPreferencesService } from "./itinerary-preferences.service";
 export { inquirySourceService } from "./inquirySource.service";
+export { default } from "./cron.service";
