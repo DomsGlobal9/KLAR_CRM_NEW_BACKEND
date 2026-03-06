@@ -5,10 +5,14 @@ import { authenticate, requireRole } from '../middleware';
 const router = Router();
 router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
 
-// GET /api/invoices
+/**
+ * GET /api/invoices
+ */
 router.get('/', invoiceController.getAllInvoices); 
 
-// GET /api/invoices/stats/overview
+/**
+ * GET /api/invoices/stats/overview
+ */
 router.get('/stats/overview', invoiceController.getInvoiceStats);
 
 // GET /api/invoices/:id

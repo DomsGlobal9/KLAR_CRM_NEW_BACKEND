@@ -73,6 +73,11 @@ interface EnvConfig {
         RESEND_COOLDOWN_SECONDS: number;
         MAX_VERIFICATION_ATTEMPTS: number;
     };
+
+    /**
+     * Whatsapp Number
+     */
+    WHATSAPP_NUMBER: string;
 }
 
 /**
@@ -318,6 +323,11 @@ export const envConfig: EnvConfig = {
         RESEND_COOLDOWN_SECONDS: parseNumber(process.env.OTP_RESEND_COOLDOWN_SECONDS, 60),
         MAX_VERIFICATION_ATTEMPTS: parseNumber(process.env.OTP_MAX_VERIFICATION_ATTEMPTS, 5),
     },
+
+    /**
+    * Whatsapp Number
+    */
+    WHATSAPP_NUMBER: validateOptional(process.env.WHATSAPP_NUMBER, ''),
 };
 
 /**
