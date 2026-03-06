@@ -68,6 +68,7 @@ export interface ICreateInvoiceDTO {
     paid_percentage?: number;
     payment_type?: string;
     rest_amount?: number;
+    created_at?: string;
 }
 
 export interface IUpdateInvoiceDTO {
@@ -76,6 +77,15 @@ export interface IUpdateInvoiceDTO {
     paid_date?: string;
     sent_at?: string;
     notes?: string;
+    payment_method?: string;
+    client_name?: string;
+    client_email?: string;
+    client_phone?: string;
+    billing_address?: string;
+    terms_conditions?: string;
+    updated_at?: string;
+    paid_percentage?: number;
+    rest_amount?: number;
 }
 
 export interface IInvoiceStats {
