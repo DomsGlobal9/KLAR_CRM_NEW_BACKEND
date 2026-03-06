@@ -94,12 +94,9 @@ class CronService {
             return;
         }
 
-        console.log('\n=== Active Cron Jobs ===');
         this.jobs.forEach((_, name) => {
             const config = cronJobConfigs.find(c => c.name === name);
-            console.log(`- ${name}: ${config?.schedule} (${config?.description})`);
         });
-        console.log('========================\n');
     }
 
     /**

@@ -26,11 +26,6 @@ class InvoiceNotificationService {
                 .select('id, invoice_number, rest_amount, status, client_phone')
                 .limit(10);
 
-            if (checkError) {
-                console.error('Error checking invoices:', checkError);
-            } else {
-                console.log('Sample invoices in DB:', allData);
-            }
 
             // Fix: Use proper condition for rest_amount > 0 including handling null
             const { data, error } = await supabaseAdmin
