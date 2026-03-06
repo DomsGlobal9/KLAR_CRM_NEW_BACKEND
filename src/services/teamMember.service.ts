@@ -14,7 +14,7 @@ const pendingMemberCreations = new Map<string, {
     team_id: string | null;
     requested_by: string;
     expires_at: number;
-}>();
+}>(); 
 
 export const teamMemberService = {
 
@@ -115,6 +115,14 @@ export const teamMemberService = {
         switch (currentUser.role) {
             case 'admin':
                 return users.filter(u => u.user_metadata?.role_name === 'rm');
+            
+            case 'tl':
+            // Filter by team_id so TL sees their entire team
+            // We ensure the team_id exists and matches the TL's team_id
+            return users.filter(u => 
+                u.user_metadata?.team_id === currentUser.team_id && 
+                u.id !== currentUser.id // Optional: hide the TL from their own list
+            );
 
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);

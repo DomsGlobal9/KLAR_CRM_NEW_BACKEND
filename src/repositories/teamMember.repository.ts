@@ -5,7 +5,7 @@ export const teamMemberRepository = {
     async listUsers() {
         return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     },
-
+ 
     async createUser(payload: any) { 
         return supabaseAdmin.auth.admin.createUser(payload);
     },
