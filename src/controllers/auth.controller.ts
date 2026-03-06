@@ -138,6 +138,76 @@ export const authController = {
         }
     },
 
+    /**
+     * forgot Password
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+
+    async forgotPassword(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Valid email is required'
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists (using your existing AuthRepository)
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            // Security best practice: Don't reveal if user exists or not
+            if (!user) {
+                // Still return success to prevent email enumeration
+                return res.status(200).json({
+                    success: true,
+                    message: 'If the email exists in our system, you will receive a password reset code'
+                });
+            }
+
+            // Check if user is active
+            if (user.user_metadata?.status !== "active") {
+                return res.status(200).json({
+                    success: true,
+                    message: 'If the email exists in our system, you will receive a password reset code'
+                });
+            }
+
+            // Send password reset OTP
+            const result = await otpService.sendOTP(normalizedEmail, 'password_reset');
+
+            // // Create audit log
+            // await createAuditLog({
+            //     user_id: user.id,
+            //     action: 'PASSWORD_RESET_REQUESTED',
+            //     entity_type: 'user',
+            //     entity_id: user.id,
+            //     ip_address: req.ip,
+            //     user_agent: req.headers['user-agent'],
+            //     details: 'Password reset OTP requested'
+            // });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Password reset code sent to your email'
+            });
+
+        } catch (err: any) {
+            console.error('Forgot password failed:', err);
+            // Return success even on error for security
+            return res.status(200).json({
+                success: true,
+                message: 'If the email exists in our system, you will receive a password reset code'
+            });
+        }
+    },
+
     // ===== OTP Based Authentication Methods begins from here =====
 
     /**
@@ -377,4 +447,205 @@ export const authController = {
         }
     },
 
+
+     /**
+     * Resend password reset OTP
+     * POST /api/auth/resend-password-otp
+     */
+    async resendPasswordResetOTP(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Valid email is required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(200).json({ 
+                    success: true, 
+                    message: 'If the email exists in our system, you will receive a password reset code' 
+                });
+            }
+
+            // Resend OTP
+            const result = await otpService.resendOTP(normalizedEmail, 'password_reset');
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_OTP_RESENT',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Password reset code resent to your email' 
+            });
+
+        } catch (err: any) {
+            console.error('Resend password OTP failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'Failed to resend OTP' 
+            });
+        }
+    },
+
+      /**
+     * Step 2: Verify OTP and prepare for password reset
+     * POST /api/auth/verify-password-otp
+     */
+    async verifyPasswordResetOTP(req: Request, res: Response) {
+        try {
+            const { email, otp_code } = req.body;
+
+            if (!email || !otp_code) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Email and OTP code are required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'User not found' 
+                });
+            }
+
+            // Verify OTP using your existing service
+            const isValid = await otpService.verifyOTP(normalizedEmail, otp_code, 'password_reset');
+            
+            if (!isValid) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Invalid or expired OTP' 
+                });
+            }
+
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_OTP_VERIFIED',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+                details: 'Password reset OTP verified successfully'
+            });
+
+            // OTP verified - ready to show password reset form
+            return res.status(200).json({
+                success: true,
+                message: 'OTP verified successfully',
+                email: normalizedEmail // Return email for confirmation
+            });
+
+        } catch (err: any) {
+            console.error('Verify password OTP failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'OTP verification failed' 
+            });
+        }
+    },
+
+    /**
+     * Step 3: Reset password (after OTP verification)
+     * POST /api/auth/reset-password
+     */
+    async resetPassword(req: Request, res: Response) {
+        try {
+            const { email, newPassword } = req.body;
+
+            if (!email || !newPassword) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Email and new password are required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Validate password strength
+            if (newPassword.length < 8) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must be at least 8 characters long'
+                });
+            }
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: 'User not found' 
+                });
+            }
+
+
+            // Update password using Supabase Admin API
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                user.id,
+                { password: newPassword }
+            );
+
+            if (updateError) {
+                console.error('Password update failed:', updateError);
+                throw new Error('Failed to update password');
+            }
+
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_COMPLETED',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+                details: 'Password reset completed successfully'
+            });
+
+            // Optional: Send confirmation email
+            // You can add this later using your email service
+
+            return res.status(200).json({
+                success: true,
+                message: 'Password reset successfully. You can now login with your new password.'
+            });
+
+        } catch (err: any) {
+            console.error('Reset password failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'Failed to reset password' 
+            });
+        }
+    },
+
+   
+    
 };
