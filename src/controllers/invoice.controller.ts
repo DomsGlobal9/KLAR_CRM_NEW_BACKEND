@@ -43,8 +43,6 @@ export const invoiceController = {
         try {
             const invoiceData: any = req.body;
 
-
-            // Smart Fallback: If this payload looks like a quote conversion (has quote_number and client string but no client_name)
             if (invoiceData.quote_number && !invoiceData.client_name && (invoiceData.client || invoiceData.quote_currency)) {
                 console.log('>>> Detected quote conversion payload in generic createInvoice endpoint. Redirecting to convertQuoteToInvoice...');
                 return await invoiceController.convertQuoteToInvoice(req, res);
@@ -61,23 +59,23 @@ export const invoiceController = {
         }
     },
 
-    async updateInvoice(req: Request, res: Response) {
-        try {
-            const { id } = req.params;
-            const updateData: IUpdateInvoiceDTO = req.body;
-            const invoice = await invoiceService.updateInvoice(id as string, updateData);
-            res.json({ success: true, data: invoice });
-        } catch (error: any) {
-            if (error.message === 'Invoice not found') {
-                res.status(404).json({ success: false, message: error.message });
-            } else {
-                res.status(400).json({
-                    success: false,
-                    message: error.message || 'Failed to update invoice'
-                });
-            }
-        }
-    },
+    // async updateInvoice(req: Request, res: Response) {
+    //     try {
+    //         const { id } = req.params;
+    //         const updateData: IUpdateInvoiceDTO = req.body;
+    //         const invoice = await invoiceService.updateInvoice(id as string, updateData);
+    //         res.json({ success: true, data: invoice });
+    //     } catch (error: any) {
+    //         if (error.message === 'Invoice not found') {
+    //             res.status(404).json({ success: false, message: error.message });
+    //         } else {
+    //             res.status(400).json({
+    //                 success: false,
+    //                 message: error.message || 'Failed to update invoice'
+    //             });
+    //         }
+    //     }
+    // },
 
     async deleteInvoice(req: Request, res: Response) {
         try {

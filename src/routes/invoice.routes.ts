@@ -27,7 +27,7 @@ router.get('/stats/overview', invoiceController.getInvoiceStats);
 router.get('/:id', invoiceController.getInvoiceById);
 
 // PATCH  /api/v1/invoice/:id
-router.patch('/:id', invoiceController.updateInvoice);
+// router.patch('/:id', invoiceController.updateInvoice);
 
 // DELETE /api/v1/invoice/:id
 router.delete('/:id', invoiceController.deleteInvoice);
