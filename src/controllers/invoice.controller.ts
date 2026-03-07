@@ -115,11 +115,6 @@ export class InvoiceController {
         }
     }
 
-    // Legacy route handlers for compatibility
-    createInvoice = async (req: Request, res: Response) => {
-        return this.createOrUpdateInvoice(req, res);
-    }
-
     getAllInvoices = async (req: AuthRequest, res: Response) => {
         try {
             const userDetails = req.user;
@@ -151,7 +146,7 @@ export class InvoiceController {
                 });
             }
         }
-    },
+    }
 
     async createInvoice(req: Request, res: Response) {
         try {
@@ -161,7 +156,7 @@ export class InvoiceController {
             // Smart Fallback: If this payload looks like a quote conversion (has quote_number and client string but no client_name)
             if (invoiceData.quote_number && !invoiceData.client_name && (invoiceData.client || invoiceData.quote_currency)) {
                 console.log('>>> Detected quote conversion payload in generic createInvoice endpoint. Redirecting to convertQuoteToInvoice...');
-                return await invoiceController.convertQuoteToInvoice(req, res);
+                return await this.convertQuoteToInvoice(req, res);
             }
 
             const invoice = await invoiceService.createInvoice(invoiceData as ICreateInvoiceDTO);
@@ -173,7 +168,7 @@ export class InvoiceController {
                 message: error.message || 'Failed to create invoice'
             });
         }
-    },
+    }
 
     async updateInvoice(req: Request, res: Response) {
         try {
@@ -191,11 +186,11 @@ export class InvoiceController {
                 });
             }
         }
-    },
+    }
 
     async deleteInvoice(req: AuthRequest, res: Response) {
         const userRole = req.user?.role;
-        if( userRole != 'superadmin' ) {
+        if (userRole != 'superadmin') {
             return res.status(400).json({
                 success: false,
                 message: 'You are not authorized'
