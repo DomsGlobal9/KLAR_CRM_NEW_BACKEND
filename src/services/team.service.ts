@@ -35,6 +35,10 @@ export const teamService = {
         return teamRepository.listTeams();
     },
 
+    async getTeamById(id: string) {
+        return teamRepository.getTeamById(id);
+    },
+
     /**
      * 
      * @param id 
