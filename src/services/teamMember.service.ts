@@ -5,6 +5,7 @@ import {
     roleRepository,
     teamRepository
 } from '../repositories';
+import { supabaseAdmin } from '../config';
 
 /**
  * Temporary storage for pending member creation (in-memory or Redis in production)
@@ -129,7 +130,28 @@ export const teamMemberService = {
             u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
         );
 
-        filteredUsers = this.applyRoleFilters(filteredUsers, currentUser);
+        if (currentUser) {
+            const userRole = currentUser.role;
+
+            if (userRole === 'tl') {
+                const { data: userData } = await supabaseAdmin
+                    .from('users')
+                    .select('team_id')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (userData?.team_id) {
+                    filteredUsers = filteredUsers.filter(u =>
+                        u.user_metadata?.team_id === userData.team_id &&
+                        u.user_metadata?.role_name === 'rm'
+                    );
+                } else {
+                    filteredUsers = [];
+                }
+            } else if (userRole === 'rm') {
+                filteredUsers = filteredUsers.filter(u => u.id === currentUser.id);
+            }
+        }
 
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();

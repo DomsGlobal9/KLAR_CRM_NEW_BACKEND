@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware';
 import { teamService } from '../services/team.service';
 import { createAuditLog } from '../helpers';
+import { supabaseAdmin } from '../config';
 
 
 export const teamController = {
@@ -38,20 +39,75 @@ export const teamController = {
      * @param res 
      */
     async list(req: AuthRequest, res: Response) {
-        try {
-            const teams = await teamService.listTeams();
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
 
-            if (!teams || teams.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No teams found'
+        try {
+            if (userRole === 'superadmin' || userRole === 'admin') {
+                const teams = await teamService.listTeams();
+
+                if (!teams || teams.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'No teams found'
+                    });
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    data: teams
+                });
+            }
+
+            if (userRole === 'tl' || userRole === 'rm') {
+                const { data: userData, error: userError } = await supabaseAdmin
+                    .from('users')
+                    .select('team_id')
+                    .eq('id', userId)
+                    .single();
+
+                if (userError || !userData?.team_id) {
+                    return res.status(200).json({
+                        success: true,
+                        data: [], 
+                        message: 'No team assigned to user'
+                    });
+                }
+
+                const team = await teamService.getTeamById(userData.team_id);
+
+                if (!team) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Team not found'
+                    });
+                }
+
+                const { data: members, error: membersError } = await supabaseAdmin
+                    .from('users')
+                    .select('id, email, user_metadata, role, created_at')
+                    .eq('team_id', userData.team_id);
+
+                if (membersError) {
+                    console.error('Error fetching team members:', membersError);
+                }
+
+                const teamWithMembers = {
+                    ...team,
+                    members: members || []
+                };
+
+                return res.status(200).json({
+                    success: true,
+                    data: [teamWithMembers] 
                 });
             }
 
             return res.status(200).json({
                 success: true,
-                data: teams
+                data: []
             });
+
         } catch (error: any) {
             console.error('Error fetching teams:', error);
 
@@ -98,9 +154,9 @@ export const teamController = {
      */
     async delete(req: AuthRequest, res: Response) {
         const role = req.user?.role;
-        if (role != 'superadmin'){
+        if (role != 'superadmin') {
             return res.status(400).json({ success: false, message: 'You are not authorized' })
-        } 
+        }
         try {
             const { id } = req.params;
             await teamService.deleteTeam(id as string, req.user);

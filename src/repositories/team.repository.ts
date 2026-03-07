@@ -62,6 +62,7 @@ export const teamRepository = {
         if (error) throw error;
         return data ?? [];
     },
+    
 
     /**
      * Get team by ID
@@ -89,6 +90,7 @@ export const teamRepository = {
             .select('*')
             .eq('id', id)
             .single();
+            
         if (error) throw error;
         return data as Team;
     },
