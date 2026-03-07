@@ -146,7 +146,7 @@ export class InvoiceController {
                 });
             }
         }
-    },
+    }
 
     async createInvoice(req: Request, res: Response) {
         try {
