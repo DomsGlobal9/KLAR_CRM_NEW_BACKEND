@@ -12,7 +12,7 @@ router.post('/capture', leadController.createQuickLead);
 /**
  * Protected routes - require authentication and specific roles
  */
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
 
 router.post('/', leadController.createLead);
 router.get('/',  leadController.getAllLeads);
