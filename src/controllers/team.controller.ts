@@ -97,6 +97,10 @@ export const teamController = {
      * @param res 
      */
     async delete(req: AuthRequest, res: Response) {
+        const role = req.user?.role;
+        if (role != 'superadmin'){
+            return res.status(400).json({ success: false, message: 'You are not authorized' })
+        } 
         try {
             const { id } = req.params;
             await teamService.deleteTeam(id as string, req.user);

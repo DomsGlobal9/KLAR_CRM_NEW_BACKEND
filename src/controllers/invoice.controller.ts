@@ -142,12 +142,66 @@ export class InvoiceController {
             const invoice = await invoiceService.getInvoiceById(id as string);
             res.json({ success: true, data: invoice });
         } catch (error: any) {
-            const status = error.message === 'Invoice not found' ? 404 : 500;
-            res.status(status).json({ success: false, message: error.message });
+            if (error.message === 'Invoice not found') {
+                res.status(404).json({ success: false, message: error.message });
+            } else {
+                res.status(500).json({
+                    success: false,
+                    message: error.message || 'Failed to fetch invoice'
+                });
+            }
         }
-    }
+    },
 
-    deleteInvoice = async (req: Request, res: Response) => {
+    async createInvoice(req: Request, res: Response) {
+        try {
+            const invoiceData: any = req.body;
+
+
+            // Smart Fallback: If this payload looks like a quote conversion (has quote_number and client string but no client_name)
+            if (invoiceData.quote_number && !invoiceData.client_name && (invoiceData.client || invoiceData.quote_currency)) {
+                console.log('>>> Detected quote conversion payload in generic createInvoice endpoint. Redirecting to convertQuoteToInvoice...');
+                return await invoiceController.convertQuoteToInvoice(req, res);
+            }
+
+            const invoice = await invoiceService.createInvoice(invoiceData as ICreateInvoiceDTO);
+            res.status(201).json({ success: true, data: invoice });
+        } catch (error: any) {
+            console.error('Error in createInvoice:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Failed to create invoice'
+            });
+        }
+    },
+
+    async updateInvoice(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const updateData: IUpdateInvoiceDTO = req.body;
+            const invoice = await invoiceService.updateInvoice(id as string, updateData);
+            res.json({ success: true, data: invoice });
+        } catch (error: any) {
+            if (error.message === 'Invoice not found') {
+                res.status(404).json({ success: false, message: error.message });
+            } else {
+                res.status(400).json({
+                    success: false,
+                    message: error.message || 'Failed to update invoice'
+                });
+            }
+        }
+    },
+
+    async deleteInvoice(req: AuthRequest, res: Response) {
+        const userRole = req.user?.role;
+        if( userRole != 'superadmin' ) {
+            return res.status(400).json({
+                success: false,
+                message: 'You are not authorized'
+            });
+        }
+
         try {
             const { id } = req.params;
             const result = await invoiceService.deleteInvoice(id as string);

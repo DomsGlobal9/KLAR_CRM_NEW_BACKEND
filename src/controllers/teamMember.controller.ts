@@ -155,8 +155,13 @@ export const teamMemberController = {
     },
 
     async remove(req: AuthRequest, res: Response) {
+        const role = req.user?.role;
+        if (role != 'superadmin'){
+            return res.status(400).json({ success: false, message: 'You are not authorized' })
+        }
+
         await teamMemberService.removeTeamMember(req.params.memberId as string);
-        res.json({ message: 'Member removed' });
+        res.json({ message: 'Member removed', success: true });
     },
 
     /**
