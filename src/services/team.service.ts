@@ -8,8 +8,23 @@ export const teamService = {
      * @param requester 
      * @returns 
      */
-    async createTeam(payload: { name: string; description?: string }) {
-        return teamRepository.createTeam(payload.name, payload.description);
+    async createTeam(payload: {
+        name: string;
+        description?: string;
+        service_ids?: string[]
+    }) {
+        try {
+            return await teamRepository.createTeam(
+                payload.name,
+                payload.description,
+                payload.service_ids || []
+            );
+        } catch (error: any) {
+            if (error.message?.includes('already assigned to other teams')) {
+                throw new Error(`Cannot create team: ${error.message}`);
+            }
+            throw error;
+        }
     },
 
     /**
@@ -28,9 +43,9 @@ export const teamService = {
      * @returns 
      */
     async updateTeam(
-        id: string, 
-        payload: { 
-            name?: string; 
+        id: string,
+        payload: {
+            name?: string;
             description?: string;
             is_active?: boolean;
         }) {
