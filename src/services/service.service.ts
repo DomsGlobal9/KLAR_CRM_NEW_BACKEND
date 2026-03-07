@@ -59,6 +59,16 @@ export const serviceService = {
     },
 
     /**
+     * In service.service.ts
+     * @param serviceIds 
+     * @param filter 
+     * @returns 
+     */
+    async getServicesByIds(serviceIds: string[], filter: IServiceFilter = {}): Promise<IService[]> {
+        return await serviceRepository.getServicesByIds(serviceIds, filter);
+    },
+
+    /**
      * Get service by ID with relations
      */
     async getServiceWithRelations(id: string): Promise<IServiceWithRelations | null> {

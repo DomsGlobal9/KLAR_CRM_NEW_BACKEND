@@ -810,4 +810,43 @@ export const serviceRepository = {
 
         return servicesWithRelations;
     },
+
+    async getServicesByIds(serviceIds: string[], filter: IServiceFilter = {}): Promise<IService[]> {
+        if (!serviceIds || serviceIds.length === 0) {
+            return [];
+        }
+
+        let query = supabaseAdmin
+            .from('services')
+            .select('*')
+            .in('id', serviceIds)
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
+
+        if (filter.search) {
+            query = query.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+        }
+
+        if (filter.is_active !== undefined) {
+            query = query.eq('is_active', filter.is_active);
+        }
+
+        if (filter.limit) {
+            query = query.limit(filter.limit);
+        }
+
+        if (filter.offset) {
+            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to fetch services by IDs: ${error.message}`);
+        }
+
+        return data as IService[];
+    },
+
+
 };

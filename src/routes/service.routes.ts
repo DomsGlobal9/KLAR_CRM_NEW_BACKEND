@@ -1,15 +1,18 @@
 import express from 'express';
 import { serviceController } from '../controllers/service.controller';
+import { authenticate, requireRole } from '../middleware';
 
 const router = express.Router();
 
-// Health check
+/**
+ * Health check
+ */
 router.get('/health', serviceController.healthCheck);
 
 /**
  * Get all services with only id and name (for UI dropdowns)
  */
-router.get('/services-minimal', serviceController.getAllServicesMinimal);
+router.get('/services-minimal', authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'), serviceController.getAllServicesMinimal);
 
 router.get('/services-hierarchy', serviceController.getServicesHierarchyMinimal);
 

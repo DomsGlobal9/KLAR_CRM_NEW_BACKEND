@@ -3,18 +3,49 @@ import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
 
+    async validateServiceIds(service_ids: string[], currentTeamId?: string): Promise<void> {
+        if (!service_ids || service_ids.length === 0) return;
+
+        const { data: existingTeams, error } = await supabaseAdmin
+            .from('teams')
+            .select('id, name, service_ids')
+            .contains('service_ids', service_ids);
+
+        if (error) throw error;
+
+        const conflictingTeams = currentTeamId
+            ? existingTeams?.filter(team => team.id !== currentTeamId)
+            : existingTeams;
+
+        if (conflictingTeams && conflictingTeams.length > 0) {
+            const assignedServices = conflictingTeams.flatMap(team =>
+                team.service_ids.filter((id: string) => service_ids.includes(id))
+            );
+
+            throw new Error(`Services ${assignedServices.join(', ')} are already assigned to other teams`);
+        }
+    },
+
     /**
      * Create a new team
      * @param name 
      * @param description 
      * @returns 
      */
-    async createTeam(name: string, description?: string) {
+    async createTeam(name: string, description?: string, service_ids: string[] = []) {
+        await this.validateServiceIds(service_ids);
+
         const { data, error } = await supabaseAdmin
             .from('teams')
-            .insert({ name, description, members_count: 0 })
+            .insert({
+                name,
+                description,
+                members_count: 0,
+                service_ids: service_ids
+            })
             .select()
             .single();
+
         if (error) throw error;
         return data as Team;
     },
@@ -80,13 +111,18 @@ export const teamRepository = {
      * @param updates 
      * @returns 
      */
-    async updateTeam(id: string, updates: { name?: string; description?: string; is_active?: boolean }) {
+    async updateTeam(id: string, updates: { name?: string; description?: string; service_ids?: string[] }) {
+        if (updates.service_ids) {
+            await this.validateServiceIds(updates.service_ids, id);
+        }
+
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)
             .eq('id', id)
             .select()
             .single();
+
         if (error) throw error;
         return data as Team;
     },
