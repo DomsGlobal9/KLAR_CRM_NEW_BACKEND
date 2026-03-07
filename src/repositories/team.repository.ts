@@ -62,7 +62,7 @@ export const teamRepository = {
         if (error) throw error;
         return data ?? [];
     },
-    
+
 
     /**
      * Get team by ID
@@ -90,7 +90,7 @@ export const teamRepository = {
             .select('*')
             .eq('id', id)
             .single();
-            
+
         if (error) throw error;
         return data as Team;
     },
@@ -165,5 +165,13 @@ export const teamRepository = {
             { p_team_id: teamId }
         );
         if (error) throw error;
-    }
+    },
+
+    async listUsers() {
+        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    },
+
+    async updateUser(userId: string, attributes: any) {
+        return supabaseAdmin.auth.admin.updateUserById(userId, attributes);
+    },
 };
