@@ -79,7 +79,15 @@ export const invoiceController = {
         }
     },
 
-    async deleteInvoice(req: Request, res: Response) {
+    async deleteInvoice(req: AuthRequest, res: Response) {
+        const userRole = req.user?.role;
+        if( userRole != 'superadmin' ) {
+            return res.status(400).json({
+                success: false,
+                message: 'You are not authorized'
+            });
+        }
+
         try {
             const { id } = req.params;
             const result = await invoiceService.deleteInvoice(id as string);
