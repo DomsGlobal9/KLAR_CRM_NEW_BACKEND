@@ -853,39 +853,73 @@ export const serviceRepository = {
      * More efficient version using a single SQL query
      */
     async getUnassignedServices(filter: IServiceFilter = {}): Promise<IService[]> {
-        let serviceQuery = supabaseAdmin
-            .from('services')
-            .select(`
-            *,
-            assigned_to_team:teams!inner(
-                id
-            )
-        `)
-            .order('display_order', { ascending: true })
-            .order('created_at', { ascending: false });
+        try {
+            // Step 1: Get all service IDs that are assigned to any team
+            const { data: teams, error: teamsError } = await supabaseAdmin
+                .from('teams')
+                .select('service_ids')
+                .not('service_ids', 'is', null);
 
-        if (filter.search) {
-            serviceQuery = serviceQuery.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+            if (teamsError) {
+                throw new Error(`Failed to fetch team service assignments: ${teamsError.message}`);
+            }
+
+            // Step 2: Create a Set of all assigned service IDs (for O(1) lookup)
+            const assignedServiceIds = new Set<string>();
+
+            if (teams && teams.length > 0) {
+                teams.forEach(team => {
+                    if (team.service_ids && Array.isArray(team.service_ids)) {
+                        team.service_ids.forEach((id: string) => {
+                            // Only add valid UUIDs
+                            if (id) {
+                                assignedServiceIds.add(id);
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Step 3: Build the services query with filters
+            let serviceQuery = supabaseAdmin
+                .from('services')
+                .select('*')
+                .order('display_order', { ascending: true })
+                .order('created_at', { ascending: false });
+
+            // Apply filters
+            if (filter.search) {
+                serviceQuery = serviceQuery.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+            }
+
+            if (filter.is_active !== undefined) {
+                serviceQuery = serviceQuery.eq('is_active', filter.is_active);
+            }
+
+            // Execute the query to get all matching services
+            const { data: allServices, error: servicesError } = await serviceQuery;
+
+            if (servicesError) {
+                throw new Error(`Failed to fetch services: ${servicesError.message}`);
+            }
+
+            // Step 4: Filter out services that are assigned to any team
+            let unassignedServices = (allServices || []).filter(service =>
+                !assignedServiceIds.has(service.id)
+            );
+
+            // Step 5: Apply pagination manually since we filtered in memory
+            if (filter.offset !== undefined || filter.limit !== undefined) {
+                const start = filter.offset || 0;
+                const end = filter.limit ? start + filter.limit : unassignedServices.length;
+                unassignedServices = unassignedServices.slice(start, end);
+            }
+
+            return unassignedServices;
+
+        } catch (error) {
+            console.error('Error in getUnassignedServices:', error);
+            throw error;
         }
-
-        if (filter.is_active !== undefined) {
-            serviceQuery = serviceQuery.eq('is_active', filter.is_active);
-        }
-
-        if (filter.limit) {
-            serviceQuery = serviceQuery.limit(filter.limit);
-        }
-
-        if (filter.offset) {
-            serviceQuery = serviceQuery.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
-        }
-
-        const { data, error } = await serviceQuery;
-
-        if (error) {
-            throw new Error(`Failed to fetch unassigned services: ${error.message}`);
-        }
-
-        return data as IService[];
     },
 };
