@@ -848,5 +848,44 @@ export const serviceRepository = {
         return data as IService[];
     },
 
+    /**
+     * Get services that are not assigned to any team
+     * More efficient version using a single SQL query
+     */
+    async getUnassignedServices(filter: IServiceFilter = {}): Promise<IService[]> {
+        let serviceQuery = supabaseAdmin
+            .from('services')
+            .select(`
+            *,
+            assigned_to_team:teams!inner(
+                id
+            )
+        `)
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
 
+        if (filter.search) {
+            serviceQuery = serviceQuery.or(`name.ilike.%${filter.search}%,code.ilike.%${filter.search}%`);
+        }
+
+        if (filter.is_active !== undefined) {
+            serviceQuery = serviceQuery.eq('is_active', filter.is_active);
+        }
+
+        if (filter.limit) {
+            serviceQuery = serviceQuery.limit(filter.limit);
+        }
+
+        if (filter.offset) {
+            serviceQuery = serviceQuery.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data, error } = await serviceQuery;
+
+        if (error) {
+            throw new Error(`Failed to fetch unassigned services: ${error.message}`);
+        }
+
+        return data as IService[];
+    },
 };

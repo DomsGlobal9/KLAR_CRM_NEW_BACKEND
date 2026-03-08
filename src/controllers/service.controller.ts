@@ -145,7 +145,7 @@ export const serviceController = {
             if (userRole === 'superadmin' || userRole === 'admin') {
                 services = await serviceService.getAllServices(filter);
             } else if (userRole === 'TEAM_LEAD' || userRole === 'RELATIONSHIP_MANAGER') {
-                
+
                 const { data: userData, error: userError } = await supabaseAdmin
                     .from('users')
                     .select('team_id')
@@ -909,5 +909,33 @@ export const serviceController = {
             message: 'Service controller is working properly',
             timestamp: new Date().toISOString()
         });
+    },
+
+    /**
+     * Get services that are not assigned to any team
+     */
+    async getUnassignedServices(req: AuthRequest, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                search: req.query.search as string,
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const unassignedServices = await serviceService.getUnassignedServices(filter);
+
+            res.status(200).json({
+                success: true,
+                data: unassignedServices,
+                count: unassignedServices.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch unassigned services',
+                error: error.message
+            });
+        }
     }
 };

@@ -59,50 +59,6 @@ export const teamController = {
                 });
             }
 
-            if (userRole === 'tl' || userRole === 'rm') {
-                const { data: userData, error: userError } = await supabaseAdmin
-                    .from('users')
-                    .select('team_id')
-                    .eq('id', userId)
-                    .single();
-
-                if (userError || !userData?.team_id) {
-                    return res.status(200).json({
-                        success: true,
-                        data: [], 
-                        message: 'No team assigned to user'
-                    });
-                }
-
-                const team = await teamService.getTeamById(userData.team_id);
-
-                if (!team) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'Team not found'
-                    });
-                }
-
-                const { data: members, error: membersError } = await supabaseAdmin
-                    .from('users')
-                    .select('id, email, user_metadata, role, created_at')
-                    .eq('team_id', userData.team_id);
-
-                if (membersError) {
-                    console.error('Error fetching team members:', membersError);
-                }
-
-                const teamWithMembers = {
-                    ...team,
-                    members: members || []
-                };
-
-                return res.status(200).json({
-                    success: true,
-                    data: [teamWithMembers] 
-                });
-            }
-
             return res.status(200).json({
                 success: true,
                 data: []
