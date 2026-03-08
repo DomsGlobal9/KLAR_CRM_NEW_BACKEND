@@ -1,4 +1,5 @@
-import { teamRepository } from '../repositories';
+import { IService } from '../interfaces';
+import { serviceRepository, teamRepository } from '../repositories';
 
 export const teamService = {
 
@@ -32,7 +33,34 @@ export const teamService = {
      * @returns 
      */
     async listTeams() {
-        return teamRepository.listTeams();
+        const teams = await teamRepository.listTeams();
+
+        const enrichedTeams = await Promise.all(
+            teams.map(async (team) => {
+                let services: { id: string; name: string }[] = [];
+
+                if (team.service_ids && team.service_ids.length > 0) {
+                    services = await teamRepository.getServicesByIds(team.service_ids);
+                }
+
+                // Return team with services array (only id and name)
+                return {
+                    ...team,
+                    services: services.map(service => ({
+                        id: service.id,
+                        name: service.name
+                    })),
+                    service_names: services.map(s => s.name).join(', '),
+                    service_count: services.length
+                };
+            })
+        );
+
+        console.log("&^&^&^&^&^&^&^&^&^ The enhanced team data we get",
+            JSON.stringify(enrichedTeams, null, 2)
+        );
+
+        return enrichedTeams;
     },
 
     async getTeamById(id: string) {
