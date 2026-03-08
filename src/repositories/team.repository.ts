@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { IService } from '../interfaces';
 import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
@@ -102,9 +103,28 @@ export const teamRepository = {
     async listTeams() {
         const { data, error } = await supabaseAdmin
             .from('teams')
-            .select('*');
+            .select('*')
+            .order('created_at', { ascending: false });
+
         if (error) throw error;
         return data as Team[];
+    },
+
+    async getServicesByIds(serviceIds: string[]): Promise<{ id: string; name: string }[]> {
+        if (!serviceIds || serviceIds.length === 0) {
+            return [];
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('services')
+            .select('id, name')
+            .in('id', serviceIds);
+
+        if (error) {
+            throw new Error(`Failed to fetch services: ${error.message}`);
+        }
+
+        return data || [];
     },
 
     /**
