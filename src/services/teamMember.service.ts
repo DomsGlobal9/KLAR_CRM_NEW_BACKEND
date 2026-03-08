@@ -3,7 +3,8 @@ import { otpService } from '../services';
 import {
     teamMemberRepository,
     roleRepository,
-    teamRepository
+    teamRepository,
+    userRepository
 } from '../repositories';
 import { supabaseAdmin } from '../config';
 
@@ -131,14 +132,18 @@ export const teamMemberService = {
         );
 
         if (currentUser) {
-            const userRole = currentUser.role;
+            const userRole = currentUser?.role;
 
             if (userRole === 'tl') {
-                const currentUserTeamId = currentUser.user_metadata?.team_id;
+                
+                const currentUserData = await userRepository.getById(currentUser?.id);
+                
 
-                if (currentUserTeamId) {
+                const currentUserTeamid = currentUserData?.team_id;
+
+                if (currentUserTeamid) {
                     filteredUsers = filteredUsers.filter(u =>
-                        u.user_metadata?.team_id === currentUserTeamId &&
+                        u.user_metadata?.team_id === currentUserTeamid &&
                         u.user_metadata?.role_name === 'rm'
                     );
                 } else {
