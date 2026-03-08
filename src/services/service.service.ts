@@ -495,4 +495,11 @@ export const serviceService = {
             includeSubServices
         );
     },
+
+    /**
+     * Get services that are not assigned to any team
+     */
+    async getUnassignedServices(filter: IServiceFilter = {}): Promise<IService[]> {
+        return await serviceRepository.getUnassignedServices(filter);
+    }
 };
