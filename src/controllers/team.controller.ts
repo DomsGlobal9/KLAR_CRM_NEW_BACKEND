@@ -43,25 +43,19 @@ export const teamController = {
         const userRole = req.user?.role;
 
         try {
-            if (userRole === 'superadmin' || userRole === 'admin') {
-                const teams = await teamService.listTeams();
 
-                if (!teams || teams.length === 0) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'No teams found'
-                    });
-                }
+            const teams = await teamService.listTeams();
 
-                return res.status(200).json({
-                    success: true,
-                    data: teams
+            if (!teams || teams.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No teams found'
                 });
             }
 
             return res.status(200).json({
                 success: true,
-                data: []
+                data: teams
             });
 
         } catch (error: any) {
