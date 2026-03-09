@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware';
 import { teamService } from '../services/team.service';
 import { createAuditLog } from '../helpers';
+import { supabaseAdmin } from '../config';
 
 
 export const teamController = {
@@ -38,7 +39,11 @@ export const teamController = {
      * @param res 
      */
     async list(req: AuthRequest, res: Response) {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
         try {
+
             const teams = await teamService.listTeams();
 
             if (!teams || teams.length === 0) {
@@ -52,6 +57,7 @@ export const teamController = {
                 success: true,
                 data: teams
             });
+
         } catch (error: any) {
             console.error('Error fetching teams:', error);
 
@@ -97,6 +103,10 @@ export const teamController = {
      * @param res 
      */
     async delete(req: AuthRequest, res: Response) {
+        const role = req.user?.role;
+        if (role != 'superadmin') {
+            return res.status(400).json({ success: false, message: 'You are not authorized' })
+        }
         try {
             const { id } = req.params;
             await teamService.deleteTeam(id as string, req.user);

@@ -3,8 +3,10 @@ import { otpService } from '../services';
 import {
     teamMemberRepository,
     roleRepository,
-    teamRepository
+    teamRepository,
+    userRepository
 } from '../repositories';
+import { supabaseAdmin } from '../config';
 
 /**
  * Temporary storage for pending member creation (in-memory or Redis in production)
@@ -129,21 +131,51 @@ export const teamMemberService = {
             u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
         );
 
-        filteredUsers = this.applyRoleFilters(filteredUsers, currentUser);
+        if (currentUser) {
+            const userRole = currentUser?.role;
+
+            if (userRole === 'tl') {
+                
+                const currentUserData = await userRepository.getById(currentUser?.id);
+                
+
+                const currentUserTeamid = currentUserData?.team_id;
+
+                if (currentUserTeamid) {
+                    filteredUsers = filteredUsers.filter(u =>
+                        u.user_metadata?.team_id === currentUserTeamid &&
+                        u.user_metadata?.role_name === 'rm'
+                    );
+                } else {
+                    filteredUsers = [];
+                }
+            } else if (userRole === 'rm') {
+                filteredUsers = filteredUsers.filter(u => u.id === currentUser.id);
+            }
+        }
 
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();
 
-        return filteredUsers.map(user => ({
-            id: user.id,
-            email: user.email,
-            username: user.user_metadata?.username,
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at,
-            role: roles.find(r => r.id === user.user_metadata?.role_id) || null,
-            team: teams.find(t => t.id === user.user_metadata?.team_id) || null,
-            user_metadata: user.user_metadata
-        }));
+        return filteredUsers.map(user => {
+            const metadata = user.user_metadata || {};
+
+            while (metadata.user_metadata) {
+                Object.assign(metadata, metadata.user_metadata);
+                delete metadata.user_metadata;
+            }
+
+            return {
+                id: user.id,
+                email: user.email,
+                username: metadata.username,
+                created_at: user.created_at,
+                last_sign_in_at: user.last_sign_in_at,
+                role: roles.find(r => r.id === metadata.role_id) || null,
+                team: teams.find(t => t.id === metadata.team_id) || null,
+                user_metadata: metadata
+            };
+        });
     },
 
     applyRoleFilters(users: any[], currentUser?: any) {
@@ -151,15 +183,10 @@ export const teamMemberService = {
 
         switch (currentUser.role) {
             case 'admin':
-                return users.filter(u => u.user_metadata?.role_name === 'rm');
-            
-            case 'tl':
-            // Filter by team_id so TL sees their entire team
-            // We ensure the team_id exists and matches the TL's team_id
-            return users.filter(u => 
-                u.user_metadata?.team_id === currentUser.team_id && 
-                u.id !== currentUser.id // Optional: hide the TL from their own list
-            );
+                return users.filter(u =>
+                    u.user_metadata?.role_name === 'rm' ||
+                    u.user_metadata?.role_name === 'tl'
+                );
 
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
@@ -240,19 +267,13 @@ export const teamMemberService = {
             throw new Error('Cannot modify superadmin');
         }
 
+        const currentMetadata = user.user_metadata || {};
 
-        let currentMetadata = user.user_metadata;
+        const oldRoleId = currentMetadata.role_id;
+        const oldRoleName = currentMetadata.role_name;
+        const oldTeamId = currentMetadata.team_id;
 
-
-        if (currentMetadata?.user_metadata) {
-            currentMetadata = currentMetadata.user_metadata;
-        }
-
-        const oldRoleId = currentMetadata?.role_id;
-        const oldRoleName = currentMetadata?.role_name;
-        const oldTeamId = currentMetadata?.team_id;
         const updateMetadata: any = {};
-
 
         if (payload.role_id && payload.role_id !== oldRoleId) {
             const newRole = await roleRepository.getById(payload.role_id);
@@ -262,16 +283,8 @@ export const teamMemberService = {
                 throw new Error('Cannot assign superadmin role');
             }
 
-            if (newRole.name === 'tl') {
-                const targetTeamId = payload.team_id !== undefined ? payload.team_id : oldTeamId;
-                if (targetTeamId) {
-                    await this.validateTeamLeadLimit(targetTeamId, userId);
-                }
-            }
-
             updateMetadata.role_id = payload.role_id;
             updateMetadata.role_name = newRole.name;
-
 
             if (oldRoleId) {
                 await roleRepository.decrementAssignedCount(oldRoleId);
@@ -279,26 +292,13 @@ export const teamMemberService = {
             await roleRepository.incrementAssignedCount(payload.role_id);
         }
 
-
         if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
-            let userRoleName = oldRoleName;
-            if (payload.role_id && payload.role_id !== oldRoleId) {
-                const newRole = await roleRepository.getById(payload.role_id);
-                userRoleName = newRole?.name;
-            }
-
-            // If user is or becoming TL, check limit on new team
-            if (userRoleName === 'tl' && payload.team_id) {
-                await this.validateTeamLeadLimit(payload.team_id, userId);
-            }
             if (payload.team_id) {
-
                 const newTeam = await teamRepository.getById(payload.team_id);
                 if (!newTeam) throw new Error('Team not found');
             }
 
             updateMetadata.team_id = payload.team_id;
-
 
             if (oldTeamId) {
                 await teamRepository.decrementMembersCount(oldTeamId);
@@ -308,12 +308,12 @@ export const teamMemberService = {
             }
         }
 
-
         const newMetadata = {
             ...currentMetadata,
             ...updateMetadata
         };
 
+        delete newMetadata.user_metadata;
 
         const { data, error } = await teamMemberRepository.updateUser(userId, {
             user_metadata: newMetadata
@@ -321,24 +321,15 @@ export const teamMemberService = {
 
         if (error) throw error;
 
-
-        const updatedUser = data.user;
-        let userMetadata = updatedUser.user_metadata;
-
-
-        if (userMetadata?.user_metadata) {
-            userMetadata = userMetadata.user_metadata;
-        }
-
-        const roleId = userMetadata?.role_id;
-        const teamId = userMetadata?.team_id;
+        const roleId = newMetadata.role_id;
+        const teamId = newMetadata.team_id;
 
         const role = roleId ? await roleRepository.getById(roleId) : null;
         const team = teamId ? await teamRepository.getById(teamId) : null;
 
         return {
-            ...updatedUser,
-            user_metadata: userMetadata,
+            ...data.user,
+            user_metadata: newMetadata,
             role: role ? { id: role.id, name: role.name } : null,
             team: team ? { id: team.id, name: team.name } : null
         };

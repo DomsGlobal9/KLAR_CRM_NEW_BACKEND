@@ -12,6 +12,8 @@ import {
     ISubServiceFilter,
     IService
 } from '../interfaces';
+import { AuthRequest } from '../middleware';
+import { supabaseAdmin } from '../config';
 
 export const serviceController = {
     // ============ Service Controllers ============
@@ -124,8 +126,12 @@ export const serviceController = {
 
     /**
      * Get all services with only id and name (for UI dropdowns)
+     * Filtered by user's team services for TL and RM roles
      */
-    async getAllServicesMinimal(req: Request, res: Response) {
+    async getAllServicesMinimal(req: AuthRequest, res: Response) {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
         try {
             const filter: IServiceFilter = {
                 search: req.query.search as string,
@@ -134,7 +140,56 @@ export const serviceController = {
                 offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
             };
 
-            const services = await serviceService.getAllServices(filter);
+            let services: IService[] = [];
+
+            if (userRole === 'superadmin' || userRole === 'admin') {
+                services = await serviceService.getAllServices(filter);
+            } else if (userRole === 'TEAM_LEAD' || userRole === 'RELATIONSHIP_MANAGER') {
+
+                const { data: userData, error: userError } = await supabaseAdmin
+                    .from('users')
+                    .select('team_id')
+                    .eq('id', userId)
+                    .single();
+
+                if (userError || !userData?.team_id) {
+                    return res.status(200).json({
+                        success: true,
+                        data: [],
+                        count: 0,
+                        message: 'No team assigned to user'
+                    });
+                }
+
+                const { data: teamData, error: teamError } = await supabaseAdmin
+                    .from('teams')
+                    .select('service_ids')
+                    .eq('id', userData.team_id)
+                    .single();
+
+                if (teamError || !teamData?.service_ids || teamData.service_ids.length === 0) {
+
+                    return res.status(200).json({
+                        success: true,
+                        data: [],
+                        count: 0,
+                        message: 'No services assigned to your team'
+                    });
+                }
+
+                const teamServices = await serviceService.getServicesByIds(
+                    teamData.service_ids,
+                    filter
+                );
+
+                services = teamServices;
+            } else {
+                return res.status(200).json({
+                    success: true,
+                    data: [],
+                    count: 0
+                });
+            }
 
             const minimalServices = services.map(service => ({
                 id: service.id,
@@ -151,6 +206,7 @@ export const serviceController = {
                 data: minimalServices,
                 count: minimalServices.length
             });
+
         } catch (error: any) {
             res.status(500).json({
                 success: false,
@@ -853,5 +909,33 @@ export const serviceController = {
             message: 'Service controller is working properly',
             timestamp: new Date().toISOString()
         });
+    },
+
+    /**
+     * Get services that are not assigned to any team
+     */
+    async getUnassignedServices(req: AuthRequest, res: Response) {
+        try {
+            const filter: IServiceFilter = {
+                search: req.query.search as string,
+                is_active: req.query.is_active ? req.query.is_active === 'true' : undefined,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+            };
+
+            const unassignedServices = await serviceService.getUnassignedServices(filter);
+
+            res.status(200).json({
+                success: true,
+                data: unassignedServices,
+                count: unassignedServices.length
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch unassigned services',
+                error: error.message
+            });
+        }
     }
 };

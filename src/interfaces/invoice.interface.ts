@@ -35,6 +35,9 @@ export interface IInvoice {
     notes?: string;
     terms_conditions?: string;
     gst_number?: string;
+    paid_percentage?: number;
+    payment_type?: string;
+    rest_amount?: number;
 }
 
 export interface ICreateInvoiceDTO {
@@ -55,11 +58,17 @@ export interface ICreateInvoiceDTO {
     due_date_time?: string;
     quote_reference?: string;
     payment_method?: string;
+
+    paid_amount?: number;
     include_quote_details?: boolean;
     line_items: ILineItem[];
     notes?: string;
     terms_conditions?: string;
     gst_number?: string;
+    paid_percentage?: number;
+    payment_type?: string;
+    rest_amount?: number;
+    created_at?: string;
 }
 
 export interface IUpdateInvoiceDTO {
@@ -68,6 +77,15 @@ export interface IUpdateInvoiceDTO {
     paid_date?: string;
     sent_at?: string;
     notes?: string;
+    payment_method?: string;
+    client_name?: string;
+    client_email?: string;
+    client_phone?: string;
+    billing_address?: string;
+    terms_conditions?: string;
+    updated_at?: string;
+    paid_percentage?: number;
+    rest_amount?: number;
 }
 
 export interface IInvoiceStats {
@@ -81,19 +99,30 @@ export interface IInvoiceStats {
 
 export interface IConvertQuoteToInvoiceDTO {
     quote_number: string;
-    invoice_date: string; 
+    invoice_date: string;
     payment_method: string;
-    payment_deadline: string; 
-    payment_deadline_time?: string; 
-    include_quote_details: boolean;
-    send_invoice: boolean;
+    payment_deadline_time?: string;
+    include_quote_details: boolean | string;
+    send_invoice: boolean | string;
     quote_total: number;
     quote_currency: string;
-    client: string; 
-    client_name: string;
-    client_email: string;
+
+    client: string;
+    client_name?: string;
+    client_email?: string;
+    /** Client mobile/phone number */
+    client_mobile?: string;
     billing_address?: string;
     notes?: string;
     terms_conditions?: string;
     quote_reference?: string;
+    /** Actual cash amount paid (already calculated by frontend) */
+    paid_amount?: number;
+    /** Raw percentage value (informational — paid_amount is the source of truth) */
+    paid_percentage?: number;
+    /** 'percentage' | 'number' — how the user entered the amount */
+    payment_type?: string;
+    /** Remaining balance after paid_amount (informational) */
+    rest_amount?: number;
+    gst_number?: string;
 }
