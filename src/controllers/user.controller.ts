@@ -42,6 +42,7 @@ export const userController = {
     async getMe(req: AuthRequest, res: Response) {
         try {
             const userId = req.user?.id;
+            console.log("\n@@@@@@@@@@@@@@@@@ The user data we get", userId);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized 9876' });
             }

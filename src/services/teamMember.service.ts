@@ -135,9 +135,9 @@ export const teamMemberService = {
             const userRole = currentUser?.role;
 
             if (userRole === 'tl') {
-                
+
                 const currentUserData = await userRepository.getById(currentUser?.id);
-                
+
 
                 const currentUserTeamid = currentUserData?.team_id;
 
@@ -315,9 +315,10 @@ export const teamMemberService = {
 
         delete newMetadata.user_metadata;
 
-        const { data, error } = await teamMemberRepository.updateUser(userId, {
-            user_metadata: newMetadata
-        });
+        const { data, error } = await teamMemberRepository.updateUser(
+            userId,
+            newMetadata
+        );
 
         if (error) throw error;
 
