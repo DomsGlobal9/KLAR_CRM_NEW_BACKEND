@@ -56,10 +56,6 @@ export const teamService = {
             })
         );
 
-        console.log("&^&^&^&^&^&^&^&^&^ The enhanced team data we get",
-            JSON.stringify(enrichedTeams, null, 2)
-        );
-
         return enrichedTeams;
     },
 
