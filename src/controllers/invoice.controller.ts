@@ -397,6 +397,55 @@ export class InvoiceController {
             }
         };
     }
+
+
+
+
+
+
+
+
+    /**
+     * Download the generated PDF for an invoice
+     */
+    downloadInvoicePdf = async (req: Request, res: Response): Promise<void> => {
+        const requestId = `pdf_${Date.now()}`;
+        try {
+            const { id } = req.params;
+            console.log("415")
+
+            if (!id) {
+                throw new AppError('Invoice ID is required', 400, 'MISSING_ID');
+            }
+
+            console.log(`[${requestId}] Generating PDF for invoice: ${id}`);
+
+            // Call the service method we added previously
+            const { pdfBuffer, fileName } = await invoiceService.generateInvoicePdf(id);
+
+            // Set headers for file download
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Content-Length', pdfBuffer.length);
+
+            // Send the buffer directly
+            res.status(200).send(pdfBuffer);
+
+        } catch (error: any) {
+            console.error(`[${requestId}] PDF Generation failed:`, error);
+            
+            // Re-use your existing error handling pattern
+            const statusCode = error instanceof AppError ? error.statusCode : 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || 'Failed to generate PDF',
+                error: {
+                    code: error.code || 'PDF_GENERATION_ERROR',
+                    message: error.message
+                }
+            });
+        }
+    }
 }
 
 export const invoiceController = new InvoiceController();

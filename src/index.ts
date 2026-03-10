@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import app from './app';
-import cronService from './services';
+// import cronService from './services';
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ const gracefulShutdown = () => {
     /**
      * Stop all cron jobs first
      */
-    cronService.stopAllJobs();
+    // cronService.stopAllJobs();
 
     server.close(() => {
         console.log('HTTP server closed');

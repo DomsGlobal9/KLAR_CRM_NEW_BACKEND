@@ -37,4 +37,9 @@ router.patch('/:id/mark-paid', invoiceController.markAsPaid);
 // PATCH  /api/v1/invoice/:id/mark-sent
 router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
+
+
+// Example route definition
+router.get('/:id/download', invoiceController.downloadInvoicePdf);
+
 export default router;
