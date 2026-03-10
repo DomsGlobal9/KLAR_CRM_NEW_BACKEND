@@ -27,5 +27,29 @@ export const teamMemberRepository = {
     async getUserByUsername(username: string) {
         return getUserByUsername(username);
     },
-    
+
+    async findTLByTeam(teamId: string) {
+
+        const { data: usersData, error } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+        });
+
+        if (error) throw error;
+
+        return usersData.users.find(u => {
+            const meta = u.user_metadata || {};
+            return meta.role_name === 'tl' && meta.team_id === teamId;
+        }) || null;
+    },
+
+    async getUserById(userId: string) {
+
+        const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+        if (error) throw error;
+
+        return data.user;
+    },
+
 };

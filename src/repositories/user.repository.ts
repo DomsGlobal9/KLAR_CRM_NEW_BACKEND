@@ -34,6 +34,7 @@ export const userRepository = {
     async getById(userId: string) {
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (error) throw error;
+        console.log("\nREPOSITORY: User data we get", data);
 
         const user = data.user;
         // console.log("&&&&&&&&&& User data we get", user);
