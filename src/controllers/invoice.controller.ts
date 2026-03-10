@@ -6,6 +6,10 @@ import { parseClientString, parseBoolean } from '../utils/parser.util';
 import { generateInvoiceNumber } from '../utils/date.utils';
 import { AppError } from '../utils/errorHandler';
 import { AuthRequest } from '../middleware';
+import { pdfService } from '../services/pdf.service';
+
+
+import { supabaseAdmin } from '../config';
 
 export class InvoiceController {
 
@@ -396,6 +400,38 @@ export class InvoiceController {
                 is_fully_paid: financials.isFullyPaid
             }
         };
+    }
+
+
+
+
+
+
+
+    // Add this to your InvoiceController class
+    downloadInvoicePDF = async (req: Request, res: Response) => {
+        try {
+            const { id } = req.params;
+            const invoice = await invoiceService.getInvoiceById(id);
+
+            // 1. Generate HTML & PDF
+            const html = await pdfService.generateInvoiceHTML(invoice);
+            const pdfBuffer = await pdfService.generatePDF(html);
+
+            // 2. (Optional) Store in Supabase Storage
+            const fileName = `invoices/${invoice.invoice_number}.pdf`;
+            await supabaseAdmin.storage
+                .from('documents')
+                .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+            // 3. Send Response
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=Invoice_${invoice.invoice_number}.pdf`);
+            return res.send(pdfBuffer);
+
+        } catch (error: any) {
+            res.status(500).json({ success: false, message: error.message });
+        }
     }
 
 }
