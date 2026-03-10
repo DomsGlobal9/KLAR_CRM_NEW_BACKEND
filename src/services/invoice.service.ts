@@ -3,8 +3,6 @@ import { ICreateInvoiceDTO, IInvoice, IUpdateInvoiceDTO } from '../interfaces/in
 import { validateInvoiceData } from '../utils/invoice.validation';
 import { generateInvoiceNumber } from '../utils/date.utils';
 
-import { generatePdfFromHtml } from '../utils/pdf-generator.util'; // We will create this next
-import { itineraryRepository } from '../repositories/itinerary.repository';
 
 export const invoiceService = {
 
@@ -123,36 +121,6 @@ export const invoiceService = {
         };
 
         return await this.updateInvoice(id, updateData);
-    },
-
-    
-
-
-
-    async generateInvoicePdf(id: string) {
-        // 1. Get the Invoice
-        const invoice = await this.getInvoiceById(id);
-        
-        // 2. Get the Itinerary (Assuming they are linked by quote_number or id)
-        // You might need to adjust this query based on your actual DB relations
-        const itinerary = await itineraryRepository.getByQuoteNumber(invoice.quote_number);
-
-        // 3. Prepare data for the HTML template
-        const data = {
-            invoice,
-            itinerary,
-            generatedAt: new Date().toLocaleDateString(),
-            companyName: "Klar Travels" // Or from config
-        };
-
-        // 4. Generate the PDF Buffer
-        // 'invoice-template' matches the filename in src/templates/
-        const pdfBuffer = await generatePdfFromHtml('invoice-template', data);
-
-        return {
-            pdfBuffer,
-            fileName: `Invoice_${invoice.invoice_number}.pdf`
-        };
     }
 };
 

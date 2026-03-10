@@ -39,7 +39,4 @@ router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
 
 
-// Example route definition
-router.get('/:id/download', invoiceController.downloadInvoicePdf);
-
 export default router;
