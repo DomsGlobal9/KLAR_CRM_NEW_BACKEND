@@ -6,7 +6,7 @@ import {
     IQuoteFilter
 } from '../interfaces';
 import { AuthRequest } from '../middleware';
-import { pdfService } from '../services/pdf.service';
+import { pdfService } from '../services/invoicePdf.service';
 import { travelDocumentService } from '../services/travel-document.service';
 import { supabaseAdmin } from '../config/supabase.config';
 
@@ -321,46 +321,92 @@ export const quoteController = {
 
 
 
-    async downloadProposalPDF(req: Request, res: Response) {
+//     async downloadProposalPDF(req: Request, res: Response) {
+//     try {
+//         const { quoteId } = req.params;
+
+//         // 1. Fetch Quote Data from Repository
+//         const quoteResult = await quoteService.getQuoteById(quoteId);
+//         if (!quoteResult.success || !quoteResult.data) {
+//             return res.status(404).json({ success: false, message: "Quote not found" });
+//         }
+//         const quote = quoteResult.data;
+
+//         // 2. Fetch Itinerary/Preferences using the lead_id from the quote
+//         const leadId = quote.lead_id;
+//         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+//         if (!itinResult.success || !itinResult.data) {
+//             return res.status(404).json({ success: false, message: "Itinerary details for this lead not found" });
+//         }
+//         const itinerary = itinResult.data;
+
+//         // 3. Generate the HTML and PDF Buffer
+//         // This uses the travelDocumentService we created earlier
+//         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+//         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
+
+//         // 4. Send PDF in Response
+//         const filename = `Proposal_${quote.quote_number}.pdf`;
+        
+//         res.setHeader('Content-Type', 'application/pdf');
+//         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+//         res.setHeader('Content-Length', pdfBuffer.length);
+
+//         return res.end(pdfBuffer);
+
+//     } catch (error: any) {
+//         console.error("Direct PDF Download Error:", error);
+//         res.status(500).json({ 
+//             success: false, 
+//             message: "Failed to generate PDF response",
+//             error: error.message 
+//         });
+//     }
+// }
+
+
+
+
+
+
+
+
+
+
+
+async downloadProposalPDF(req: Request, res: Response) {
     try {
         const { quoteId } = req.params;
 
-        // 1. Fetch Quote Data from Repository
+        // 1. Fetch Quote Data
         const quoteResult = await quoteService.getQuoteById(quoteId);
         if (!quoteResult.success || !quoteResult.data) {
             return res.status(404).json({ success: false, message: "Quote not found" });
         }
         const quote = quoteResult.data;
 
-        // 2. Fetch Itinerary/Preferences using the lead_id from the quote
+        // 2. Fetch Itinerary/Preferences using lead_id
         const leadId = quote.lead_id;
         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
         if (!itinResult.success || !itinResult.data) {
-            return res.status(404).json({ success: false, message: "Itinerary details for this lead not found" });
+            return res.status(404).json({ success: false, message: "Itinerary details not found for this lead" });
         }
         const itinerary = itinResult.data;
 
-        // 3. Generate the HTML and PDF Buffer
-        // This uses the travelDocumentService we created earlier
+        // 3. Generate HTML & PDF
         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+        
+        // Note: Using generatePDFBuffer to match the service fix
         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
 
-        // 4. Send PDF in Response
-        const filename = `Proposal_${quote.quote_number}.pdf`;
-        
+        // 4. Send Response
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('Content-Length', pdfBuffer.length);
-
+        res.setHeader('Content-Disposition', `attachment; filename="Proposal_${quote.quote_number}.pdf"`);
         return res.end(pdfBuffer);
 
     } catch (error: any) {
-        console.error("Direct PDF Download Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to generate PDF response",
-            error: error.message 
-        });
+        console.error("PDF Error:", error);
+        res.status(500).json({ success: false, message: error.message });
     }
 }
 
@@ -369,95 +415,6 @@ export const quoteController = {
 
 
 
-
-
-//     async generateAndStoreQuotePDF(req: Request, res: Response) {
-//     try {
-//         const { quoteId } = req.params;
-
-//         // 1. Fetch Quote Data
-//         const quoteResult = await quoteService.getQuoteById(quoteId);
-//         const quote = quoteResult.data;
-
-//         // 2. Fetch Associated Itinerary/Preferences Data
-//         const leadId = quote.lead_id;
-//         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
-//         const itinerary = itinResult.data;
-
-//         // 3. Generate PDF
-//         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
-//         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
-
-//         // 4. Store in Database (Supabase Storage)
-//         const fileName = `proposals/${quote.quote_number}_${Date.now()}.pdf`;
-//         const { data: uploadData, error: uploadError } = await supabaseAdmin
-//             .storage
-//             .from('travel-documents')
-//             .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
-
-//         if (uploadError) throw uploadError;
-
-//         // 5. Update Quote Record with PDF URL
-//         const { data: publicUrl } = supabaseAdmin.storage.from('travel-documents').getPublicUrl(fileName);
-//         await quoteRepository.updateQuote(quoteId, { metadata: { pdf_url: publicUrl.publicUrl } });
-
-//         return res.status(200).json({
-//             success: true,
-//             message: 'PDF generated and stored successfully',
-//             url: publicUrl.publicUrl
-//         });
-
-//     } catch (error: any) {
-//         res.status(500).json({ success: false, message: error.message });
-//     }
-// }
-
-
-
-
-
-
-
-//     // Itinerary and quote pdf 
-// async downloadPDF(req: Request, res: Response) {
-//     try {
-//         const quoteId = req.query.quoteId as string;
-//         const leadId = req.query.leadId as string;
-
-//         if (!quoteId || !leadId) {
-//             return res.status(400).json({ success: false, message: "Missing quoteId or leadId" });
-//         }
-
-//         // Fetch data from existing services
-//         const [itineraryResult, quoteResult] = await Promise.all([
-//             itineraryPreferencesService.getPreferences(leadId),
-//             quoteService.getQuoteById(quoteId)
-//         ]);
-
-//         if (!itineraryResult.success || !quoteResult.success) {
-//             return res.status(404).json({ success: false, message: "Data not found" });
-//         }
-
-//         // Generate PDF
-//         const pdfResult = await pdfService.generateUnifiedPDF(
-//             itineraryResult.data, 
-//             quoteResult.data
-//         );
-
-//         // Update database with URL for future reference
-//         await quoteRepository.updateQuote(quoteId, { metadata: { pdf_url: pdfResult.url } });
-
-//         // Set Headers for Download
-//         res.setHeader('Content-Type', 'application/pdf');
-//         res.setHeader('Content-Disposition', `attachment; filename=Klar_Travels_${quoteResult.data.quote_number}.pdf`);
-        
-//         return res.send(pdfResult.buffer);
-
-//     } catch (error: any) {
-//         console.error("Download Controller Error:", error);
-//         return res.status(500).json({ success: false, message: error.message });
-//     }
-// }
 };
 
 

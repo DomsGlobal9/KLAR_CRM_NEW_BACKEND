@@ -6,7 +6,7 @@ import { parseClientString, parseBoolean } from '../utils/parser.util';
 import { generateInvoiceNumber } from '../utils/date.utils';
 import { AppError } from '../utils/errorHandler';
 import { AuthRequest } from '../middleware';
-import { pdfService } from '../services/pdf.service';
+import { pdfService } from '../services/invoicePdf.service';
 
 
 import { supabaseAdmin } from '../config';
