@@ -995,232 +995,184 @@ export const pdfService = {
 
 
 
+// code for Itinerary and quotation pdf
 
 
 
 
 
 
-// import puppeteer from 'puppeteer';
+
+// // import puppeteer from 'puppeteer';
 // import handlebars from 'handlebars';
-// import fs from 'fs';
+// import { promises as fs } from 'fs'; // Use the promise-based fs
 // import path from 'path';
-// import { IInvoice } from '../interfaces/invoice.interface';
+// import { supabaseAdmin } from '../config';
 
-// const formatINR = (amount: number): string => {
-//     return new Intl.NumberFormat('en-IN', {
-//         style: 'decimal',
-//         minimumFractionDigits: 2,
-//         maximumFractionDigits: 2
-//     }).format(amount);
-// };
+// // Helpers (Same as before)
+// handlebars.registerHelper('formatCurrency', (amount, currency) => {
+//     return new Intl.NumberFormat('en-IN', { 
+//         style: 'currency', 
+//         currency: currency || 'INR',
+//         maximumFractionDigits: 0 
+//     }).format(amount || 0);
+// });
 
-// function numberToINRWords(amount: number): string {
-//     const units = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-//     const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-//     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
-//     function convert(n: number): string {
-//         if (n < 10) return units[n];
-//         if (n < 20) return teens[n - 10];
-//         if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + units[n % 10] : '');
-//         if (n < 1000) return units[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' and ' + convert(n % 100) : '');
-//         if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 !== 0 ? ' ' + convert(n % 1000) : '');
-//         if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 !== 0 ? ' ' + convert(n % 100000) : '');
-//         return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 !== 0 ? ' ' + convert(n % 10000000) : '');
-//     }
-
-//     const result = convert(Math.floor(amount));
-//     return result ? result + ' Only' : 'Zero Only';
-// }
+// handlebars.registerHelper('formatDate', (dateString) => {
+//     if (!dateString) return 'N/A';
+//     return new Date(dateString).toLocaleDateString('en-IN', { 
+//         day: '2-digit', month: 'long', year: 'numeric' 
+//     });
+// });
 
 // export const pdfService = {
-//     async generateInvoiceHTML(invoice: any): Promise<string> {
-//         const logoPath = path.join(process.cwd(), 'src', 'assets', 'images', 'klar_main_logo.png');
-//         let base64Logo = '';
-        
+//     async generateUnifiedPDF(itineraryData: any, quoteData: any) {
 //         try {
-//             const bitmap = fs.readFileSync(logoPath);
-//             base64Logo = `data:image/png;base64,${bitmap.toString('base64')}`;
-//         } catch (err) {
-//             console.error("Logo not found");
+//             // FIX: Use path.resolve and fs.promises.readFile
+//             const templatePath = path.resolve(__dirname, '../templates/unified-template.hbs');
+//             const source = await fs.readFile(templatePath, 'utf8'); // No callback error here
+//             const template = handlebars.compile(source);
+
+//             const html = template({ itinerary: itineraryData, quote: quoteData });
+
+//             const browser = await puppeteer.launch({ 
+//                 headless: true, 
+//                 args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+//             });
+//             const page = await browser.newPage();
+//             await page.setContent(html, { waitUntil: 'networkidle0' });
+            
+//             const pdfBuffer = await page.pdf({ 
+//                 format: 'A4', 
+//                 printBackground: true,
+//                 margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' }
+//             });
+            
+//             await browser.close();
+
+//             // Store in Supabase
+//             const fileName = `quotes/${quoteData.quote_number}.pdf`;
+//             await supabaseAdmin.storage.from('travel-documents').upload(fileName, pdfBuffer, { 
+//                 contentType: 'application/pdf', 
+//                 upsert: true 
+//             });
+
+//             const { data: urlData } = supabaseAdmin.storage.from('travel-documents').getPublicUrl(fileName);
+
+//             return { buffer: pdfBuffer, url: urlData.publicUrl };
+//         } catch (error: any) {
+//             throw new Error(`PDF Generation failed: ${error.message}`);
 //         }
-
-//         const templateHtml = `
-//         <!DOCTYPE html>
-//         <html>
-//         <head>
-//             <style>
-//                 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; margin: 0; padding: 30px; font-size: 10pt; line-height: 1.4; }
-//                 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-//                 .company-info { text-align: right; }
-//                 .company-info h1 { margin: 0; color: #d32f2f; font-size: 18pt; }
-                
-//                 .section-title { font-weight: bold; font-size: 11pt; color: #4b0082; margin-bottom: 10px; display: flex; align-items: center; }
-                
-//                 /* Layout Grids */
-//                 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 4px; }
-//                 .info-item { margin-bottom: 5px; }
-//                 .info-label { font-weight: 600; color: #666; width: 120px; display: inline-block; }
-
-//                 .invoice-header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-//                 .invoice-header-table td { padding: 5px; }
-
-//                 /* Tables */
-//                 .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-//                 .items-table th { background: #f8f9fa; border: 1.5px solid #000; padding: 10px; text-align: center; }
-//                 .items-table td { border: 1.5px solid #000; padding: 10px; vertical-align: top; }
-//                 .col-desc { text-align: left !important; width: 50%; }
-//                 .text-right { text-align: right; }
-
-//                 /* Payment Box */
-//                 .payment-details-box { border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
-//                 .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-//                 .total-row { font-weight: bold; border-top: 2px solid #000; margin-top: 10px; padding-top: 10px; }
-//                 .status-badge { background: #fff3e0; color: #ef6c00; padding: 2px 8px; border-radius: 4px; font-weight: bold; text-transform: uppercase; font-size: 8pt; }
-                
-//                 .footer { margin-top: 30px; border-top: 1.5px solid #000; padding-top: 10px; font-size: 8.5pt; }
-//                 .terms-list { list-style: none; padding: 0; color: #d32f2f; }
-//             </style>
-//         </head>
-//         <body>
-//             <div class="header">
-//                 <img src="${base64Logo}" style="max-height: 60px;"/>
-//                 <div class="company-info">
-//                     <h1>KLAR TRAVEL</h1>
-//                     <p>H.No 8-3-949/4 & 5, Ameerpet, Hyderabad - 500073<br>
-//                     GSTIN: {{gst_number}}</p>
-//                 </div>
-//             </div>
-
-//             <table class="invoice-header-table">
-//                 <tr>
-//                     <td><span class="info-label">Invoice No:</span> {{invoice_number}}</td>
-//                     <td class="text-right"><span class="info-label">Date:</span> {{created_at}}</td>
-//                 </tr>
-//                 <tr>
-//                     <td><span class="info-label">Quote Ref:</span> {{quote_number}}</td>
-//                     <td class="text-right"><span class="info-label">Due Date:</span> {{due_date}}</td>
-//                 </tr>
-//                 <tr>
-//                     <td><span class="info-label">Status:</span> <span class="status-badge">{{status}}</span></td>
-//                     <td class="text-right"><span class="info-label">Payment Method:</span> {{payment_method}}</td>
-//                 </tr>
-//             </table>
-
-//             <div class="section-title">👤 Client Information</div>
-//             <div class="info-grid">
-//                 <div>
-//                     <div class="info-item"><span class="info-label">Full Name:</span> {{client_name}}</div>
-//                     <div class="info-item"><span class="info-label">Email:</span> {{client_email}}</div>
-//                     <div class="info-item"><span class="info-label">Phone:</span> {{client_phone}}</div>
-//                 </div>
-//                 <div>
-//                     <div class="info-item"><span class="info-label">Billing Address:</span> {{billing_address}}</div>
-//                     <div class="info-item"><span class="info-label">GST Number:</span> {{gst_number}}</div>
-//                 </div>
-//             </div>
-
-//             <table class="items-table">
-//                 <thead>
-//                     <tr>
-//                         <th class="col-desc">Description</th>
-//                         <th>Qty</th>
-//                         <th>Unit Price</th>
-//                         <th>Tax</th>
-//                         <th>Total</th>
-//                     </tr>
-//                 </thead>
-//                 <tbody>
-//                     {{#each line_items}}
-//                     <tr>
-//                         <td class="col-desc">{{this.description}}</td>
-//                         <td style="text-align:center">{{this.quantity}}</td>
-//                         <td class="text-right">{{this.unitPrice_formatted}}</td>
-//                         <td class="text-right">{{this.taxRate}}%</td>
-//                         <td class="text-right">{{this.total_formatted}}</td>
-//                     </tr>
-//                     {{/each}}
-//                     {{#unless line_items}}
-//                     <tr><td colspan="5" style="text-align:center">No line items provided</td></tr>
-//                     {{/unless}}
-//                 </tbody>
-//             </table>
-
-//             <div class="section-title">💳 Payment Details</div>
-//             <div class="payment-details-box">
-//                 <div class="payment-grid">
-//                     <div>
-//                         <div class="info-item"><span class="info-label">Currency:</span> {{currency}}</div>
-//                         <div class="info-item"><span class="info-label">Subtotal:</span> {{subtotal_formatted}}</div>
-//                         <div class="info-item"><span class="info-label">Tax Amount:</span> {{tax_amount_formatted}}</div>
-//                     </div>
-//                     <div>
-//                         <div class="info-item"><span class="info-label">Payment Type:</span> {{payment_type}}</div>
-//                         <div class="info-item"><span class="info-label">Paid Percentage:</span> {{paid_percentage}}%</div>
-//                         <div class="info-item"><span class="info-label">Paid Amount:</span> <span style="color:green; font-weight:bold;">{{paid_amount_formatted}}</span></div>
-//                     </div>
-//                 </div>
-//                 <div class="total-row">
-//                     <div style="display:flex; justify-content: space-between;">
-//                         <span>Grand Total:</span>
-//                         <span>{{currency}} {{total_formatted}}</span>
-//                     </div>
-//                     <div style="display:flex; justify-content: space-between; color: #d32f2f; margin-top: 5px;">
-//                         <span>Balance Due (Rest Amount):</span>
-//                         <span>{{currency}} {{rest_amount_formatted}}</span>
-//                     </div>
-//                 </div>
-//             </div>
-
-//             <div style="margin-bottom: 20px;">
-//                 <strong>Amount in Words:</strong> {{currency}} {{total_words}}
-//             </div>
-
-//             <div class="footer">
-//                 <div style="font-weight:bold; text-decoration: underline;">Terms & Conditions:</div>
-//                 <ul class="terms-list">
-//                     <li>1. NOTE: COMPUTER GENERATED INVOICE SIGNATURE NOT REQUIRED</li>
-//                     <li>2. All cheques must be drawn in favour of PRAVEEN TOURS & TRAVELS</li>
-//                     <li>3. Interest @ 24% per annum will be charged on all outstanding bills after due date.</li>
-//                     <li>4. Bank Details: ICICI BANK A/C: 020205500003, IFSC: ICIC0000202</li>
-//                 </ul>
-//                 <div style="text-align: center; color: #d32f2f; font-weight: bold; margin-top: 10px;">
-//                     (This is computer generated document. Signature not required)
-//                 </div>
-//             </div>
-//         </body>
-//         </html>
-//         `;
-
-//         const template = handlebars.compile(templateHtml);
-        
-//         return template({
-//             ...invoice,
-//             created_at: new Date(invoice.created_at).toLocaleDateString('en-IN'),
-//             due_date: new Date(invoice.due_date).toLocaleDateString('en-IN'),
-//             total_words: numberToINRWords(invoice.total),
-//             subtotal_formatted: formatINR(invoice.subtotal),
-//             tax_amount_formatted: formatINR(invoice.tax_amount),
-//             paid_amount_formatted: formatINR(invoice.paid_amount),
-//             rest_amount_formatted: formatINR(invoice.rest_amount),
-//             total_formatted: formatINR(invoice.total),
-//             line_items: (invoice.line_items || []).map((item: any) => ({
-//                 ...item,
-//                 unitPrice_formatted: formatINR(item.unitPrice),
-//                 total_formatted: formatINR(item.total)
-//             }))
-//         });
 //     }
 // };
 
 
+import puppeteer from 'puppeteer';
+import handlebars from 'handlebars';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { supabaseAdmin } from '../config';
 
+// Reusable formatting helpers
+const formatINR = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'decimal',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount || 0);
+};
 
+// Handlebars Helpers for the Unified Template
+handlebars.registerHelper('formatCurrency', (amount, currency) => {
+    return new Intl.NumberFormat('en-IN', { 
+        style: 'currency', 
+        currency: currency || 'INR',
+        maximumFractionDigits: 0 
+    }).format(amount || 0);
+});
 
+handlebars.registerHelper('formatDate', (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-IN', { 
+        day: '2-digit', month: 'long', year: 'numeric' 
+    });
+});
 
+export const pdfService = {
+    /**
+     * Converts local image to Base64 for PDF embedding
+     */
+    async getLogoBase64(): Promise<string> {
+        try {
+            const logoPath = path.join(process.cwd(), 'src', 'assets', 'images', 'klar_main_logo.png');
+            const bitmap = await fs.readFile(logoPath);
+            return `data:image/png;base64,${bitmap.toString('base64')}`;
+        } catch (error) {
+            console.warn('Logo not found, proceeding without it');
+            return '';
+        }
+    },
 
+    /**
+     * NEW: Generates the Unified Itinerary & Quote PDF
+     */
+    async generateUnifiedPDF(itineraryData: any, quoteData: any) {
+        try {
+            const templatePath = path.resolve(process.cwd(), 'src', 'templates', 'unified-template.hbs');
+            const source = await fs.readFile(templatePath, 'utf8');
+            const template = handlebars.compile(source);
+            
+            const logoBase64 = await this.getLogoBase64();
 
+            const html = template({ 
+                itinerary: itineraryData, 
+                quote: quoteData,
+                logo: logoBase64 
+            });
 
+            const browser = await puppeteer.launch({ 
+                headless: true, 
+                args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+            });
+            const page = await browser.newPage();
+            await page.setContent(html, { waitUntil: 'networkidle0' });
+            
+            const pdfBuffer = await page.pdf({ 
+                format: 'A4', 
+                printBackground: true,
+                margin: { top: '10px', bottom: '10px', left: '10px', right: '10px' }
+            });
+            
+            await browser.close();
 
+            // Store in Supabase Storage
+            const fileName = `quotes/${quoteData.quote_number}_${Date.now()}.pdf`;
+            const { error: uploadError } = await supabaseAdmin.storage
+                .from('travel-documents')
+                .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+            if (uploadError) console.error("Supabase Storage Error:", uploadError);
+
+            const { data: urlData } = supabaseAdmin.storage.from('travel-documents').getPublicUrl(fileName);
+
+            return { buffer: pdfBuffer, url: urlData.publicUrl };
+        } catch (error: any) {
+            throw new Error(`PDF Generation failed: ${error.message}`);
+        }
+    },
+
+    /**
+     * EXISTING: Logic for your other Invoice PDF
+     */
+    async generatePDF(html: string): Promise<Buffer> {
+        const browser = await puppeteer.launch({ 
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        const pdf = await page.pdf({ format: 'A4', printBackground: true });
+        await browser.close();
+        return Buffer.from(pdf);
+    }
+};

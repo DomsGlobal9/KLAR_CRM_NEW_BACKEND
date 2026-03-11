@@ -26,4 +26,12 @@ router.get('/number/:quoteNumber', quoteController.getQuoteByNumber);
 router.get('/itinerary/:itineraryId', quoteController.getQuotesByItinerary);
 router.get('/client/:email', quoteController.getQuotesByClientEmail);
 
+
+
+/**
+ * Generate Unified Itinerary & Quote PDF
+ * POST /api/quotes/generate-pdf
+ */
+router.post('/generate-pdf', quoteController.generateAndSendPDF);
+
 export default router;

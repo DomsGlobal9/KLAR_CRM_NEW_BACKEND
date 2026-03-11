@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import { quoteService } from '../services';
+import { itineraryPreferencesService, quoteService } from '../services';
 import {
     ICreateQuoteDTO,
     IUpdateQuoteDTO,
     IQuoteFilter
 } from '../interfaces';
 import { AuthRequest } from '../middleware';
+import { pdfService } from '../services/pdf.service';
 
 export const quoteController = {
     /**
@@ -311,5 +312,46 @@ export const quoteController = {
                 error: 'Internal server error'
             });
         }
+    },
+
+
+
+
+
+
+
+
+    // Itinerary and quote pdf 
+async generateAndSendPDF(req: Request, res: Response) {
+    try {
+        const { quoteId, leadId } = req.body; // Or get from params
+
+        // 1. Get Itinerary and Quote data from your existing services
+        const itineraryResponse = await itineraryPreferencesService.getPreferences(leadId);
+        const quoteResponse = await quoteService.getQuoteById(quoteId);
+
+        if (!itineraryResponse.success || !quoteResponse.success) {
+            throw new Error("Could not fetch data for PDF generation");
+        }
+
+        // 2. Call PDF Service
+        const result = await pdfService.generateUnifiedPDF(
+            itineraryResponse.data, 
+            quoteResponse.data
+        );
+
+        // 3. Optional: Store the URL in the quote record in database
+        await quoteRepository.updateQuote(quoteId, { metadata: { pdf_url: result.url } });
+
+        // 4. Send PDF through response for immediate download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Klar_Travels_${quoteResponse.data.quote_number}.pdf`);
+        return res.send(result.buffer);
+
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message });
     }
+}
 };
+
+
