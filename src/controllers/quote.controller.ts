@@ -374,43 +374,119 @@ export const quoteController = {
 
 
 
+// async downloadProposalPDF(req: Request, res: Response) {
+//     try {
+//         const { quoteId } = req.params;
+
+//         // 1. Fetch Quote Data
+//         const quoteResult = await quoteService.getQuoteById(quoteId);
+//         if (!quoteResult.success || !quoteResult.data) {
+//             return res.status(404).json({ success: false, message: "Quote not found" });
+//         }
+//         const quote = quoteResult.data;
+
+//         // 2. Fetch Itinerary/Preferences using lead_id
+//         const leadId = quote.lead_id;
+//         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+//         if (!itinResult.success || !itinResult.data) {
+//             return res.status(404).json({ success: false, message: "Itinerary details not found for this lead" });
+//         }
+//         const itinerary = itinResult.data;
+
+//         // 3. Generate HTML & PDF
+//         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+        
+//         // Note: Using generatePDFBuffer to match the service fix
+//         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
+
+//         // 4. Send Response
+//         res.setHeader('Content-Type', 'application/pdf');
+//         res.setHeader('Content-Disposition', `attachment; filename="Proposal_${quote.quote_number}.pdf"`);
+//         return res.end(pdfBuffer);
+
+//     } catch (error: any) {
+//         console.error("PDF Error:", error);
+//         res.status(500).json({ success: false, message: error.message });
+//     }
+// }
+
+
+
+
+
+
+
+
+
+// src/controllers/quote.controller.ts
+// async downloadProposalPDF(req: Request, res: Response) {
+//     try {
+//         const { quoteId } = req.params;
+
+//         // 1. Fetch Quote Data
+//         const quoteResult = await quoteService.getQuoteById(quoteId);
+//         if (!quoteResult.success) throw new Error("Quote not found");
+//         const quote = quoteResult.data;
+
+//         // 2. Fetch Detailed Itinerary Preferences using Lead ID
+//         // Note: itineraryPreferencesService.getPreferences internally uses 
+//         // itineraryPreferencesRepository.getByLeadId which fetches all service types
+//         const leadId = quote.lead_id;
+//         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+//         if (!itinResult.success) throw new Error("Preferences not found");
+//         const itinerary = itinResult.data;
+
+//         // 3. Generate HTML & PDF Buffer
+//         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+//         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
+
+//         // 4. Stream PDF to Response
+//         const filename = `${quote.client_name.replace(/\s+/g, '_')}_Proposal.pdf`;
+//         res.setHeader('Content-Type', 'application/pdf');
+//         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+//         return res.end(pdfBuffer);
+
+//     } catch (error: any) {
+//         console.error("PDF Generation Failed:", error);
+//         res.status(500).json({ success: false, message: error.message });
+//     }
+// }
+
+
+
+
 async downloadProposalPDF(req: Request, res: Response) {
     try {
         const { quoteId } = req.params;
 
-        // 1. Fetch Quote Data
+        // 1. Fetch data from Quote Repository
         const quoteResult = await quoteService.getQuoteById(quoteId);
-        if (!quoteResult.success || !quoteResult.data) {
-            return res.status(404).json({ success: false, message: "Quote not found" });
-        }
+        if (!quoteResult.success) throw new Error("Quote data missing");
         const quote = quoteResult.data;
 
-        // 2. Fetch Itinerary/Preferences using lead_id
+        // 2. Fetch data from Itinerary Preference Repository using lead_id
         const leadId = quote.lead_id;
         const itinResult = await itineraryPreferencesService.getPreferences(leadId);
-        if (!itinResult.success || !itinResult.data) {
-            return res.status(404).json({ success: false, message: "Itinerary details not found for this lead" });
-        }
+        if (!itinResult.success) throw new Error("Itinerary details missing");
         const itinerary = itinResult.data;
 
-        // 3. Generate HTML & PDF
+        // 3. Generate HTML & PDF Buffer
         const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
-        
-        // Note: Using generatePDFBuffer to match the service fix
         const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
 
-        // 4. Send Response
+        // 4. Stream response
+        const filename = `Klar_Proposal_${quote.quote_number}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="Proposal_${quote.quote_number}.pdf"`);
-        return res.end(pdfBuffer);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        return res.send(pdfBuffer);
 
     } catch (error: any) {
-        console.error("PDF Error:", error);
+        console.error("PDF Workflow Error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 }
-
-
 
 
 
