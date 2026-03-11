@@ -13,6 +13,29 @@ router.get('/search', quoteController.searchQuotes);
 router.get('/stats', quoteController.getQuoteStatistics);
 router.get('/generate-number', quoteController.generateQuoteNumber);
 
+
+
+
+// // Route to download unified PDF
+// router.get('/download-pdf', quoteController.downloadPDF);
+
+/**
+ * Generate and get PDF URL
+ * GET /api/quotes/:quoteId/generate-pdf
+ */
+// router.get('/:quoteId/generate-pdf', quoteController.generateAndStoreQuotePDF);
+
+
+
+/**
+ * Direct Download Proposal PDF
+ * GET /api/quotes/:quoteId/download-proposal
+ */
+router.get('/:quoteId/download-proposal', quoteController.downloadProposalPDF);
+
+
+
+
 // Quote by ID routes
 router.get('/:id', quoteController.getQuoteById);
 router.put('/:id', quoteController.updateQuote);
@@ -28,10 +51,5 @@ router.get('/client/:email', quoteController.getQuotesByClientEmail);
 
 
 
-/**
- * Generate Unified Itinerary & Quote PDF
- * POST /api/quotes/generate-pdf
- */
-router.post('/generate-pdf', quoteController.generateAndSendPDF);
 
 export default router;
