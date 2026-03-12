@@ -29,4 +29,10 @@ router.get('/:leadId', itineraryPreferencesController.getPreferences);
 router.put('/:leadId', itineraryPreferencesController.updatePreferences);
 router.delete('/:leadId', itineraryPreferencesController.deletePreferences);
 
+
+/* =======================
+   Get Itinerary Pdf
+   ======================= */
+router.get('/:leadId/download-itinerary',  itineraryPreferencesController.downloadItineraryOnlyPDF)
+
 export default router;

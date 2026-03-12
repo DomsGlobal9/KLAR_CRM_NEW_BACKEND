@@ -9,6 +9,7 @@ import { AuthRequest } from '../middleware';
 import { pdfService } from '../services/invoicePdf.service';
 import { travelDocumentService } from '../services/itinerary-quotePdf';
 import { supabaseAdmin } from '../config/supabase.config';
+import { quotePdfService } from '../services/quote-pdf.service';
 
 export const quoteController = {
     /**

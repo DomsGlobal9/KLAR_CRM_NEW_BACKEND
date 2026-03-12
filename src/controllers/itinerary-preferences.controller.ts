@@ -12,6 +12,7 @@ import {
     formatFormDataForDisplay
 } from '../helpers';
 import { AuthRequest } from '../middleware';
+import { itineraryPdfService } from '../services/itinerary-pdf.service';
 
 export const itineraryPreferencesController = {
 
