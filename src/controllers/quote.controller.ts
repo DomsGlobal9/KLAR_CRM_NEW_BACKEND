@@ -7,7 +7,7 @@ import {
 } from '../interfaces';
 import { AuthRequest } from '../middleware';
 import { pdfService } from '../services/invoicePdf.service';
-import { travelDocumentService } from '../services/travel-document.service';
+import { travelDocumentService } from '../services/itinerary-quotePdf';
 import { supabaseAdmin } from '../config/supabase.config';
 
 export const quoteController = {
@@ -318,7 +318,7 @@ export const quoteController = {
 
 
 /**
- * Genet
+ * PDF for Itinerary and Quotation
  */
     async downloadProposalPDF(req: Request, res: Response) {
         try {
@@ -350,7 +350,28 @@ export const quoteController = {
             console.error("PDF Workflow Error:", error);
             res.status(500).json({ success: false, message: error.message });
         }
-    }
+    },
+
+
+
+
+
+
+    /**
+     * Pdf for Quotation 
+     */
+
+    async downloadQuoteOnlyPDF(req: Request, res: Response) {
+    const { quoteId } = req.params;
+    const quoteResult = await quoteService.getQuoteById(quoteId);
+    const html = await quotePdfService.generateHTML(quoteResult.data);
+    const buffer = await quotePdfService.generateBuffer(html);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
+    return res.send(buffer);
+}
+
 };
 
 
