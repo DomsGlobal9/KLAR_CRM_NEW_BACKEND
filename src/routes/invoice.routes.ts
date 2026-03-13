@@ -37,4 +37,10 @@ router.patch('/:id/mark-paid', invoiceController.markAsPaid);
 // PATCH  /api/v1/invoice/:id/mark-sent
 router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
+
+// Add this line to your routes file
+router.get('/:id/download', invoiceController.downloadInvoicePDF);
+
+
+
 export default router;

@@ -16,7 +16,7 @@ const pendingMemberCreations = new Map<string, {
     team_id: string | null;
     requested_by: string;
     expires_at: number;
-}>();
+}>(); 
 
 export const teamMemberService = {
 

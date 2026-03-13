@@ -31,7 +31,7 @@ export const teamRepository = {
      * Create a new team
      * @param name 
      * @param description 
-     * @returns 
+     * @returns   
      */
     async createTeam(name: string, description?: string, service_ids: string[] = []) {
         await this.validateServiceIds(service_ids);

@@ -14,7 +14,7 @@ const router = express.Router();
 router.post('/', roleController.createRole);
 
 /**
- * Get all roles
+ * Get all roles 
  */
 router.get('/', roleController.getAllRoles);
 

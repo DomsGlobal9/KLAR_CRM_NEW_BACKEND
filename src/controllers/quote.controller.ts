@@ -1,11 +1,15 @@
 import { Request, Response } from 'express';
-import { quoteService } from '../services';
+import { itineraryPreferencesService, quoteService } from '../services';
 import {
     ICreateQuoteDTO,
     IUpdateQuoteDTO,
     IQuoteFilter
 } from '../interfaces';
 import { AuthRequest } from '../middleware';
+import { pdfService } from '../services/invoicePdf.service';
+import { travelDocumentService } from '../services/itinerary-quotePdf';
+import { supabaseAdmin } from '../config/supabase.config';
+import { quotePdfService } from '../services/quote-pdf.service';
 
 export const quoteController = {
     /**
@@ -311,5 +315,64 @@ export const quoteController = {
                 error: 'Internal server error'
             });
         }
-    }
+    },
+
+
+/**
+ * PDF for Itinerary and Quotation
+ */
+    async downloadProposalPDF(req: Request, res: Response) {
+        try {
+            const { quoteId } = req.params;
+
+            // 1. Fetch data from Quote Repository
+            const quoteResult = await quoteService.getQuoteById(quoteId);
+            if (!quoteResult.success) throw new Error("Quote data missing");
+            const quote = quoteResult.data;
+
+            // 2. Fetch data from Itinerary Preference Repository using lead_id
+            const leadId = quote.lead_id;
+            const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+            if (!itinResult.success) throw new Error("Itinerary details missing");
+            const itinerary = itinResult.data;
+
+            // 3. Generate HTML & PDF Buffer
+            const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+            const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
+
+            // 4. Stream response
+            const filename = `Klar_Proposal_${quote.quote_number}.pdf`;
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+            return res.send(pdfBuffer);
+
+        } catch (error: any) {
+            console.error("PDF Workflow Error:", error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+
+
+
+
+
+    /**
+     * Pdf for Quotation 
+     */
+
+    async downloadQuoteOnlyPDF(req: Request, res: Response) {
+    const { quoteId } = req.params;
+    const quoteResult = await quoteService.getQuoteById(quoteId);
+    const html = await quotePdfService.generateHTML(quoteResult.data);
+    const buffer = await quotePdfService.generateBuffer(html);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
+    return res.send(buffer);
+}
+
 };
+
+

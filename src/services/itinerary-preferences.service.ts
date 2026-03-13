@@ -11,8 +11,8 @@ import {
     IAllLeadsBasicResponse,
     IRoleFilter
 } from '../interfaces/itinerary-preferences.interface';
-import { leadRepository } from '../repositories';
-import { supabaseAdmin } from '../config';
+import { leadRepository, stageRepository } from '../repositories';
+import { envConfig, supabaseAdmin } from '../config';
 
 export const itineraryPreferencesService = {
 
@@ -79,6 +79,13 @@ export const itineraryPreferencesService = {
             // Transform and save to service_preferences table
             const preferenceData = itineraryPreferencesRepository.transformFormDataToServicePreferences(formData);
             const data = await itineraryPreferencesRepository.saveAllServicePreferences(preferenceData);
+
+            const stageName = await stageRepository.getStageNameById(envConfig.ITIENARY_STAGE);
+            if (!stageName) {
+                throw new Error('Stage name not found for Itinerary Generation');
+            }
+
+            await leadRepository.updateLeadStageOnly(leadId, stageName);
 
             return {
                 success: true,

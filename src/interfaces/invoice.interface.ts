@@ -5,6 +5,14 @@ export interface ILineItem {
     unitPrice: number;
     taxRate: number;
     total: number;
+
+
+    // NEW FIELDS NEEDED FOR THE RICH LAYOUT
+    passenger_name?: string; 
+    hotel_name?: string;
+    service_type?: string;
+    checkin?: string;
+    nights?: number;
 }
 
 export interface IInvoice {
@@ -126,3 +134,4 @@ export interface IConvertQuoteToInvoiceDTO {
     rest_amount?: number;
     gst_number?: string;
 }
+

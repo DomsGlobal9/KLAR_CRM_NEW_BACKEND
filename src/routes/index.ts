@@ -13,6 +13,7 @@ import serviceRoutes from './service.routes';
 import itenaryRoutes from './itinerary.routes';
 import itenaryUserPreference from "./itinerary-preferences.routes";
 import inquirySourcesRoutes from './inquirySources.routes';
+import teamLead from "./teamLead.routes"
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.use('/user', userRoutes);
 router.use('/team', teamRoutes);
 router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
-router.use('/lead', leadRoutes);
+router.use('/lead', leadRoutes); 
 router.use('/inquiry-sources', inquirySourcesRoutes);
 router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);
@@ -33,5 +34,6 @@ router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
 router.use('/itenary', itenaryRoutes);
 router.use('/itinerary-preferences', itenaryUserPreference);
+router.use("/team-lead", teamLead)
 
 export default router;

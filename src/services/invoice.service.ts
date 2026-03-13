@@ -3,6 +3,7 @@ import { ICreateInvoiceDTO, IInvoice, IUpdateInvoiceDTO } from '../interfaces/in
 import { validateInvoiceData } from '../utils/invoice.validation';
 import { generateInvoiceNumber } from '../utils/date.utils';
 
+
 export const invoiceService = {
 
     async getAllInvoices(userRole?: string, userId?: string): Promise<IInvoice[]> {
@@ -122,3 +123,6 @@ export const invoiceService = {
         return await this.updateInvoice(id, updateData);
     }
 };
+
+
+
