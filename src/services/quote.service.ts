@@ -1,4 +1,4 @@
-import { quoteRepository } from '../repositories';
+import { leadRepository, quoteRepository, stageRepository } from '../repositories';
 import {
     IQuote,
     ICreateQuoteDTO,
@@ -8,6 +8,7 @@ import {
     IQuoteResponse,
     IQuoteLineItem
 } from '../interfaces';
+import { envConfig } from '../config';
 
 export const quoteService = {
     /**
@@ -21,6 +22,13 @@ export const quoteService = {
             console.log("&&&&&&&&&&&&&&&&&&&&&The transformed payload:\n", JSON.stringify(transformedPayload, null, 2));
 
             const result = await quoteRepository.createQuote(transformedPayload);
+
+            const stageName = await stageRepository.getStageNameById(envConfig.QUOTE_STAGE);
+            if (!stageName) {
+                throw new Error('Stage name not found for Itinerary Generation');
+            }
+
+            await leadRepository.updateLeadStageOnly(transformedPayload.lead_id, stageName);
 
             return {
                 success: true,

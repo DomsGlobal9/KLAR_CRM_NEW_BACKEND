@@ -85,6 +85,7 @@ interface EnvConfig {
      * Itinerary stage id
      */
     ITIENARY_STAGE: string;
+    QUOTE_STAGE: string;
 }
 
 /**
@@ -339,6 +340,7 @@ export const envConfig: EnvConfig = {
      * Itinerary stage id
      */
     ITIENARY_STAGE: process.env.ITINERARY_STAGE_ID || '',
+    QUOTE_STAGE: process.env.QUOTE_STAGE_ID || '',
 
 };
 
