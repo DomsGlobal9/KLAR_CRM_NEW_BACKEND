@@ -80,6 +80,11 @@ interface EnvConfig {
      * Whatsapp Number
      */
     WHATSAPP_NUMBER: string;
+
+    /**
+     * Itinerary stage id
+     */
+    ITIENARY_STAGE: string;
 }
 
 /**
@@ -195,7 +200,6 @@ const validateRequiredFields = (): void => {
      * OTP validation - only validate DEV_STATIC_CODE in development
      */
     if (nodeEnv === 'development') {
-        // DEV_STATIC_CODE is recommended but not required in development
         if (!process.env.OTP_DEV_STATIC_CODE) {
             console.warn('⚠️  OTP_DEV_STATIC_CODE not set. Using default "123456" for development.');
         }
@@ -330,6 +334,12 @@ export const envConfig: EnvConfig = {
     * Whatsapp Number
     */
     WHATSAPP_NUMBER: validateOptional(process.env.WHATSAPP_NUMBER, ''),
+
+    /**
+     * Itinerary stage id
+     */
+    ITIENARY_STAGE: process.env.ITINERARY_STAGE_ID || '',
+
 };
 
 /**
