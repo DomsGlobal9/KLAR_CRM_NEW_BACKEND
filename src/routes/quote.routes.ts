@@ -13,6 +13,8 @@ router.get('/search', quoteController.searchQuotes);
 router.get('/stats', quoteController.getQuoteStatistics);
 router.get('/generate-number', quoteController.generateQuoteNumber);
 
+
+
 // Quote by ID routes
 router.get('/:id', quoteController.getQuoteById);
 router.put('/:id', quoteController.updateQuote);
@@ -25,5 +27,18 @@ router.get('/number/:quoteNumber', quoteController.getQuoteByNumber);
 // Quotes by relation routes
 router.get('/itinerary/:itineraryId', quoteController.getQuotesByItinerary);
 router.get('/client/:email', quoteController.getQuotesByClientEmail);
+
+
+
+
+/**
+ * Direct Download Itinerary Quotaion PDF
+ * GET /api/quotes/:quoteId/download-proposal
+ */
+router.get('/:quoteId/download-proposal', quoteController.downloadProposalPDF);
+
+
+//Get Quote only pdf
+router.get('/:quoteId/download-quotation', quoteController.downloadQuoteOnlyPDF)
 
 export default router;

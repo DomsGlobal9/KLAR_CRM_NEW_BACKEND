@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 /**
  * Routes (API included inside)
  */
-app.use('/api/v1', routes);
+app.use('/api/v1', routes); 
 
 /**
  * Health check

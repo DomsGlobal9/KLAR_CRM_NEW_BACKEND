@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { User } from '../models/user.model';
 
 export const userRepository = {
 
@@ -69,5 +70,5 @@ export const userRepository = {
         };
     }
 
-
 };
+

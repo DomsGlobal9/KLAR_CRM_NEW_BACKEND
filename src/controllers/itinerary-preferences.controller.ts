@@ -12,6 +12,7 @@ import {
     formatFormDataForDisplay
 } from '../helpers';
 import { AuthRequest } from '../middleware';
+import { itineraryPdfService } from '../services/itinerary-pdf.service';
 
 export const itineraryPreferencesController = {
 
@@ -424,5 +425,24 @@ export const itineraryPreferencesController = {
                 message: 'Internal server error'
             });
         }
-    }
+    },
+
+
+
+
+
+
+
+
+
+async downloadItineraryOnlyPDF(req: Request, res: Response) {
+    const { leadId } = req.params;
+    const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+    const html = await itineraryPdfService.generateHTML(itinResult.data);
+    const buffer = await itineraryPdfService.generateBuffer(html);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
+    return res.send(buffer);
+}
 };

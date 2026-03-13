@@ -5,6 +5,7 @@ export const roleController = {
     async getAllRoles(req: Request, res: Response) {
         try {
             const roles = await roleService.getAllRoles();
+            console.log("8role.controller.ts", roles)
             res.json({ message: 'Roles fetched successfully', roles });
         } catch (error: any) {
             res.status(500).json({ error: error.message });
