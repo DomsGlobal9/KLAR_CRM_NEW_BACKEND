@@ -14,7 +14,6 @@ router.post('/', itineraryPreferencesController.savePreferences);
 router.post('/upsert', itineraryPreferencesController.saveOrUpdatePreferences);
 router.post('/validate', itineraryPreferencesController.validatePreferences);
 
-// BY PREFERENCE ID (STATIC PREFIX)
 router.get('/flight/:id', itineraryPreferencesController.getFlightPreferenceById);
 router.get('/hotel/:id', itineraryPreferencesController.getHotelPreferenceById);
 router.get('/visa/:id', itineraryPreferencesController.getVisaPreferenceById);
