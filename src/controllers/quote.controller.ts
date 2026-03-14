@@ -10,6 +10,7 @@ import { pdfService } from '../services/invoicePdf.service';
 import { travelDocumentService } from '../services/itinerary-quotePdf';
 import { supabaseAdmin } from '../config/supabase.config';
 import { quotePdfService } from '../services/quote-pdf.service';
+import { s3UploadService } from '../services/s3-upload.service';
 
 export const quoteController = {
     /**
@@ -363,15 +364,124 @@ export const quoteController = {
      */
 
     async downloadQuoteOnlyPDF(req: Request, res: Response) {
+    const { quoteId } = req.params;
+    const quoteResult = await quoteService.getQuoteById(quoteId);
+    const html = await quotePdfService.generateHTML(quoteResult.data);
+    const buffer = await quotePdfService.generateBuffer(html);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
+    return res.send(buffer);
+},
+
+
+
+
+/**
+ * Generates Quotation PDF, uploads to S3, and returns the public link
+ * API: GET /api/v1/quote/:quoteId/share-quotation
+ */
+async shareQuotationPDF(req: Request, res: Response) {
+    try {
         const { quoteId } = req.params;
+
+        // 1. Fetch Quote Data
         const quoteResult = await quoteService.getQuoteById(quoteId as string);
-        const html = await quotePdfService.generateHTML(quoteResult.data);
+        if (!quoteResult.success || !quoteResult.data) {
+            return res.status(404).json({ success: false, message: "Quote not found" });
+        }
+        const quote = quoteResult.data;
+
+        // 2. Generate PDF Buffer
+        const html = await quotePdfService.generateHTML(quote);
         const buffer = await quotePdfService.generateBuffer(html);
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
-        return res.send(buffer);
+        // 3. Prepare unique filename
+        const clientName = quote.client_name?.replace(/\s+/g, '_') || 'client';
+        const fileName = `quotation_${quote.quote_number}_${clientName}.pdf`;
+
+        // 4. Upload to S3 using your existing service
+        // This service uses axios to hit your S3 bucket API
+        const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
+
+        // 5. Return the JSON response with the link
+        return res.status(200).json({
+            success: true,
+            message: "Quotation uploaded to S3 successfully",
+            data: {
+                quote_number: quote.quote_number,
+                public_url: publicUrl,
+                note: "This URL is permanent and can be shared with the client"
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Quotation S3 Workflow Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to process and share quotation PDF",
+            error: error.message 
+        });
     }
+},
+
+
+
+
+/**
+ * Generates combined Itinerary & Quotation PDF, uploads to S3, and returns the public link
+ * API: GET /api/v1/quote/:quoteId/share-proposal
+ */
+async shareProposalPDF(req: Request, res: Response) {
+    try {
+        const { quoteId } = req.params;
+
+        // 1. Fetch data from Quote Repository
+        const quoteResult = await quoteService.getQuoteById(quoteId as string);
+        if (!quoteResult.success || !quoteResult.data) {
+            throw new Error("Quote data missing");
+        }
+        const quote = quoteResult.data;
+
+        // 2. Fetch data from Itinerary Preference Repository using lead_id
+        const leadId = quote.lead_id;
+        const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+        if (!itinResult.success || !itinResult.data) {
+            throw new Error("Itinerary details missing");
+        }
+        const itinerary = itinResult.data;
+
+        // 3. Generate HTML & PDF Buffer
+        const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
+        const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
+
+        // 4. Prepare unique filename
+        const clientName = quote.client_name?.replace(/\s+/g, '_') || 'client';
+        const fileName = `proposal_${quote.quote_number}_${clientName}.pdf`;
+
+        // 5. Upload to S3 using your existing s3-upload.service.ts
+        const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
+
+        // 6. Return the JSON response with the link
+        return res.status(200).json({
+            success: true,
+            message: "Proposal PDF uploaded to S3 successfully",
+            data: {
+                quote_number: quote.quote_number,
+                public_url: publicUrl,
+                note: "This URL is permanent and can be shared with the client"
+            }
+        });
+
+    } catch (error: any) {
+        console.error("Proposal S3 Workflow Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to process and share proposal PDF",
+            error: error.message 
+        });
+    }
+}
 
 };
 
