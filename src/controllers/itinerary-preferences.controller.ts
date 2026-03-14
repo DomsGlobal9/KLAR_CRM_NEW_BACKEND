@@ -440,6 +440,7 @@ export const itineraryPreferencesController = {
         const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
         const html = await itineraryPdfService.generateHTML(itinResult.data);
         const buffer = await itineraryPdfService.generateBuffer(html);
+        
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
