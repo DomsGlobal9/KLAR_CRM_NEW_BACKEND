@@ -68,13 +68,13 @@ export const itineraryPreferencesService = {
             /**
              * Check if preferences already exist
              */
-            const { exists } = await this.checkPreferencesExist(leadId);
-            if (exists) {
-                return {
-                    success: false,
-                    message: 'Preferences already exist for this lead. Use update instead.'
-                };
-            }
+            // const { exists } = await this.checkPreferencesExist(leadId);
+            // if (exists) {
+            //     return {
+            //         success: false,
+            //         message: 'Preferences already exist for this lead. Use update instead.'
+            //     };
+            // }
 
             // Transform and save to service_preferences table
             const preferenceData = itineraryPreferencesRepository.transformFormDataToServicePreferences(formData);
