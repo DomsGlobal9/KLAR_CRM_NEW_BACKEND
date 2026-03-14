@@ -43,7 +43,7 @@ router.get('/:id/download', invoiceController.downloadInvoicePDF);
 
 
 // Share route (sends JSON link) 
-router.get('/:id/share-invoice', invoiceController.shareInvoiceLink);
+router.post('/:id/share-invoice', invoiceController.shareInvoiceLink);
 
 
 

@@ -129,12 +129,12 @@ export const itineraryPreferencesRepository = {
                 .eq('lead_id', leadId)
                 .maybeSingle();
 
-            if (exists.data) {
-                throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
-            }
+            // if (exists.data) {
+            //     throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
+            // }
 
             // Clear existing data
-            await this.deleteByLeadId(leadId);
+            // await this.deleteByLeadId(leadId);
 
             // Save flight preferences
             let savedFlightPreferences: IFlightPreference[] = [];
@@ -1861,15 +1861,15 @@ export const itineraryPreferencesRepository = {
                 .eq('lead_id', leadId)
                 .maybeSingle();
 
-            if (exists.data) {
-                throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
-            }
+            // if (exists.data) {
+            //     throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
+            // }
 
             // Clear existing service preferences
-            await supabaseAdmin
-                .from('service_preferences')
-                .delete()
-                .eq('lead_id', leadId);
+            // await supabaseAdmin
+            //     .from('service_preferences')
+            //     .delete()
+            //     .eq('lead_id', leadId);
 
             // Save service preferences
             let savedServicePreferences: any[] = [];
