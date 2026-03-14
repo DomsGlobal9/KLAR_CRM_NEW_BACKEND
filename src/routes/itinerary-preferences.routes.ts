@@ -36,6 +36,6 @@ router.get('/:leadId/download-itinerary',  itineraryPreferencesController.downlo
 
 
 // Uploads to S3 and returns the URL for sharing
-router.get('/:leadId/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
+router.post('/:leadId/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
 
 export default router;
