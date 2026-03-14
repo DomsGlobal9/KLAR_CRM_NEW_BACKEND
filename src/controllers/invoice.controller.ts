@@ -10,6 +10,7 @@ import { pdfService } from '../services/invoicePdf.service';
 
 
 import { supabaseAdmin } from '../config';
+import { s3UploadService } from '../services/s3-upload.service';
 
 export class InvoiceController {
 
@@ -433,6 +434,46 @@ export class InvoiceController {
             res.status(500).json({ success: false, message: error.message });
         }
     }
+
+
+
+    /**
+ * Generates an invoice and uploads it to S3, returning the public link
+ */
+shareInvoiceLink = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const invoice = await invoiceService.getInvoiceById(id);
+
+        // 1. Generate the PDF Buffer
+        const html = await pdfService.generateInvoiceHTML(invoice);
+        const pdfBuffer = await pdfService.generatePDF(html);
+
+        // 2. Prepare the Filename
+        const fileName = `invoice_${invoice.invoice_number}_${Date.now()}.pdf`;
+
+        // 3. Upload to S3 Server
+        const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
+
+        // 4. (Optional) Save the link back to your local DB record
+        await invoiceService.updateInvoiceMetadata(id, { s3_link: publicUrl });
+
+        // 5. Return JSON with the link
+        return res.status(200).json({
+            success: true,
+            message: "Invoice link generated successfully",
+            public_url: publicUrl
+        });
+
+    } catch (error: any) {
+        console.error("Workflow Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal server error during PDF sharing",
+            error: error.message 
+        });
+    }
+}
 
 }
 

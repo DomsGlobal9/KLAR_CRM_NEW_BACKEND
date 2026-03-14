@@ -34,4 +34,8 @@ router.delete('/:leadId', itineraryPreferencesController.deletePreferences);
    ======================= */
 router.get('/:leadId/download-itinerary',  itineraryPreferencesController.downloadItineraryOnlyPDF)
 
+
+// Uploads to S3 and returns the URL for sharing
+router.get('/:leadId/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
+
 export default router;
