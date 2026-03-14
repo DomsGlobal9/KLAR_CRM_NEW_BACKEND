@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && tsc",
     "serve": "npm run build && npm start",
-    "clean": "rimraf dist && npm install",
+    "clean": "rimraf dist node_modules && npm install",
     "hard-clean": "rimraf dist node_modules package-lock.json && npm install"
   },
   "keywords": [],
