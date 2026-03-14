@@ -13,6 +13,11 @@ import {
 } from '../helpers';
 import { AuthRequest } from '../middleware';
 import { itineraryPdfService } from '../services/itinerary-pdf.service';
+import { s3UploadService } from '../services/s3-upload.service';
+import { leadService } from '../services/lead.service';
+import { pdfDeliveryService } from '../services/pdfDelivery.service';
+import { DeliveryOptions, processPDFDelivery } from '../helpers/pdfDelivery.helper';
+import { sendErrorResponse, sendUploadResponse } from '../helpers/response.helper';
 
 export const itineraryPreferencesController = {
 
@@ -428,13 +433,9 @@ export const itineraryPreferencesController = {
     },
 
 
-
-
-
-
-
-
-
+    /**
+     * Display & Download Itinerary pdf
+     */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
         const { leadId } = req.params;
         const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
@@ -444,5 +445,60 @@ export const itineraryPreferencesController = {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
         return res.send(buffer);
+    },
+
+
+    async uploadItineraryToS3(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+            const { sendVia } = req.body;
+
+            const leadIdString = Array.isArray(leadId) ? leadId[0] : leadId;
+
+            const leadData = await leadService.getLeadById(leadIdString);
+            if (!leadData) {
+                return res.status(404).json({ success: false, message: "Lead Data not found" });
+            }
+
+            const itinResult = await itineraryPreferencesService.getPreferences(leadIdString);
+            if (!itinResult.data) {
+                return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
+            }
+
+            const html = await itineraryPdfService.generateHTML(itinResult.data);
+            const buffer = await itineraryPdfService.generateBuffer(html);
+
+            const clientName = itinResult.data.lead_details?.name?.replace(/\s+/g, '_') || 'client';
+            const fileName = `itinerary_${leadIdString}_${clientName}.pdf`;
+
+            const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
+
+            const clientPhone = leadData.phone || itinResult.data.lead_details?.phone;
+            const clientEmail = leadData.email || itinResult.data.lead_details?.email;
+
+            const deliveryOptions: DeliveryOptions = {
+                leadId: leadIdString,
+                clientName: itinResult.data.lead_details?.name || leadData.name || 'Client',
+                clientEmail: clientEmail,
+                clientPhone: clientPhone,
+                pdfUrl: publicUrl,
+                pdfFileName: fileName
+            };
+
+            const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
+
+            return sendUploadResponse(res, {
+                success: true,
+                publicUrl,
+                leadId: leadIdString,
+                clientPhone,
+                clientEmail,
+                deliveryResult
+            });
+
+        } catch (error: any) {
+            console.error("❌ S3 Workflow Error:", error);
+            return sendErrorResponse(res, error);
+        }
     }
 };

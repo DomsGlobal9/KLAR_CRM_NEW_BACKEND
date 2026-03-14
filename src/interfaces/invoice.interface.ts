@@ -19,6 +19,7 @@ export interface IInvoice {
     id: string;
     invoice_number: string;
     quote_number?: string;
+    lead_id?: string;
     client_name: string;
     client_email: string;
     client_phone?: string;

@@ -10,6 +10,8 @@ import { pdfService } from '../services/invoicePdf.service';
 
 
 import { supabaseAdmin } from '../config';
+import { s3UploadService } from '../services/s3-upload.service';
+import { DeliveryOptions, formatDeliveryResponse, processPDFDelivery } from '../helpers/pdfDelivery.helper';
 
 export class InvoiceController {
 
@@ -405,14 +407,10 @@ export class InvoiceController {
 
 
 
-
-
-
-    // Add this to your InvoiceController class
     downloadInvoicePDF = async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
-            const invoice = await invoiceService.getInvoiceById(id);
+            const invoice = await invoiceService.getInvoiceById(id as string);
 
             // 1. Generate HTML & PDF
             const html = await pdfService.generateInvoiceHTML(invoice);
@@ -431,6 +429,74 @@ export class InvoiceController {
 
         } catch (error: any) {
             res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+
+
+    /**
+     * Generates an invoice and uploads it to S3, returning the public link
+     */
+    shareInvoiceLink = async (req: Request, res: Response) => {
+        try {
+            const { id } = req.params;
+            const { sendVia } = req.body;
+
+            const invoice = await invoiceService.getInvoiceById(id as string);
+            if (!invoice) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Invoice not found"
+                });
+            }
+
+            // 1. Generate the PDF Buffer
+            const html = await pdfService.generateInvoiceHTML(invoice);
+            const pdfBuffer = await pdfService.generatePDF(html);
+
+            // 2. Prepare the Filename
+            const clientName = invoice.client_name?.replace(/\s+/g, '_') || 'client';
+            const fileName = `invoice_${invoice.invoice_number}_${clientName}.pdf`;
+
+            // 3. Upload to S3 Server
+            const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
+
+            // 4. Prepare delivery options
+            const deliveryOptions: DeliveryOptions = {
+                leadId: invoice.lead_id || id as string,
+                clientName: invoice.client_name || 'Client',
+                clientEmail: invoice.client_email,
+                clientPhone: invoice.client_phone,
+                pdfUrl: publicUrl,
+                pdfFileName: fileName
+            };
+
+            // 5. Process delivery based on sendVia options
+            const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
+
+            // 6. Return JSON with the link and delivery info
+            return res.status(200).json({
+                success: true,
+                message: "Invoice link generated successfully",
+                public_url: publicUrl,
+                lead_id: invoice.lead_id || id,
+                invoice_number: invoice.invoice_number,
+                delivery: formatDeliveryResponse(deliveryResult, invoice.client_phone, invoice.client_email),
+                note: "This URL is permanent and can be shared with the client"
+            });
+
+        } catch (error: any) {
+            console.error("Invoice S3 Workflow Error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Internal server error during PDF sharing",
+                error: error.message,
+                delivery: {
+                    success: false,
+                    message: "Failed to process invoice",
+                    error: error.message
+                }
+            });
         }
     }
 
