@@ -47,10 +47,12 @@ app.get('/health', (_req, res) => {
  * This will start automatically when the app loads
  */
 if (envConfig.NODE_ENV !== 'test') {
-  cronService.initializeJobs();
+  // cronService.initializeJobs();
 }
 
-// Added a route to manage cron jobs (for admin purposes)
+/**
+ * Added a route to manage cron jobs (for admin purposes)
+ */
 app.get('/api/v1/cron/status', (_req, res) => {
   const activeJobs = cronJobConfigs
     .filter(config => cronService.getJobStatus(config.name))

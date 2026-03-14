@@ -312,9 +312,9 @@ export const itineraryPreferencesController = {
             const userDetails = req.user;
             const userRole = userDetails?.role;
             const userId = userDetails?.id;
-            
+
             if (leadId) {
-                
+
                 if (userRole === 'rm') {
                     const hasAccess = await itineraryPreferencesService.checkLeadAccess(leadId, userId as string);
                     if (!hasAccess) {
@@ -343,19 +343,19 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            
+
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || (minimal ? 100 : 50);
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
 
-            
+
             const roleFilter = {
                 role: userRole,
                 userId: userId,
                 assignedToField: 'assigned_to'
             };
 
-            
+
             if (detailed) {
                 const paginationParams: IPaginationParams = {
                     page: Math.max(1, page),
@@ -368,7 +368,7 @@ export const itineraryPreferencesController = {
                 return res.status(200).json(result);
             }
 
-            
+
             const paginationParams: IPaginationParams = {
                 page: Math.max(1, page),
                 limit: Math.min(Math.max(1, limit), 100),
@@ -435,14 +435,14 @@ export const itineraryPreferencesController = {
 
 
 
-async downloadItineraryOnlyPDF(req: Request, res: Response) {
-    const { leadId } = req.params;
-    const itinResult = await itineraryPreferencesService.getPreferences(leadId);
-    const html = await itineraryPdfService.generateHTML(itinResult.data);
-    const buffer = await itineraryPdfService.generateBuffer(html);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
-    return res.send(buffer);
-}
+    async downloadItineraryOnlyPDF(req: Request, res: Response) {
+        const { leadId } = req.params;
+        const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
+        const html = await itineraryPdfService.generateHTML(itinResult.data);
+        const buffer = await itineraryPdfService.generateBuffer(html);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
+        return res.send(buffer);
+    }
 };
