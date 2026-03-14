@@ -38,7 +38,8 @@ router.patch('/:id/mark-paid', invoiceController.markAsPaid);
 router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
 
-// Add this line to your routes file
+// Get invoice pdf
+
 router.get('/:id/download', invoiceController.downloadInvoicePDF);
 
 
