@@ -13,6 +13,7 @@ import {
 } from '../helpers';
 import { AuthRequest } from '../middleware';
 import { itineraryPdfService } from '../services/itinerary-pdf.service';
+import { s3UploadService } from '../services/s3-upload.service';
 
 export const itineraryPreferencesController = {
 
@@ -429,8 +430,7 @@ export const itineraryPreferencesController = {
 
 
 /**
- * 
- * Down load Itinerary pdf
+ * Display & Download Itinerary pdf
  */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
         const { leadId } = req.params;
@@ -441,5 +441,46 @@ export const itineraryPreferencesController = {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
         return res.send(buffer);
+    },
+
+
+
+
+    
+// Upload Itinerary to s3
+    async uploadItineraryToS3(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            // 1. Fetch Data
+            const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
+            if (!itinResult.data) {
+                return res.status(404).json({ success: false, message: "Data not found" });
+            }
+
+            // 2. Generate PDF Buffer
+            const html = await itineraryPdfService.generateHTML(itinResult.data);
+            const buffer = await itineraryPdfService.generateBuffer(html);
+
+            // 3. Define Filename
+            const clientName = itinResult.data.lead_details?.name?.replace(/\s+/g, '_') || 'client';
+            const fileName = `itinerary_${leadId}_${clientName}.pdf`;
+
+            // 4. Upload to your S3 Server API
+            const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
+
+            // 5. Return the URL to Frontend
+            return res.status(200).json({
+                success: true,
+                message: "Itinerary uploaded to S3 successfully",
+                public_url: publicUrl
+            });
+
+        } catch (error: any) {
+            console.error("S3 Workflow Error:", error);
+            res.status(500).json({ success: false, message: error.message });
+        }
     }
+
+
 };

@@ -86,6 +86,7 @@ interface EnvConfig {
      */
     ITIENARY_STAGE: string;
     QUOTE_STAGE: string;
+    S3_SERVER_URL: string;
 }
 
 /**
@@ -341,7 +342,7 @@ export const envConfig: EnvConfig = {
      */
     ITIENARY_STAGE: process.env.ITINERARY_STAGE_ID || '',
     QUOTE_STAGE: process.env.QUOTE_STAGE_ID || '',
-
+    S3_SERVER_URL: process.env.S3_SERVER || '',
 };
 
 /**

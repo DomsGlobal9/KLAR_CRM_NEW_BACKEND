@@ -42,5 +42,9 @@ router.patch('/:id/mark-sent', invoiceController.markAsSent);
 router.get('/:id/download', invoiceController.downloadInvoicePDF);
 
 
+// Share route (sends JSON link) 
+router.get('/:invoice-id/share-invoice', invoiceController.shareInvoiceLink);
+
+
 
 export default router;
