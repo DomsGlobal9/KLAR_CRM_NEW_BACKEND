@@ -39,7 +39,6 @@ router.patch('/:id/mark-sent', invoiceController.markAsSent);
 
 
 // Get invoice pdf
-
 router.get('/:id/download', invoiceController.downloadInvoicePDF);
 
 

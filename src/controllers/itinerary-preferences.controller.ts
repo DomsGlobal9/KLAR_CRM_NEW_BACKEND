@@ -428,13 +428,10 @@ export const itineraryPreferencesController = {
     },
 
 
-
-
-
-
-
-
-
+/**
+ * 
+ * Down load Itinerary pdf
+ */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
         const { leadId } = req.params;
         const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
