@@ -41,4 +41,8 @@ router.get('/:quoteId/download-proposal', quoteController.downloadProposalPDF);
 //Get Quote only pdf
 router.get('/:quoteId/download-quotation', quoteController.downloadQuoteOnlyPDF)
 
+
+//Generate link (returns S3 Public URL)
+router.get('/:quoteId/share-quotation', quoteController.shareQuotationPDF);
+
 export default router;
