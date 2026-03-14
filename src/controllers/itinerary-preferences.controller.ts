@@ -475,7 +475,6 @@ export const itineraryPreferencesController = {
 
             const clientPhone = leadData.phone || itinResult.data.lead_details?.phone;
             const clientEmail = leadData.email || itinResult.data.lead_details?.email;
-            console.log("@@@@@@@@@@@@@@@@@@@ The lead data we get", leadData);
 
             const deliveryOptions: DeliveryOptions = {
                 leadId: leadIdString,

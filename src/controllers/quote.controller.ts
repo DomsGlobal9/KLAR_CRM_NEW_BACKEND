@@ -318,15 +318,15 @@ export const quoteController = {
     },
 
 
-/**
- * PDF for Itinerary and Quotation
- */
+    /**
+     * PDF for Itinerary and Quotation
+     */
     async downloadProposalPDF(req: Request, res: Response) {
         try {
             const { quoteId } = req.params;
 
             // 1. Fetch data from Quote Repository
-            const quoteResult = await quoteService.getQuoteById(quoteId);
+            const quoteResult = await quoteService.getQuoteById(quoteId as string);
             if (!quoteResult.success) throw new Error("Quote data missing");
             const quote = quoteResult.data;
 
@@ -363,15 +363,15 @@ export const quoteController = {
      */
 
     async downloadQuoteOnlyPDF(req: Request, res: Response) {
-    const { quoteId } = req.params;
-    const quoteResult = await quoteService.getQuoteById(quoteId);
-    const html = await quotePdfService.generateHTML(quoteResult.data);
-    const buffer = await quotePdfService.generateBuffer(html);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
-    return res.send(buffer);
-}
+        const { quoteId } = req.params;
+        const quoteResult = await quoteService.getQuoteById(quoteId as string);
+        const html = await quotePdfService.generateHTML(quoteResult.data);
+        const buffer = await quotePdfService.generateBuffer(html);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="Quotation.pdf"');
+        return res.send(buffer);
+    }
 
 };
 
