@@ -413,7 +413,7 @@ export class InvoiceController {
     downloadInvoicePDF = async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
-            const invoice = await invoiceService.getInvoiceById(id);
+            const invoice = await invoiceService.getInvoiceById(id as string);
 
             // 1. Generate HTML & PDF
             const html = await pdfService.generateInvoiceHTML(invoice);
@@ -438,12 +438,12 @@ export class InvoiceController {
 
 
     /**
- * Generates an invoice and uploads it to S3, returning the public link
- */
+     * Generates an invoice and uploads it to S3, returning the public link
+     */
 shareInvoiceLink = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const invoice = await invoiceService.getInvoiceById(id);
+        const invoice = await invoiceService.getInvoiceById(id as string);
 
         // 1. Generate the PDF Buffer
         const html = await pdfService.generateInvoiceHTML(invoice);
@@ -454,9 +454,6 @@ shareInvoiceLink = async (req: Request, res: Response) => {
 
         // 3. Upload to S3 Server
         const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
-
-        // 4. (Optional) Save the link back to your local DB record
-        await invoiceService.updateInvoiceMetadata(id, { s3_link: publicUrl });
 
         // 5. Return JSON with the link
         return res.status(200).json({
