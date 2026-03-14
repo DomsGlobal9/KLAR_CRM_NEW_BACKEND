@@ -319,15 +319,15 @@ export const quoteController = {
     },
 
 
-/**
- * PDF for Itinerary and Quotation
- */
+    /**
+     * PDF for Itinerary and Quotation
+     */
     async downloadProposalPDF(req: Request, res: Response) {
         try {
             const { quoteId } = req.params;
 
             // 1. Fetch data from Quote Repository
-            const quoteResult = await quoteService.getQuoteById(quoteId);
+            const quoteResult = await quoteService.getQuoteById(quoteId as string);
             if (!quoteResult.success) throw new Error("Quote data missing");
             const quote = quoteResult.data;
 
