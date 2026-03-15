@@ -3,11 +3,11 @@ import { authenticate, requireRole } from '../middleware/auth.middleware';
 import { teamMemberController } from '../controllers/teamMember.controller';
 
 const router = Router();
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm'));
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
 
 
 /**
- * Send OTP to add a new team member
+ * Send OTP to add a new team member 
  */
 router.post('/send-otp', teamMemberController.sendAddMemberOTP);
 
@@ -21,11 +21,11 @@ router.post('/verify-otp-and-create', teamMemberController.verifyOTPAndCreateMem
  */
 router.post('/', teamMemberController.addMember);
 
-/** 
+/**  
  * Get team members
  */
 router.get('/', teamMemberController.getAll);
-
+ 
 /**
  * Get team members by team ID
  */

@@ -43,15 +43,10 @@ export const leadController = {
         try {
             const payload: CreateLeadPayload = req.body;
 
-            console.log("📥 Raw frontend payload received:", JSON.stringify(payload, null, 2));
-
             const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
-
-            console.log("🔄 Transformed payload for database:", JSON.stringify(mappedPayload, null, 2));
 
             const lead = await leadService.createLead(mappedPayload);
 
-            // Transform back to frontend format for response
             const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
 
             await createLeadAuditLog({

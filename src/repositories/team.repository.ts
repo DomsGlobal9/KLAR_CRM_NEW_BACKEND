@@ -1,20 +1,52 @@
 import { supabaseAdmin } from '../config';
+import { IService } from '../interfaces';
 import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
+
+    async validateServiceIds(service_ids: string[], currentTeamId?: string): Promise<void> {
+        if (!service_ids || service_ids.length === 0) return;
+
+        const { data: existingTeams, error } = await supabaseAdmin
+            .from('teams')
+            .select('id, name, service_ids')
+            .contains('service_ids', service_ids);
+
+        if (error) throw error;
+
+        const conflictingTeams = currentTeamId
+            ? existingTeams?.filter(team => team.id !== currentTeamId)
+            : existingTeams;
+
+        if (conflictingTeams && conflictingTeams.length > 0) {
+            const assignedServices = conflictingTeams.flatMap(team =>
+                team.service_ids.filter((id: string) => service_ids.includes(id))
+            );
+
+            throw new Error(`Services ${assignedServices.join(', ')} are already assigned to other teams`);
+        }
+    },
 
     /**
      * Create a new team
      * @param name 
      * @param description 
-     * @returns 
+     * @returns   
      */
-    async createTeam(name: string, description?: string) {
+    async createTeam(name: string, description?: string, service_ids: string[] = []) {
+        await this.validateServiceIds(service_ids);
+
         const { data, error } = await supabaseAdmin
             .from('teams')
-            .insert({ name, description, members_count: 0 })
+            .insert({
+                name,
+                description,
+                members_count: 0,
+                service_ids: service_ids
+            })
             .select()
             .single();
+
         if (error) throw error;
         return data as Team;
     },
@@ -31,6 +63,7 @@ export const teamRepository = {
         if (error) throw error;
         return data ?? [];
     },
+
 
     /**
      * Get team by ID
@@ -58,6 +91,7 @@ export const teamRepository = {
             .select('*')
             .eq('id', id)
             .single();
+
         if (error) throw error;
         return data as Team;
     },
@@ -69,9 +103,28 @@ export const teamRepository = {
     async listTeams() {
         const { data, error } = await supabaseAdmin
             .from('teams')
-            .select('*');
+            .select('*')
+            .order('created_at', { ascending: false });
+
         if (error) throw error;
         return data as Team[];
+    },
+
+    async getServicesByIds(serviceIds: string[]): Promise<{ id: string; name: string }[]> {
+        if (!serviceIds || serviceIds.length === 0) {
+            return [];
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('services')
+            .select('id, name')
+            .in('id', serviceIds);
+
+        if (error) {
+            throw new Error(`Failed to fetch services: ${error.message}`);
+        }
+
+        return data || [];
     },
 
     /**
@@ -80,13 +133,18 @@ export const teamRepository = {
      * @param updates 
      * @returns 
      */
-    async updateTeam(id: string, updates: { name?: string; description?: string; is_active?: boolean }) {
+    async updateTeam(id: string, updates: { name?: string; description?: string; service_ids?: string[] }) {
+        if (updates.service_ids) {
+            await this.validateServiceIds(updates.service_ids, id);
+        }
+
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)
             .eq('id', id)
             .select()
             .single();
+
         if (error) throw error;
         return data as Team;
     },
@@ -127,5 +185,13 @@ export const teamRepository = {
             { p_team_id: teamId }
         );
         if (error) throw error;
-    }
+    },
+
+    async listUsers() {
+        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    },
+
+    async updateUser(userId: string, attributes: any) {
+        return supabaseAdmin.auth.admin.updateUserById(userId, attributes);
+    },
 };

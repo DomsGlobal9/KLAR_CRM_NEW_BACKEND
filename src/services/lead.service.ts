@@ -14,8 +14,6 @@ export const leadService = {
    * Create a new lead with optional requirements
    */
   async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
-    console.log("🔧 Service received payload:", JSON.stringify(payload, null, 2));
-
 
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
@@ -35,7 +33,6 @@ export const leadService = {
 
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
-    console.log("✅ Lead created successfully:", lead.id);
     return lead;
   },
 
