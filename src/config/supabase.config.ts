@@ -52,7 +52,7 @@ export const supabase = createClient(
  * Uses the correct service role key for the current environment
  */
 export const supabaseAdmin = createClient(
-    envConfig.SUPABASE_URL,
+    envConfig.SUPABASE_URL, 
     getCurrentSupabaseServiceRole(), // Use the helper function from env.config
     {
         auth: {

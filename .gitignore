@@ -9,3 +9,12 @@ yarn-error.log*
 # Environment files
 .env
 .env.*
+
+# Whatsapp Files
+.wwebjs_cache/
+.wwebjs_auth/
+whatsapp-session/
+
+# Windows system files
+desktop.ini
+Thumbs.db

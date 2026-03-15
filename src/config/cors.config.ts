@@ -40,3 +40,5 @@ export const corsOptions: CorsOptions = {
     maxAge: envConfig.CORS_MAX_AGE,
     exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page'],
 };
+
+

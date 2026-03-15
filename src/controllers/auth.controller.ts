@@ -4,6 +4,7 @@ import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
 import { AuthRepository, roleRepository } from '../repositories';
 import { supabase, supabaseAdmin } from '../config';
+import { request } from 'node:http';
 
 export const authController = {
 
@@ -19,7 +20,7 @@ export const authController = {
             await createAuditLog({
                 user_id: req.user?.id || result.data.user?.id,
                 action: 'USER_CREATED',
-                entity_type: 'user',
+                entity_type: 'user', 
                 entity_id: result.data.user?.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
@@ -137,6 +138,76 @@ export const authController = {
         }
     },
 
+    /**
+     * forgot Password
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+
+    async forgotPassword(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Valid email is required'
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists (using your existing AuthRepository)
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            // Security best practice: Don't reveal if user exists or not
+            if (!user) {
+                // Still return success to prevent email enumeration
+                return res.status(200).json({
+                    success: true,
+                    message: 'If the email exists in our system, you will receive a password reset code'
+                });
+            }
+
+            // Check if user is active
+            if (user.user_metadata?.status !== "active") {
+                return res.status(200).json({
+                    success: true,
+                    message: 'If the email exists in our system, you will receive a password reset code'
+                });
+            }
+
+            // Send password reset OTP
+            const result = await otpService.sendOTP(normalizedEmail, 'password_reset');
+
+            // // Create audit log
+            // await createAuditLog({
+            //     user_id: user.id,
+            //     action: 'PASSWORD_RESET_REQUESTED',
+            //     entity_type: 'user',
+            //     entity_id: user.id,
+            //     ip_address: req.ip,
+            //     user_agent: req.headers['user-agent'],
+            //     details: 'Password reset OTP requested'
+            // });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Password reset code sent to your email'
+            });
+
+        } catch (err: any) {
+            console.error('Forgot password failed:', err);
+            // Return success even on error for security
+            return res.status(200).json({
+                success: true,
+                message: 'If the email exists in our system, you will receive a password reset code'
+            });
+        }
+    },
+
     // ===== OTP Based Authentication Methods begins from here =====
 
     /**
@@ -145,15 +216,18 @@ export const authController = {
     async sendRegistrationOTP(req: Request, res: Response) {
         try {
             const { email } = req.body;
+            console.log("149auth.controller, sendRegistrationOTP", req.body)
             if (!email || typeof email !== 'string') {
                 return res.status(400).json({ error: 'Valid email is required' });
             }
 
             const result = await otpService.sendOTP(email.toLowerCase(), 'registration');
+            console.log("155auth.controller, sendRegistrationOTP", result)
             res.json(result);
         } catch (err: any) {
             console.error('Send registration OTP failed:', err);
             res.status(400).json({ error: err.message || 'Failed to send OTP' });
+            console.log("160auth.controller, sendRegistrationOTP", err)
         }
     },
 
@@ -163,6 +237,7 @@ export const authController = {
     async resendRegistrationOTP(req: Request, res: Response) {
         try {
             const { email } = req.body;
+            console.log("166auth.controller", email, req.body)
 
             if (!email || typeof email !== 'string') {
                 return res.status(400).json({ error: 'Valid email is required' });
@@ -178,6 +253,12 @@ export const authController = {
             }
 
             const result = await otpService.resendOTP(email.toLowerCase(), 'registration');
+
+            // Handle rate limiting case (when success is false)
+            if (!result.success) {
+                return res.status(429).json(result); // 429 Too Many Requests
+            }
+
             res.json(result);
         } catch (err: any) {
             console.error('Resend registration OTP failed:', err);
@@ -243,11 +324,7 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
-
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
-
-            console.log("############### The users we get", user);
-
 
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered' });
@@ -266,7 +343,6 @@ export const authController = {
             }
 
             const result = await otpService.sendOTP(normalizedEmail, 'login');
-
             res.json({ success: true, message: 'Login OTP sent to your email' });
         } catch (err: any) {
             console.error('Send login OTP failed:', err);
@@ -287,7 +363,6 @@ export const authController = {
 
             const normalizedEmail = email.toLowerCase();
 
-
             const { data: userList } = await AuthRepository.listUsers();
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
@@ -301,6 +376,12 @@ export const authController = {
             }
 
             const result = await otpService.resendOTP(normalizedEmail, 'login');
+
+            // Handle rate limiting case (when success is false)
+            if (!result.success) {
+                return res.status(429).json(result); // 429 Too Many Requests
+            }
+
             res.json(result);
         } catch (err: any) {
             console.error('Resend login OTP failed:', err);
@@ -331,26 +412,8 @@ export const authController = {
 
             const user = data.user;
             const session = data.session;
-            const metadata = user.user_metadata || {};
 
-            /**
-             * Send ONLY tokens to UI
-             */
-            res.json({
-                success: true,
-                session_details: {
-                    access_token: session.access_token,
-                    refresh_token: session.refresh_token,
-                    expires_at: session.expires_at,
-                }
-            });
-
-            if (error) {
-                console.error('Supabase signInWithOtp failed:', error);
-                return res.status(500).json({ error: 'Failed to create session' });
-            }
-
-            if (!data.session) {
+            if (!session) {
                 return res.status(500).json({ error: 'No session returned after OTP login' });
             }
 
@@ -363,6 +426,18 @@ export const authController = {
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
             });
+
+            /**
+             * Send ONLY tokens to UI
+             */
+            res.json({
+                success: true,
+                session_details: {
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at,
+                }
+            });
         } catch (err: any) {
             console.error('Login OTP verification failed:', err);
             res.status(401).json({
@@ -372,4 +447,206 @@ export const authController = {
         }
     },
 
+
+     /**
+     * Resend password reset OTP
+     * POST /resend-password-otp
+     */
+    async resendPasswordResetOTP(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            if (!email || typeof email !== 'string') {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Valid email is required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(200).json({ 
+                    success: true, 
+                    message: 'If the email exists in our system, you will receive a password reset code' 
+                });
+            }
+
+            // Resend OTP
+            const result = await otpService.resendOTP(normalizedEmail, 'password_reset');
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_OTP_RESENT',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+            });
+
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Password reset code resent to your email' 
+            });
+
+        } catch (err: any) {
+            console.error('Resend password OTP failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'Failed to resend OTP' 
+            });
+        }
+    },
+
+      /**
+     * Step 2: Verify OTP and prepare for password reset
+     * POST /verify-password-otp
+     */
+    async verifyPasswordResetOTP(req: Request, res: Response) {
+        try {
+            const { email, otp_code } = req.body;
+
+            if (!email || !otp_code) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Email and OTP code are required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Check if user exists
+            const { data: userList } = await AuthRepository.listUsers();
+            const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+
+            if (!user) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'User not found' 
+                });
+            }
+
+            // Verify OTP using your existing service
+            const isValid = await otpService.verifyOTP(normalizedEmail, otp_code, 'password_reset');
+            
+            if (!isValid) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Invalid or expired OTP' 
+                });
+            }
+
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_OTP_VERIFIED',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+                details: 'Password reset OTP verified successfully'
+            });
+
+            // OTP verified - ready to show password reset form
+            return res.status(200).json({
+                success: true,
+                message: 'OTP verified successfully',
+                email: normalizedEmail // Return email for confirmation
+            });
+
+        } catch (err: any) {
+            console.error('Verify password OTP failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'OTP verification failed' 
+            });
+        }
+    },
+
+    /**
+     * Step 3: Reset password (after OTP verification)
+     * POST /reset-password
+     */
+    async resetPassword(req: Request, res: Response) {
+        try {
+            const { email, newPassword } = req.body;
+            console.log("32434",email, newPassword);
+
+            if (!email || !newPassword) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Email and new password are required' 
+                });
+            }
+
+            const normalizedEmail = email.toLowerCase();
+
+            // Validate password strength
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must be at least 6 characters long'
+                });
+            }
+
+            // Check if user exists
+          const { user } = await AuthRepository.getUserByEmail(email);
+          
+
+            if (!user) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: `User not found` 
+                });
+            }
+
+
+            // Update password using Supabase Admin API
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                user.id,
+                { password: newPassword }
+            );
+
+            if (updateError) {
+                console.error('Password update failed:', updateError);
+                throw new Error('Failed to update password');
+            }
+
+
+            // Create audit log
+            await createAuditLog({
+                user_id: user.id,
+                action: 'PASSWORD_RESET_COMPLETED',
+                entity_type: 'user',
+                entity_id: user.id,
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent'],
+                details: 'Password reset completed successfully'
+            });
+
+            // Optional: Send confirmation email
+            // You can add this later using your email service
+
+            return res.status(200).json({
+                success: true,
+                message: 'Password reset successfully. You can now login with your new password.'
+            });
+
+        } catch (err: any) {
+            console.error('Reset password failed:', err);
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message || 'Failed to reset password' 
+            });
+        }
+    },
+
+   
+    
 };

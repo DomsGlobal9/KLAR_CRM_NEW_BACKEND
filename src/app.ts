@@ -3,7 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import routes from './routes';
-import { envConfig, corsOptions } from './config';
+import { envConfig, corsOptions, cronJobConfigs } from './config';
+import cronService from './services';
 
 
 const app = express();
@@ -29,7 +30,7 @@ app.use((req, res, next) => {
 /**
  * Routes (API included inside)
  */
-app.use('/api/v1', routes);
+app.use('/api/v1', routes); 
 
 /**
  * Health check
@@ -38,6 +39,34 @@ app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     environment: envConfig.NODE_ENV,
+  });
+});
+
+/**
+ * Initialize cron jobs
+ * This will start automatically when the app loads
+ */
+if (envConfig.NODE_ENV !== 'test') {
+  // cronService.initializeJobs();
+}
+
+/**
+ * Added a route to manage cron jobs (for admin purposes)
+ */
+app.get('/api/v1/cron/status', (_req, res) => {
+  const activeJobs = cronJobConfigs
+    .filter(config => cronService.getJobStatus(config.name))
+    .map(config => ({
+      name: config.name,
+      schedule: config.schedule,
+      description: config.description,
+      enabled: config.enabled
+    }));
+
+  res.json({
+    activeJobs,
+    totalJobs: cronJobConfigs.length,
+    environment: envConfig.NODE_ENV
   });
 });
 
