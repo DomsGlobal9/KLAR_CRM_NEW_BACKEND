@@ -14,3 +14,7 @@ yarn-error.log*
 .wwebjs_cache/
 .wwebjs_auth/
 whatsapp-session/
+
+# Windows system files
+desktop.ini
+Thumbs.db
