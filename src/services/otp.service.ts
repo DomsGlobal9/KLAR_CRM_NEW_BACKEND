@@ -89,7 +89,7 @@ export const otpService = {
     /**
      * Resend OTP with rate limiting
      */
-    async resendOTP(email: string, type: 'registration' | 'login'): Promise<{
+    async resendOTP(email: string, type: 'registration' | 'login' | 'password_reset'): Promise<{
         success: boolean;
         message: string;
         waitTimeSeconds?: number;
