@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && tsc",
     "serve": "npm run build && npm start",
-    "clean": "rimraf dist && npm install",
-    "hard-clean": "rimraf dist node_modules package-lock.json && npm install"
+    "clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules",
+    "hard-clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules package-lock.json"
   },
   "keywords": [],
   "author": "",
@@ -49,7 +49,7 @@
     "morgan": "^1.10.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
-    "puppeteer": "^24.39.0",
+    "puppeteer": "^24.39.1",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.34.6"
   }
