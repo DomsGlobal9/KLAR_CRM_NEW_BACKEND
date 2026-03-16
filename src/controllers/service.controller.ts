@@ -132,6 +132,8 @@ export const serviceController = {
         const userId = req.user?.id;
         const userRole = req.user?.role;
 
+        console.log("@@@@@@@@@@@@ The role we get", userRole);
+
         try {
             const filter: IServiceFilter = {
                 search: req.query.search as string,
@@ -144,15 +146,12 @@ export const serviceController = {
 
             if (userRole === 'superadmin' || userRole === 'admin') {
                 services = await serviceService.getAllServices(filter);
-            } else if (userRole === 'TEAM_LEAD' || userRole === 'RELATIONSHIP_MANAGER') {
+            }
+            else if (userRole === 'tl' || userRole === 'rm') {
 
-                const { data: userData, error: userError } = await supabaseAdmin
-                    .from('users')
-                    .select('team_id')
-                    .eq('id', userId)
-                    .single();
+                const teamId = req.user?.team_id;
 
-                if (userError || !userData?.team_id) {
+                if (!teamId) {
                     return res.status(200).json({
                         success: true,
                         data: [],
@@ -164,8 +163,10 @@ export const serviceController = {
                 const { data: teamData, error: teamError } = await supabaseAdmin
                     .from('teams')
                     .select('service_ids')
-                    .eq('id', userData.team_id)
+                    .eq('id', teamId)
                     .single();
+
+                console.log("@@@@@@@@@@@@ THe team data we get", JSON.stringify(teamData, null, 2));
 
                 if (teamError || !teamData?.service_ids || teamData.service_ids.length === 0) {
 
@@ -183,7 +184,8 @@ export const serviceController = {
                 );
 
                 services = teamServices;
-            } else {
+            }
+            else {
                 return res.status(200).json({
                     success: true,
                     data: [],
