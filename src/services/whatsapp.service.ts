@@ -17,8 +17,8 @@ class WhatsAppService {
         });
 
         this.client.on('qr', (qr) => {
-            // console.log('\n🔴 SCAN QR CODE WITH WHATSAPP:');
-            // qrcode.generate(qr, { small: true });
+            console.log('\n🔴 SCAN QR CODE WITH WHATSAPP:');
+            qrcode.generate(qr, { small: true });
         });
 
         this.client.on('ready', () => {

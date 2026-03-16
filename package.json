@@ -11,7 +11,12 @@
     "build": "npm run typecheck && tsc",
     "serve": "npm run build && npm start",
     "clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules",
-    "hard-clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules package-lock.json"
+    "hard-clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules package-lock.json",
+    "pm2:start": "npm run build && pm2 start dist/index.js --name klar-crm-backend",
+    "pm2:restart": "pm2 restart klar-crm-backend",
+    "pm2:stop": "pm2 stop klar-crm-backend",
+    "pm2:delete": "pm2 delete klar-crm-backend",
+    "pm2:logs": "pm2 logs klar-crm-backend"
   },
   "keywords": [],
   "author": "",
