@@ -138,6 +138,8 @@ export const teamRepository = {
             await this.validateServiceIds(updates.service_ids, id);
         }
 
+        console.log("The service ids we get:", updates.service_ids);
+
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)
