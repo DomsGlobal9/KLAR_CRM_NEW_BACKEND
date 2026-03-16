@@ -170,14 +170,15 @@ export const teamMemberController = {
         try {
 
 
-            const { email, role_id, team_id } = req.body;
+            const { email, mobile_number, role_id, team_id } = req.body;
 
-            if (!email || !role_id) {
-                return res.status(400).json({ error: 'Email and role_id are required' });
+            if (!email || !role_id || !mobile_number) {
+                return res.status(400).json({ error: 'Email, role_id, and mobile_number are required' });
             }
 
             const result = await teamMemberService.sendAddMemberOTP({
                 email: email.toLowerCase(),
+                mobile_number,
                 role_id,
                 team_id: team_id || null,
                 requested_by: req.user?.id as string

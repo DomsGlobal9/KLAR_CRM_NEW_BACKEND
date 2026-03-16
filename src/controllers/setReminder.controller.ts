@@ -47,6 +47,15 @@ export const reminderController = {
         });
       }
 
+      const hasChannel = sendVia && (sendVia.email === true || sendVia.whatsapp === true);
+
+      if (!hasChannel) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one delivery method (WhatsApp or Email)."
+        });
+      }
+
       const result = await reminderService.sendReminder({
         currentMemberId,
         reminderForId,

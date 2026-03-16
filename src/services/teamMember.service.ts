@@ -12,6 +12,7 @@ import { supabaseAdmin } from '../config';
  * Temporary storage for pending member creation (in-memory or Redis in production)
  */
 const pendingMemberCreations = new Map<string, {
+    mobile_number: string;
     role_id: string;
     team_id: string | null;
     requested_by: string;
@@ -436,11 +437,12 @@ export const teamMemberService = {
      */
     async sendAddMemberOTP(payload: {
         email: string;
+        mobile_number: string,
         role_id: string;
         team_id?: string | null;
         requested_by: string;
     }) {
-        const { email, role_id, team_id, requested_by } = payload;
+        const { email, mobile_number, role_id, team_id, requested_by } = payload;
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role not found');
@@ -466,6 +468,7 @@ export const teamMemberService = {
         const result = await otpService.sendOTP(email, 'registration');
 
         pendingMemberCreations.set(email, {
+            mobile_number,
             role_id,
             team_id: team_id || null,
             requested_by,
@@ -520,6 +523,7 @@ export const teamMemberService = {
             email_confirm: true,
             user_metadata: {
                 username,
+                mobile_number: pending.mobile_number,
                 role_id,
                 role_name: role.name,
                 team_id: team_id,
