@@ -14,6 +14,7 @@ import itenaryRoutes from './itinerary.routes';
 import itenaryUserPreference from "./itinerary-preferences.routes";
 import inquirySourcesRoutes from './inquirySources.routes';
 import teamLead from "./teamLead.routes"
+import setReminder from "./setReminder.routes"
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use('/service', serviceRoutes);
 router.use('/itenary', itenaryRoutes);
 router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead)
+router.use("/set-reminder", setReminder)
 
 export default router;

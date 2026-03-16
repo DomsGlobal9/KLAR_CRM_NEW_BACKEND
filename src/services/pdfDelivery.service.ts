@@ -328,6 +328,83 @@ class PDFDeliveryService {
             }
         };
     }
+
+
+
+
+
+
+/**
+ * Send Text Reminder via Email
+ */
+async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<any> {
+    const emailPayload = {
+        to: emailAddress,
+        subject: `🔔 Reminder: ${title}`,
+        text: `${title}\n\n${content}`, // Fallback plain text
+        html: this.createReminderHTML(clientName, title, content),
+        requireNewLead: false,
+    };
+    return await emailService.sendEmail(emailPayload);
 }
+
+/**
+ * NEW: Clean HTML Template for Text Reminders
+ */
+private createReminderHTML(clientName: string, title: string, content: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7f9; padding: 20px;">
+    <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e1e8ed; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        
+        <div style="background-color: #244875; padding: 20px; text-align: center;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">New Reminder</h2>
+        </div>
+
+        <div style="padding: 30px;">
+            <p style="font-size: 16px; color: #64748b; margin-top: 0;">Hi <strong>${clientName}</strong>,</p>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 18px;">${title}</h3>
+                <p style="margin: 0; color: #475569; font-size: 15px; line-height: 1.5;">${content}</p>
+            </div>
+
+            <p style="font-size: 14px; color: #94a3b8; margin-bottom: 0;">
+                This is an automated notification from your travel team.
+            </p>
+        </div>
+
+        <div style="background-color: #f1f5f9; padding: 15px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; 2026 Your Travel Agency</p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+}
+
+/**
+ * NEW: Styled WhatsApp Message (No PDF link)
+ */
+private createReminderWhatsApp(clientName: string, title: string, content: string): string {
+    return `
+🔔 *REMINDER FOR ${clientName.toUpperCase()}*
+
+*Topic:* ${title}
+
+${content}
+
+_Reply to this message if you have any questions._
+    `.trim();
+}
+
+}
+
+
+
+
+
+
 
 export const pdfDeliveryService = new PDFDeliveryService();
