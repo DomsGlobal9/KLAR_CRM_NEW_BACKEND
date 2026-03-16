@@ -92,6 +92,8 @@ import { ReminderRequest } from '../interfaces/setReminder.interface';
 
 
 
+
+
 export const reminderService = {
   async sendReminder(data: ReminderRequest) {
     const recipient = await teamMemberRepository.getUserById(data.reminderForId);
@@ -115,7 +117,8 @@ export const reminderService = {
 
     // 2. Send Styled WhatsApp
     if (data.sendVia.whatsapp && clientPhone) {
-        const waMessage = this.createReminderHTML(clientName, data.title, data.content);
+        // FIXED: Call the method on pdfDeliveryService, not 'this'
+        const waMessage = pdfDeliveryService.createReminderWhatsApp(clientName, data.title, data.content);
         results.whatsapp = await WhatsAppService.sendMessage(clientPhone, waMessage);
     }
 
