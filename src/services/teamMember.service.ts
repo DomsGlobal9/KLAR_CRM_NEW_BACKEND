@@ -7,6 +7,7 @@ import {
     userRepository
 } from '../repositories';
 import { supabaseAdmin } from '../config';
+import { cleanUserMetadata } from '../helpers/user.service.helper';
 
 /**
  * Temporary storage for pending member creation (in-memory or Redis in production)
@@ -16,7 +17,7 @@ const pendingMemberCreations = new Map<string, {
     team_id: string | null;
     requested_by: string;
     expires_at: number;
-}>(); 
+}>();
 
 export const teamMemberService = {
 
@@ -170,6 +171,7 @@ export const teamMemberService = {
         });
     },
 
+
     applyRoleFilters(users: any[], currentUser?: any) {
         if (!currentUser || !currentUser.role) return users;
 
@@ -253,7 +255,7 @@ export const teamMemberService = {
         const user = await teamMemberRepository.getUserById(userId);
         if (!user) throw new Error('User not found');
 
-        const currentMetadata = user.user_metadata || {};
+        let currentMetadata: any = user.user_metadata || {};
 
         const oldRoleId = currentMetadata.role_id;
         const oldTeamId = currentMetadata.team_id;
@@ -263,6 +265,7 @@ export const teamMemberService = {
 
         const updateMetadata: any = {};
 
+        // Validate TL limit
         if (newRoleId && newTeamId) {
             const role = await roleRepository.getById(newRoleId);
 
@@ -271,6 +274,7 @@ export const teamMemberService = {
             }
         }
 
+        // Role update
         if (payload.role_id && payload.role_id !== oldRoleId) {
 
             const newRole = await roleRepository.getById(payload.role_id);
@@ -279,10 +283,14 @@ export const teamMemberService = {
             updateMetadata.role_id = payload.role_id;
             updateMetadata.role_name = newRole.name;
 
-            if (oldRoleId) await roleRepository.decrementAssignedCount(oldRoleId);
+            if (oldRoleId) {
+                await roleRepository.decrementAssignedCount(oldRoleId);
+            }
+
             await roleRepository.incrementAssignedCount(payload.role_id);
         }
 
+        // Team update
         if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
 
             const team = await teamRepository.getById(payload.team_id as string);
@@ -290,14 +298,28 @@ export const teamMemberService = {
 
             updateMetadata.team_id = payload.team_id;
 
-            if (oldTeamId) await teamRepository.decrementMembersCount(oldTeamId);
-            if (payload.team_id) await teamRepository.incrementMembersCount(payload.team_id);
+            if (oldTeamId) {
+                await teamRepository.decrementMembersCount(oldTeamId);
+            }
+
+            if (payload.team_id) {
+                await teamRepository.incrementMembersCount(payload.team_id);
+            }
         }
 
-        const newMetadata = {
+        // Update outer metadata
+        const newMetadata: any = {
             ...currentMetadata,
             ...updateMetadata
         };
+
+        // 🔹 If nested metadata exists, update it too
+        if (currentMetadata.user_metadata) {
+            newMetadata.user_metadata = {
+                ...currentMetadata.user_metadata,
+                ...updateMetadata
+            };
+        }
 
         const updatedUser = await teamMemberRepository.updateUser(userId, newMetadata);
 
@@ -543,5 +565,7 @@ export const teamMemberService = {
         }
 
         return user;
-    }
+    },
+
+
 };
