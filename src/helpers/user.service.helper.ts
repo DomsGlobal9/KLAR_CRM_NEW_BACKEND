@@ -119,3 +119,17 @@ export const createAuditLog = async (logData: Record<string, any>): Promise<void
         console.error('Audit log error:', err);
     }
 };
+
+export const cleanUserMetadata = (metadata: Record<string, any>): Record<string, any> => {
+
+    let cleaned = { ...metadata };
+    if (cleaned.user_metadata) {
+        cleaned = {
+            ...cleaned,
+            ...cleaned.user_metadata
+        };
+    }
+    delete cleaned.user_metadata;
+
+    return cleaned;
+};

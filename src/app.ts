@@ -21,9 +21,6 @@ app.use(cors(corsOptions));
 
 app.use((req, res, next) => {
   const origin = req.get('Origin') || req.get('origin') || 'no-origin';
-  if (origin !== 'no-origin') {
-    console.log(`Incoming request from origin: ${origin} | Method: ${req.method} | Path: ${req.path}`);
-  }
   next();
 });
 

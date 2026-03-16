@@ -14,7 +14,6 @@ export const teamController = {
      */
     async create(req: AuthRequest, res: Response) {
         try {
-            console.log("Requesting data we get", req.body);
             const team = await teamService.createTeam(req.body);
 
             await createAuditLog({
@@ -77,19 +76,21 @@ export const teamController = {
     async update(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            const { name, description, is_active } = req.body;
+            const { name, description, is_active, service_ids } = req.body;
+            console.log("THe update data we get", req.body);
             const team = await teamService.updateTeam(id as string, {
                 name,
                 description,
-                is_active
+                is_active,
+                service_ids
             });
 
-            await createAuditLog({
-                user_id: req.user?.id,
-                action: 'TEAM_UPDATED',
-                entity_type: 'team',
-                entity_id: id
-            });
+            // await createAuditLog({
+            //     user_id: req.user?.id,
+            //     action: 'TEAM_UPDATED',
+            //     entity_type: 'team',
+            //     entity_id: id
+            // });
 
             res.json({ message: 'Team updated successfully', team, success: true });
         } catch (err: any) {
