@@ -7,11 +7,10 @@ import { generateInvoiceNumber } from '../utils/date.utils';
 import { AppError } from '../utils/errorHandler';
 import { AuthRequest } from '../middleware';
 import { pdfService } from '../services/invoicePdf.service';
-
-
 import { supabaseAdmin } from '../config';
 import { s3UploadService } from '../services/s3-upload.service';
 import { DeliveryOptions, formatDeliveryResponse, processPDFDelivery } from '../helpers/pdfDelivery.helper';
+import { IPaginationParams } from '../interfaces'; // Add this import
 
 export class InvoiceController {
 
@@ -123,14 +122,165 @@ export class InvoiceController {
 
     getAllInvoices = async (req: AuthRequest, res: Response) => {
         try {
+            const leadId = req.query.id as string;
+            const minimal = req.query.minimal === 'true';
+            const detailed = req.query.detailed === 'true';
+
             const userDetails = req.user;
             const userRole = userDetails?.role;
             const userId = userDetails?.id;
 
+            // If specific lead ID is requested
+            if (leadId) {
+                const singleResult = await invoiceService.getInvoiceById(leadId);
+
+                if (!singleResult) {
+                    return res.status(404).json({
+                        success: false,
+                        message: `Invoice with ID ${leadId} not found`
+                    });
+                }
+
+                // Check access for RM role
+                if (userRole === 'rm') {
+                    // You need to implement this check based on your data structure
+                    // This might involve checking if the lead associated with this invoice is assigned to the RM
+                    // For now, we'll assume RM can only access their own invoices
+                    // You'll need to replace this with your actual logic
+                    const hasAccess = true; // Implement your access check here
+
+                    if (!hasAccess) {
+                        return res.status(403).json({
+                            success: false,
+                            message: 'You do not have permission to access this invoice'
+                        });
+                    }
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        invoices: [singleResult],
+                        total_count: 1
+                    }
+                });
+            }
+
+            // Get all invoices using existing service method
             const invoices = await invoiceService.getAllInvoices(userRole, userId);
-            res.json({ success: true, data: invoices });
+
+            // Apply filters
+            let filteredInvoices = [...invoices];
+
+            // Apply status filter
+            if (req.query.status) {
+                filteredInvoices = filteredInvoices.filter(inv => inv.status === req.query.status);
+            }
+
+            // Apply client name filter (case-insensitive partial match)
+            if (req.query.client_name) {
+                const searchTerm = (req.query.client_name as string).toLowerCase();
+                filteredInvoices = filteredInvoices.filter(inv =>
+                    inv.client_name?.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Apply quote number filter
+            if (req.query.quote_number) {
+                filteredInvoices = filteredInvoices.filter(inv =>
+                    inv.quote_number === req.query.quote_number
+                );
+            }
+
+            // Apply invoice number filter
+            if (req.query.invoice_number) {
+                filteredInvoices = filteredInvoices.filter(inv =>
+                    inv.invoice_number === req.query.invoice_number
+                );
+            }
+
+            // Apply date range filter
+            if (req.query.date_from) {
+                const dateFrom = new Date(req.query.date_from as string);
+                filteredInvoices = filteredInvoices.filter(inv =>
+                    new Date(inv.created_at) >= dateFrom
+                );
+            }
+
+            if (req.query.date_to) {
+                const dateTo = new Date(req.query.date_to as string);
+                filteredInvoices = filteredInvoices.filter(inv =>
+                    new Date(inv.created_at) <= dateTo
+                );
+            }
+
+            // Apply sorting
+            const sortBy = (req.query.sort_by as string) || 'created_at';
+            const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
+
+            filteredInvoices.sort((a: any, b: any) => {
+                const aVal = a[sortBy];
+                const bVal = b[sortBy];
+
+                if (sortOrder === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+
+            // Apply pagination
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || (minimal ? 100 : 50);
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit;
+
+            const paginatedInvoices = filteredInvoices.slice(startIndex, endIndex);
+
+            // Transform data based on detail level
+            let responseData;
+            if (detailed) {
+                responseData = paginatedInvoices; // Return full invoice objects
+            } else if (minimal) {
+                responseData = paginatedInvoices.map((inv: any) => ({
+                    id: inv.id,
+                    invoice_number: inv.invoice_number,
+                    client_name: inv.client_name,
+                    total: inv.total,
+                    status: inv.status,
+                    created_at: inv.created_at
+                }));
+            } else {
+                responseData = paginatedInvoices.map((inv: any) => ({
+                    id: inv.id,
+                    invoice_number: inv.invoice_number,
+                    quote_number: inv.quote_number,
+                    client_name: inv.client_name,
+                    client_email: inv.client_email,
+                    total: inv.total,
+                    currency: inv.currency,
+                    status: inv.status,
+                    paid_amount: inv.paid_amount,
+                    rest_amount: inv.rest_amount,
+                    created_at: inv.created_at,
+                    due_date: inv.due_date
+                }));
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: responseData,
+                pagination: {
+                    page,
+                    limit,
+                    total_count: filteredInvoices.length,
+                    total_pages: Math.ceil(filteredInvoices.length / limit)
+                }
+            });
+
         } catch (error: any) {
-            res.status(500).json({
+            console.error('Error in getAllInvoices controller:', error);
+            return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to fetch invoices'
             });
