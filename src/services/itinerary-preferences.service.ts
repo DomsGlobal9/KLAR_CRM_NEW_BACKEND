@@ -87,6 +87,12 @@ export const itineraryPreferencesService = {
 
             await leadRepository.updateLeadStageOnly(leadId, stageName);
 
+            await itineraryPreferencesRepository.updateItineraryStatus(
+                leadId,
+                data.user_preferences_summary.id,
+                'Itinerary_Created'
+            );
+
             return {
                 success: true,
                 data

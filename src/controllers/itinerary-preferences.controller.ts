@@ -18,6 +18,7 @@ import { leadService } from '../services/lead.service';
 import { pdfDeliveryService } from '../services/pdfDelivery.service';
 import { DeliveryOptions, processPDFDelivery } from '../helpers/pdfDelivery.helper';
 import { sendErrorResponse, sendUploadResponse } from '../helpers/response.helper';
+import { itineraryPreferencesRepository } from '../repositories/itinerary-preferences.repository';
 
 export const itineraryPreferencesController = {
 
@@ -465,6 +466,14 @@ export const itineraryPreferencesController = {
                 return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
             }
 
+            const prefSummary = itinResult.data.user_preferences_summary;
+            if (!prefSummary?.id) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User preference summary not found"
+                });
+            }
+
             const html = await itineraryPdfService.generateHTML(itinResult.data);
             const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -487,6 +496,18 @@ export const itineraryPreferencesController = {
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
 
+            const isDelivered =
+                deliveryResult?.whatsapp?.sent === true ||
+                deliveryResult?.email?.sent === true;
+
+            if (isDelivered) {
+                await itineraryPreferencesRepository.updateItineraryStatus(
+                    leadIdString,
+                    prefSummary.id,
+                    'Itinerary_send'
+                );
+            }
+
             return sendUploadResponse(res, {
                 success: true,
                 publicUrl,
@@ -500,5 +521,5 @@ export const itineraryPreferencesController = {
             console.error("❌ S3 Workflow Error:", error);
             return sendErrorResponse(res, error);
         }
-    }
+    },
 };

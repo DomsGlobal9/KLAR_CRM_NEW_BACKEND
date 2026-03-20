@@ -78,7 +78,9 @@ export const itineraryPreferencesRepository = {
                     .from('user_itenary_preferences_summary')
                     .select('*')
                     .eq('lead_id', clientID)
-                    .single(),
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle(),
 
                 supabaseAdmin
                     .from('service_preferences')
@@ -1953,5 +1955,22 @@ export const itineraryPreferencesRepository = {
             console.error('Error in saveAllServicePreferences:', error);
             throw new Error(`Failed to save service preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    },
+
+    async updateItineraryStatus(leadId: string, id: string, status: string) {
+        const { data, error } = await supabaseAdmin
+            .from('user_itenary_preferences_summary')
+            .update({
+                status,
+                updated_at: new Date().toISOString()
+            })
+            .eq('lead_id', leadId)
+            .eq('id', id);
+
+        if (error) {
+            throw new Error(`Failed to update itinerary status: ${error.message}`);
+        }
+
+        return data;
     },
 };
