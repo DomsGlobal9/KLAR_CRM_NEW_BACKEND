@@ -467,7 +467,10 @@ export const itineraryPreferencesService = {
     /**
      * Get all leads with minimal details
      */
-    async getAllLeadsMinimal(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<{
+    async getAllLeadsMinimal(
+        params?: IPaginationParams,
+        roleFilter?: IRoleFilter
+    ): Promise<{
         success: boolean;
         data?: {
             leads: Array<{
@@ -523,8 +526,8 @@ export const itineraryPreferencesService = {
                     }
                 }
             };
+
         } catch (error) {
-            console.error('Error in getAllLeadsMinimal service:', error);
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get leads'

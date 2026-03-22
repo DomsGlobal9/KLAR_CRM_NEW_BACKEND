@@ -1302,10 +1302,8 @@ export const itineraryPreferencesRepository = {
                 };
             }
 
-            // Step 2: Extract all lead IDs
             const leadIds = summaries.map(summary => summary.lead_id);
 
-            // Step 3: Get service relationships
             const { data: relationships, error: relError } = await supabaseAdmin
                 .from('lead_service_relationships')
                 .select(`
@@ -1331,7 +1329,6 @@ export const itineraryPreferencesRepository = {
                 console.warn('Error fetching service relationships:', relError.message);
             }
 
-            // Step 4: Group relationships by lead_id and service
             const relationshipsByLead = new Map<string, Map<string, any>>();
 
             if (relationships) {
@@ -1373,12 +1370,10 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            // Step 5: Format the response
             const leads = summaries.map(summary => {
                 const leadId = summary.lead_id;
                 const leadDetails = summary.leads as any;
 
-                // Get service relationships for this lead
                 const services: Array<{
                     service_id: string;
                     service_name: string;
@@ -1413,14 +1408,15 @@ export const itineraryPreferencesRepository = {
                         name: leadDetails.name,
                         email: leadDetails.email,
                         phone: leadDetails.phone,
-                        status: leadDetails.status
+                        status: leadDetails.status,
                     },
                     services,
                     summary: {
                         flight_preferences_added: summary.flight_preferences_added,
                         hotel_preferences_added: summary.hotel_preferences_added,
                         visa_preferences_added: summary.visa_preferences_added,
-                        last_updated: summary.last_updated
+                        last_updated: summary.last_updated,
+                        status: summary.status
                     },
                     created_at: leadDetails.created_at
                 };
