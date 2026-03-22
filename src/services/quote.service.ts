@@ -44,6 +44,7 @@ export const quoteService = {
         }
     },
 
+
     transformPayload(frontendPayload: any): ICreateQuoteDTO {
         console.log("^^^^^^^^^^^^^^^^^^^The payload we get", frontendPayload);
 
@@ -459,7 +460,6 @@ export const quoteService = {
      */
     async updateQuoteStatus(id: string, status: IQuote['status']): Promise<IQuoteResponse> {
         try {
-            // Check if quote exists
             const existingQuote = await quoteRepository.getQuoteById(id);
             if (!existingQuote) {
                 return {
@@ -468,8 +468,7 @@ export const quoteService = {
                 };
             }
 
-            // Validate status
-            const validStatuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'cancelled'];
+            const validStatuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'cancelled', 'Quote_Generated', 'Quote_Sent'];
             if (!validStatuses.includes(status)) {
                 return {
                     success: false,
@@ -477,7 +476,6 @@ export const quoteService = {
                 };
             }
 
-            // Update status
             const updatedQuote = await quoteRepository.updateQuoteStatus(id, status);
 
             return {
