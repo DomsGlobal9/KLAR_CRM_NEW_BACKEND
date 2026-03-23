@@ -31,14 +31,15 @@ export const leadService = {
 
     }
 
-    const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
+    // const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
 
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
-    return {
-      lead,
-      travelPlan: travelPlan || null
-    };
+    // return {
+    //   lead,
+    //   travelPlan: travelPlan || null
+    // };
+    return lead;
   },
 
   /**
