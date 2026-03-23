@@ -2,63 +2,63 @@ import { Request, Response } from 'express';
 import whatsappService from '../services/whatsapp.service';
 
 export const getQrJson = async (_req: Request, res: Response) => {
-    const status = whatsappService.getConnectionStatus();
-    const qrDataUrl = await whatsappService.getQrDataUrl();
+  const status = whatsappService.getConnectionStatus();
+  const qrDataUrl = await whatsappService.getQrDataUrl();
 
-    res.json({
-        status,
-        connected: status === 'ready',
-        qrDataUrl: qrDataUrl ?? null
-    });
+  res.json({
+    status,
+    connected: status === 'ready',
+    qrDataUrl: qrDataUrl ?? null
+  });
 };
 
 export const getQrPage = async (_req: Request, res: Response) => {
-    const status = whatsappService.getConnectionStatus();
-    const qrDataUrl = await whatsappService.getQrDataUrl();
+  const status = whatsappService.getConnectionStatus();
+  const qrDataUrl = await whatsappService.getQrDataUrl();
 
-    const brandColor = '#aa4545';
-    const brandColorLight = '#c99494';
+  const brandColor = '#aa4545';
+  const brandColorLight = '#c99494';
 
-    const statusMessages: Record<string, { icon: string; title: string; subtitle: string; color: string }> = {
-        initializing: {
-            icon: '⚙️',
-            title: 'Starting up…',
-            subtitle: 'WhatsApp is initializing. Please wait a moment.',
-            color: '#64748b'
-        },
-        waiting_qr: {
-            icon: '📱',
-            title: 'Scan to Connect',
-            subtitle: 'Open WhatsApp on your phone → Menu → Linked devices → Link a device',
-            color: brandColor
-        },
-        ready: {
-            icon: '✅',
-            title: 'WhatsApp Connected',
-            subtitle: 'Your WhatsApp account is linked and ready to send messages.',
-            color: '#10b981' // Keep green for success
-        },
-        disconnected: {
-            icon: '❌',
-            title: 'Disconnected',
-            subtitle: 'WhatsApp was disconnected. Reload this page to get a fresh QR code.',
-            color: '#ef4444'
-        }
-    };
+  const statusMessages: Record<string, { icon: string; title: string; subtitle: string; color: string }> = {
+    initializing: {
+      icon: '⚙️',
+      title: 'Starting up…',
+      subtitle: 'WhatsApp is initializing. Please wait a moment.',
+      color: '#64748b'
+    },
+    waiting_qr: {
+      icon: '📱',
+      title: 'Scan to Connect',
+      subtitle: 'Open WhatsApp on your phone → Menu → Linked devices → Link a device',
+      color: brandColor
+    },
+    ready: {
+      icon: '✅',
+      title: 'WhatsApp Connected',
+      subtitle: 'Your WhatsApp account is linked and ready to send messages.',
+      color: '#10b981'
+    },
+    disconnected: {
+      icon: '❌',
+      title: 'Disconnected',
+      subtitle: 'WhatsApp was disconnected. Reload this page to get a fresh QR code.',
+      color: '#ef4444'
+    }
+  };
 
-    const info = statusMessages[status] ?? statusMessages['initializing'];
+  const info = statusMessages[status] ?? statusMessages['initializing'];
 
-    const qrBlock = qrDataUrl
-        ? `<div class="qr-wrapper">
+  const qrBlock = qrDataUrl
+    ? `<div class="qr-wrapper">
                <img src="${qrDataUrl}" alt="WhatsApp QR Code" id="qr-img" />
            </div>`
-        : status === 'ready'
-        ? `<div class="connected-icon">✅</div>`
-        : `<div class="spinner"></div><p class="scan-hint">Waiting for QR code…</p>`;
+    : status === 'ready'
+      ? `<div class="connected-icon">✅</div>`
+      : `<div class="spinner"></div><p class="scan-hint">Waiting for QR code…</p>`;
 
-    const shouldAutoRefresh = status === 'waiting_qr' || status === 'initializing';
+  const shouldAutoRefresh = status === 'waiting_qr' || status === 'initializing';
 
-    const html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -243,8 +243,8 @@ export const getQrPage = async (_req: Request, res: Response) => {
     ${qrBlock}
 
     ${status === 'ready'
-        ? `<div class="status-badge"><div class="status-dot"></div>WhatsApp is active</div>`
-        : `<br><a href="" class="refresh-btn">🔄 Refresh Page</a>`
+      ? `<div class="status-badge"><div class="status-dot"></div>WhatsApp is active</div>`
+      : `<br><a href="" class="refresh-btn">🔄 Refresh Page</a>`
     }
 
     <p class="footer">
@@ -255,6 +255,6 @@ export const getQrPage = async (_req: Request, res: Response) => {
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 };
