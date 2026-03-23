@@ -109,7 +109,11 @@ export const itineraryPreferencesService = {
     /**
      * Update preferences
      */
-    async updatePreferences(leadId: string, updateData: IUpdatePreferenceData): Promise<{
+    async updatePreferences(
+        leadId: string, 
+        updateData: IUpdatePreferenceData,
+        itineraryId?: string,
+    ): Promise<{
         success: boolean;
         data?: IItineraryPreferencesResponse;
         message?: string;
@@ -122,7 +126,11 @@ export const itineraryPreferencesService = {
                 };
             }
 
-            const data = await itineraryPreferencesRepository.updatePreferences(leadId, updateData);
+            const data = await itineraryPreferencesRepository.updatePreferences(
+                leadId,
+                updateData,
+                itineraryId, 
+            );
             return {
                 success: true,
                 data

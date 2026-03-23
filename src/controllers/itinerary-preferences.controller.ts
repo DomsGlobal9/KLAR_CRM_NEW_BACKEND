@@ -91,7 +91,10 @@ export const itineraryPreferencesController = {
      */
     async updatePreferences(req: Request, res: Response) {
         try {
+            console.log("The query we get", req.query.itineraryId);
+
             const { leadId } = req.params;
+            const itineraryId = req.params.itineraryId;
             const updateData: IUpdatePreferenceData = req.body;
 
             if (!leadId) {
@@ -108,7 +111,11 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.updatePreferences(leadId as string, updateData);
+            const result = await itineraryPreferencesService.updatePreferences(
+                leadId as string, 
+                updateData,
+                itineraryId as string, 
+            );
 
             if (!result.success) {
                 return res.status(400).json(result);
