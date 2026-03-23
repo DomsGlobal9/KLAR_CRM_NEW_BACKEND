@@ -1,9 +1,13 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
-import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
+
+type ConnectionStatus = 'initializing' | 'waiting_qr' | 'ready' | 'disconnected';
 
 class WhatsAppService {
     private client: Client;
     private isReady: boolean = false;
+    private currentQrString: string | null = null;
+    private connectionStatus: ConnectionStatus = 'initializing';
 
     constructor() {
         this.client = new Client({
@@ -17,21 +21,46 @@ class WhatsAppService {
         });
 
         this.client.on('qr', (qr) => {
-            console.log('\n🔴 SCAN QR CODE WITH WHATSAPP:');
-            qrcode.generate(qr, { small: true });
+            console.log('\n🔴 New QR code generated — visit /api/v1/whatsapp/qr-page to scan');
+            this.currentQrString = qr;
+            this.connectionStatus = 'waiting_qr';
         });
 
         this.client.on('ready', () => {
             console.log('✅ WhatsApp client ready');
             this.isReady = true;
+            this.currentQrString = null;
+            this.connectionStatus = 'ready';
         });
 
         this.client.on('disconnected', (reason) => {
             console.log('❌ WhatsApp disconnected:', reason);
             this.isReady = false;
+            this.currentQrString = null;
+            this.connectionStatus = 'disconnected';
         });
 
         this.client.initialize();
+    }
+
+    /** Returns the current QR code as a base64 data-URL PNG, or null if not available */
+    public async getQrDataUrl(): Promise<string | null> {
+        if (!this.currentQrString) return null;
+        try {
+            return await QRCode.toDataURL(this.currentQrString, { width: 300, margin: 2 });
+        } catch {
+            return null;
+        }
+    }
+
+    /** Returns the raw QR string (for debugging) */
+    public getQrString(): string | null {
+        return this.currentQrString;
+    }
+
+    /** Returns the human-readable connection status */
+    public getConnectionStatus(): ConnectionStatus {
+        return this.connectionStatus;
     }
 
     private isValidPhoneNumber(phoneNumber: string): boolean {
