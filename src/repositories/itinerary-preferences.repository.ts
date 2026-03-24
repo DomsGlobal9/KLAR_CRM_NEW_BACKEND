@@ -580,7 +580,7 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Return the updated data
+            
             return this.getByLeadId(leadId);
         } catch (error) {
             console.error('Error in updatePreferences:', error);
