@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware';
 import { teamMemberService } from '../services';
 import { createAuditLog } from '../helpers';
+import { userCredentialsService } from '../services/user-credentials-send.service';
 
 export const teamMemberController = {
 
@@ -197,7 +198,7 @@ export const teamMemberController = {
 
             const owner = req.user;
 
-            console.log("The frontend data we get", req.body);
+
             const { email, password, otp_code, username, full_name, phone } = req.body;
 
             if (!email || !otp_code || !username || !password) {
@@ -213,6 +214,18 @@ export const teamMemberController = {
                 phone: phone || null,
                 created_by: req.user?.id as string
             });
+
+            userCredentialsService.sendUserCredentials({
+                userId: user.id,
+                name: full_name || username,
+                email: user.email as string,
+                password: password,
+                phoneNumber: phone,
+                loginUrl: `https://crm-klar.com`,
+                appName: process.env.APP_NAME || 'Your Platform',
+                createdBy: req.user?.id,
+                role: user.user_metadata?.role_name
+            }).catch(error => console.error('Failed to send credentials:', error));
 
             await createAuditLog({
                 user_id: req.user?.id,
