@@ -197,7 +197,6 @@ class UserCredentialsService {
             console.log('⚠️ No email address provided, skipping email delivery');
         }
 
-        // Send via WhatsApp (if phone number provided)
         if (payload.phoneNumber) {
             console.log(`📱 Attempting WhatsApp delivery to ${payload.phoneNumber}...`);
             const whatsappResult = await this.sendCredentialsViaWhatsApp(payload);
