@@ -13,7 +13,8 @@ import serviceRoutes from './service.routes';
 import itenaryRoutes from './itinerary.routes';
 import itenaryUserPreference from "./itinerary-preferences.routes";
 import inquirySourcesRoutes from './inquirySources.routes';
-import teamLead from "./teamLead.routes"
+import teamLead from "./teamLead.routes";
+import travelPlanRoutes from "./travelplan.routes"
 import whatsappRoutes from './whatsapp.routes';
 
 const router = Router();
@@ -35,7 +36,8 @@ router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
 router.use('/itenary', itenaryRoutes);
 router.use('/itinerary-preferences', itenaryUserPreference);
-router.use("/team-lead", teamLead)
+router.use("/team-lead", teamLead);
+router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
 
 export default router;
