@@ -579,7 +579,6 @@ export const itineraryPreferencesRepository = {
                     throw new Error(`Failed to update itinerary: ${itineraryUpdateError.message}`);
                 }
             }
-
             
             return this.getByLeadId(leadId);
         } catch (error) {
