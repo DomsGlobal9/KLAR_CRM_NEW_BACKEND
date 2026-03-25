@@ -8,12 +8,13 @@ import { stageRepository } from '../repositories';
 import { leadRepository } from '../repositories/lead.repository';
 import { ValidationUtils } from '../utils';
 import { LeadDataMapper } from '../utils/lead-data-mapper';
+import { travelPlanService } from './travelPlanService';
 
 export const leadService = {
   /**
    * Create a new lead with optional requirements
    */
-  async createLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
+  async createLead(payload: CreateLeadPayload) {
 
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
@@ -30,9 +31,14 @@ export const leadService = {
 
     }
 
+    // const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
 
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
+    // return {
+    //   lead,
+    //   travelPlan: travelPlan || null
+    // };
     return lead;
   },
 

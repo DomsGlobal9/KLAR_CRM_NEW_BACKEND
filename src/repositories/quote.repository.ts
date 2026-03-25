@@ -70,7 +70,7 @@ export const quoteRepository = {
             // Required fields (matching database columns)
             quote_number: quoteNumber,
             quote_title: payload.quote_title || 'Untitled Quote',
-            status: payload.status || 'draft',
+            status: 'Quote_Generated',
             currency: payload.currency || 'INR',
 
             // Client fields (direct columns, not nested)
@@ -364,16 +364,18 @@ export const quoteRepository = {
     /**
      * Update quote status
      */
-    async updateQuoteStatus(id: string, status: IQuote['status']): Promise<IQuote> {
+    async updateQuoteStatus(id: string, status: string): Promise<IQuote> {
         const { data, error } = await supabaseAdmin
             .from('quotes')
             .update({
                 status,
-                updated_at: new Date().toISOString()
+                // updated_at: new Date().toISOString()
             })
             .eq('id', id)
             .select()
             .single();
+
+        console.log("Updated quote we got", data.status);
 
         if (error) {
             throw new Error(`Failed to update quote status: ${error.message}`);
@@ -512,5 +514,5 @@ export const quoteRepository = {
         }
 
         return !!data;
-    }
+    },
 };

@@ -11,7 +11,7 @@ export interface IQuote {
     tax_amount: number;
     total: number;
     currency: string;
-    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'Quote_Sent' | 'Quote_Generated';
     created_at: Date | string;
     valid_until: Date | string;
     template?: string | null;

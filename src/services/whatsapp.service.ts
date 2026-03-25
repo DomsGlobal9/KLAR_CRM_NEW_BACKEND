@@ -1,9 +1,13 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
-import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
+
+type ConnectionStatus = 'initializing' | 'waiting_qr' | 'ready' | 'disconnected';
 
 class WhatsAppService {
     private client: Client;
     private isReady: boolean = false;
+    private currentQrString: string | null = null;
+    private connectionStatus: ConnectionStatus = 'initializing';
 
     constructor() {
         this.client = new Client({
@@ -12,47 +16,106 @@ class WhatsAppService {
             }),
             puppeteer: {
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu'
+                ]
+            },
+            webVersionCache: {
+                type: 'remote',
+                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
             }
         });
 
         this.client.on('qr', (qr) => {
-            console.log('\n🔴 SCAN QR CODE WITH WHATSAPP:');
-            qrcode.generate(qr, { small: true });
+            console.log('\n🔴 New QR code generated — visit /api/v1/whatsapp/qr-page to scan');
+            this.currentQrString = qr;
+            this.connectionStatus = 'waiting_qr';
+        });
+
+        this.client.on('loading_screen', (percent, message) => {
+            console.log(`⏳ Loading WhatsApp: ${percent}% — ${message}`);
+        });
+
+        this.client.on('authenticated', () => {
+            console.log('🔐 WhatsApp authenticated');
+        });
+
+        this.client.on('auth_failure', (msg) => {
+            console.error('🔐 Auth failed:', msg);
+            this.isReady = false;
+            this.connectionStatus = 'disconnected';
+            this.restartClient();
         });
 
         this.client.on('ready', () => {
             console.log('✅ WhatsApp client ready');
             this.isReady = true;
+            this.currentQrString = null;
+            this.connectionStatus = 'ready';
         });
 
         this.client.on('disconnected', (reason) => {
             console.log('❌ WhatsApp disconnected:', reason);
             this.isReady = false;
+            this.currentQrString = null;
+            this.connectionStatus = 'disconnected';
+            this.restartClient();
         });
 
-        this.client.initialize();
+        this.initializeClient();
+    }
+
+    private initializeClient() {
+        try {
+            this.connectionStatus = 'initializing';
+            this.client.initialize();
+        } catch (err) {
+            console.error('Failed to initialize WhatsApp client:', err);
+            this.connectionStatus = 'disconnected';
+        }
+    }
+
+    private restartClient() {
+        console.log('🔄 Restarting WhatsApp client in 5s...');
+        setTimeout(() => {
+            this.client.destroy()
+                .then(() => this.initializeClient())
+                .catch((err) => {
+                    console.error('Error destroying client:', err);
+                    this.initializeClient();
+                });
+        }, 5000);
+    }
+
+    public async getQrDataUrl(): Promise<string | null> {
+        if (!this.currentQrString) return null;
+        try {
+            return await QRCode.toDataURL(this.currentQrString, { width: 300, margin: 2 });
+        } catch {
+            return null;
+        }
+    }
+
+    public getQrString(): string | null {
+        return this.currentQrString;
+    }
+
+    public getConnectionStatus(): ConnectionStatus {
+        return this.connectionStatus;
     }
 
     private isValidPhoneNumber(phoneNumber: string): boolean {
         if (!phoneNumber) return false;
-
-        // Remove all non-numeric characters
         const cleaned = phoneNumber.replace(/\D/g, '');
-
-        // Must have at least 10 digits (with or without country code)
         if (cleaned.length < 10) return false;
-
-        // If it has country code (starts with + or has 12+ digits), accept it
-        if (phoneNumber.startsWith('+') || cleaned.length >= 12) {
-            return true;
-        }
-
-        // If it's exactly 10 digits without +, it's valid (we'll add 91 later)
-        if (cleaned.length === 10) {
-            return true;
-        }
-
+        if (phoneNumber.startsWith('+') || cleaned.length >= 12) return true;
+        if (cleaned.length === 10) return true;
         return false;
     }
 
@@ -61,15 +124,10 @@ class WhatsAppService {
             console.log(`⚠️ Invalid phone number format: ${phoneNumber}`);
             return null;
         }
-
-        // Remove all non-numeric characters
         let cleaned = phoneNumber.replace(/\D/g, '');
-
-        // If it's 10 digits, add India country code
         if (cleaned.length === 10) {
             cleaned = '91' + cleaned;
         }
-
         return cleaned;
     }
 
@@ -89,11 +147,9 @@ class WhatsAppService {
         try {
             const chatId = `${formattedNumber}@c.us`;
             console.log(`📤 Sending to ${formattedNumber}...`);
-
             await this.client.sendMessage(chatId, message);
             console.log(`✅ Sent to ${formattedNumber}`);
             return true;
-
         } catch (error: any) {
             console.log(`❌ Failed to send to ${phoneNumber}: ${error.message || 'Unknown error'}`);
             return false;

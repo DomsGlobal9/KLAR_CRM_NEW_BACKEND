@@ -782,14 +782,8 @@ export const leadRepository = {
             attachments?: any[];
         }>
     ): Promise<boolean> {
-        console.log("🗄️ Creating service relationships:", {
-            leadId,
-            relationshipsCount: relationships.length,
-            relationships
-        });
 
         if (!relationships || relationships.length === 0) {
-            console.log("⚠️ No relationships to create");
             return true;
         }
 
@@ -805,8 +799,6 @@ export const leadRepository = {
             updated_at: new Date().toISOString()
         }));
 
-        console.log("📤 Inserting relationships:", relationshipsToInsert);
-
         const { error } = await supabaseAdmin
             .from('lead_service_relationships')
             .insert(relationshipsToInsert);
@@ -820,7 +812,6 @@ export const leadRepository = {
             throw new Error(`Failed to create service relationships: ${error.message}`);
         }
 
-        console.log("✅ Service relationships created successfully");
         return true;
     },
 
@@ -828,7 +819,6 @@ export const leadRepository = {
      * Get service relationships for a lead
      */
     async getLeadServiceRelationships(leadId: string): Promise<any[]> {
-        console.log("🔍 Fetching service relationships for lead:", leadId);
 
         const { data, error } = await supabaseAdmin
             .from('lead_service_relationships')
@@ -861,8 +851,6 @@ export const leadRepository = {
             return [];
         }
 
-        console.log(`✅ Found ${data?.length || 0} service relationships`);
-
         if (data && data.length > 0) {
             console.log("📋 Sample relationship:", {
                 has_service: !!data[0].service,
@@ -891,8 +879,6 @@ export const leadRepository = {
             attachments?: any[];
         }>
     ): Promise<boolean> {
-        console.log(`🔄 Updating service relationships for lead: ${leadId}`);
-        console.log(`📊 Received ${relationships.length} relationships`);
 
         if (!relationships || relationships.length === 0) {
             console.log("⚠️ No relationships to update, skipping...");
@@ -900,8 +886,7 @@ export const leadRepository = {
         }
 
         try {
-            // 1. Remove ALL existing relationships for this lead
-            console.log(`🗑️ Removing existing relationships for lead: ${leadId}`);
+            
             const { error: deleteError } = await supabaseAdmin
                 .from('lead_service_relationships')
                 .delete()
@@ -911,18 +896,14 @@ export const leadRepository = {
                 console.error("❌ Failed to delete existing relationships:", deleteError);
                 throw new Error(`Failed to delete existing relationships: ${deleteError.message}`);
             }
-            console.log("✅ Existing relationships removed");
-
-            // 2. Remove duplicates from the new relationships array
+            
             const uniqueRelationships = this.removeDuplicateRelationships(relationships);
-            console.log(`📊 After deduplication: ${uniqueRelationships.length} unique relationships`);
 
             if (uniqueRelationships.length === 0) {
                 console.log("⚠️ No unique relationships to insert");
                 return true;
             }
 
-            // 3. Prepare data for insertion
             const relationshipsToInsert = uniqueRelationships.map(rel => ({
                 lead_id: leadId,
                 service_id: rel.service_id,
@@ -936,9 +917,6 @@ export const leadRepository = {
                 updated_at: new Date().toISOString()
             }));
 
-            console.log(`💾 Inserting ${relationshipsToInsert.length} new relationships`);
-
-            // 4. Insert all unique relationships
             const { error: insertError } = await supabaseAdmin
                 .from('lead_service_relationships')
                 .insert(relationshipsToInsert);
@@ -946,13 +924,10 @@ export const leadRepository = {
             if (insertError) {
                 console.error("❌ Failed to insert relationships:", insertError);
 
-                // Check specifically for duplicate key error
+                
                 if (insertError.message?.includes('duplicate key') ||
                     insertError.code === '23505') {
-                    console.error("⚠️ Duplicate key error even after deduplication!");
 
-                    // Fallback: Insert one by one to skip duplicates
-                    console.log("🔄 Attempting individual inserts...");
 
                     for (const rel of relationshipsToInsert) {
                         const { error: singleInsertError } = await supabaseAdmin
@@ -966,14 +941,11 @@ export const leadRepository = {
                             console.error(`❌ Failed to insert relationship:`, singleInsertError);
                         }
                     }
-                    console.log("✅ Individual inserts completed");
                     return true;
                 }
 
                 throw new Error(`Failed to create service relationships: ${insertError.message}`);
             }
-
-            console.log("✅ Service relationships updated successfully");
             return true;
 
         } catch (error) {
@@ -1027,7 +999,6 @@ export const leadRepository = {
      * Create lead with full details including service relationships
      */
     async createLeadWithFullDetails(payload: any): Promise<LeadWithRequirements> {
-        console.log("🗄️ Creating lead with full details:", payload);
 
         // 1. Create lead
         const leadData = LeadDataMapper.mapFrontendToDatabase(payload);

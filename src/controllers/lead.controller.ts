@@ -45,18 +45,10 @@ export const leadController = {
 
             const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
 
+            // const { lead, travelPlan } = await leadService.createLead(mappedPayload);
             const lead = await leadService.createLead(mappedPayload);
 
             const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);
-
-            await createLeadAuditLog({
-                action: 'LEAD_CREATED',
-                entity_type: 'lead',
-                entity_id: lead.id,
-                details: `Lead created: ${lead.name} (${lead.email})`,
-                ip_address: req.ip,
-                user_agent: req.headers['user-agent'],
-            });
 
             res.status(201).json({
                 success: true,

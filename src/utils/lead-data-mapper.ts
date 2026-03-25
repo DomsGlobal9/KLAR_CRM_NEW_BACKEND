@@ -3,7 +3,6 @@ export class LeadDataMapper {
      * Map frontend payload to database format
      */
     static mapFrontendToDatabase(payload: any): any {
-        console.log("🔄 Mapping frontend to database:", payload);
 
         const mappedData = {
 
@@ -65,7 +64,7 @@ export class LeadDataMapper {
             _service_relationships: payload.service_selections
         };
 
-        console.log("✅ Mapped data:", mappedData);
+        
         return mappedData;
     }
 
@@ -142,7 +141,6 @@ export class LeadDataMapper {
             }
         });
 
-        console.log(`📊 Total unique relationships prepared: ${relationships.length}`);
         return relationships;
     }
 
@@ -286,7 +284,7 @@ export class LeadDataMapper {
     /**
      * Map database data to frontend format
      */
-    static mapDatabaseToFrontend(lead: any): any {
+    static mapDatabaseToFrontend(lead: any, travelPlan?: any): any {
 
         const frontendLead = {
             id: lead.id,
@@ -329,7 +327,9 @@ export class LeadDataMapper {
             team_id: lead.team_id || (lead.assigned_user?.team_id),
 
             // Additional fields
-            ...(lead.metadata || {})
+            ...(lead.metadata || {}),
+
+            travelPlan: travelPlan || null
         };
 
         // Map requirements fields to top level for convenience

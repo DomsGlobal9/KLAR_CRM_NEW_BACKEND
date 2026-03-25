@@ -12,6 +12,7 @@ import { supabaseAdmin } from '../config/supabase.config';
 import { quotePdfService } from '../services/quote-pdf.service';
 import { s3UploadService } from '../services/s3-upload.service';
 import { DeliveryOptions, formatDeliveryResponse, processPDFDelivery } from '../helpers/pdfDelivery.helper';
+import { quoteRepository } from '../repositories/quote.repository';
 
 export const quoteController = {
     /**
@@ -21,9 +22,6 @@ export const quoteController = {
         try {
 
             const payload = req.body;
-
-            console.log('Raw payload received:', JSON.stringify(payload, null, 2));
-
 
             const finalPayload = payload.quoteData || payload;
 
@@ -384,25 +382,20 @@ export const quoteController = {
             const { quoteId } = req.params;
             const { sendVia } = req.body;
 
-            // 1. Fetch Quote Data
             const quoteResult = await quoteService.getQuoteById(quoteId as string);
             if (!quoteResult.success || !quoteResult.data) {
                 return res.status(404).json({ success: false, message: "Quote not found" });
             }
             const quote = quoteResult.data;
 
-            // 2. Generate PDF Buffer
             const html = await quotePdfService.generateHTML(quote);
             const buffer = await quotePdfService.generateBuffer(html);
 
-            // 3. Prepare unique filename
             const clientName = quote.client_name?.replace(/\s+/g, '_') || 'client';
             const fileName = `quotation_${quote.quote_number}_${clientName}.pdf`;
 
-            // 4. Upload to S3 using your existing service
             const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
 
-            // 5. Prepare delivery options
             const deliveryOptions: DeliveryOptions = {
                 leadId: quote.lead_id,
                 clientName: quote.client_name || 'Client',
@@ -412,24 +405,41 @@ export const quoteController = {
                 pdfFileName: fileName
             };
 
-            // 6. Process delivery based on sendVia options
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
 
-            // 7. Return the JSON response with delivery info
+            let quoteStatusUpdated = false;
+            let statusUpdateResult = null;
+
+            if ('success' in deliveryResult && deliveryResult.success) {
+                try {
+                    statusUpdateResult = await quoteService.updateQuoteStatus(quoteId as string, 'Quote_Sent');
+
+                    if (statusUpdateResult.success) {
+                        quoteStatusUpdated = true;
+                    }
+                } catch (statusError) { }
+            }
+
             return res.status(200).json({
                 success: true,
-                message: "Quotation uploaded to S3 successfully",
+                message: ('success' in deliveryResult && deliveryResult.success)
+                    ? "Quotation uploaded and shared successfully"
+                    : "Quotation uploaded to S3 but delivery failed",
                 data: {
                     quote_number: quote.quote_number,
                     public_url: publicUrl,
                     lead_id: quote.lead_id,
+                    quote_status: {
+                        before: quote.status,
+                        after: quoteStatusUpdated ? 'Quote_Shared' : quote.status,
+                        updated: quoteStatusUpdated
+                    },
                     delivery: formatDeliveryResponse(deliveryResult, quote.client_phone, quote.client_email),
                     note: "This URL is permanent and can be shared with the client"
                 }
             });
 
         } catch (error: any) {
-            console.error("Quotation S3 Workflow Error:", error);
             res.status(500).json({
                 success: false,
                 message: "Failed to process and share quotation PDF",
@@ -452,33 +462,28 @@ export const quoteController = {
             const { quoteId } = req.params;
             const { sendVia } = req.body;
 
-            // 1. Fetch data from Quote Repository
             const quoteResult = await quoteService.getQuoteById(quoteId as string);
             if (!quoteResult.success || !quoteResult.data) {
                 throw new Error("Quote data missing");
             }
+
             const quote = quoteResult.data;
 
-            // 2. Fetch data from Itinerary Preference Repository using lead_id
-            const leadId = quote.lead_id;
-            const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+            const itinResult = await itineraryPreferencesService.getPreferences(quote.lead_id);
             if (!itinResult.success || !itinResult.data) {
                 throw new Error("Itinerary details missing");
             }
+
             const itinerary = itinResult.data;
 
-            // 3. Generate HTML & PDF Buffer
             const html = await travelDocumentService.generateTravelProposalHTML(itinerary, quote);
             const pdfBuffer = await travelDocumentService.generatePDFBuffer(html);
 
-            // 4. Prepare unique filename
             const clientName = quote.client_name?.replace(/\s+/g, '_') || 'client';
             const fileName = `proposal_${quote.quote_number}_${clientName}.pdf`;
 
-            // 5. Upload to S3 using your existing s3-upload.service.ts
             const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
 
-            // 6. Prepare delivery options
             const deliveryOptions: DeliveryOptions = {
                 leadId: quote.lead_id,
                 clientName: quote.client_name || 'Client',
@@ -488,10 +493,28 @@ export const quoteController = {
                 pdfFileName: fileName
             };
 
-            // 7. Process delivery based on sendVia options
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
 
-            // 8. Return the JSON response with delivery info
+            const formatted = formatDeliveryResponse(
+                deliveryResult,
+                quote.client_phone,
+                quote.client_email
+            );
+
+            const isDelivered =
+                formatted.whatsapp.sent === true ||
+                formatted.email.sent === true;
+
+
+
+            if (isDelivered) {
+                console.log("Quote got delivered, by email or whatsapp");
+                await quoteRepository.updateQuoteStatus(
+                    quoteId as string,
+                    'Quote_Sent'
+                );
+            }
+
             return res.status(200).json({
                 success: true,
                 message: "Proposal PDF uploaded to S3 successfully",
@@ -499,8 +522,7 @@ export const quoteController = {
                     quote_number: quote.quote_number,
                     public_url: publicUrl,
                     lead_id: quote.lead_id,
-                    delivery: formatDeliveryResponse(deliveryResult, quote.client_phone, quote.client_email),
-                    note: "This URL is permanent and can be shared with the client"
+                    delivery: formatted
                 }
             });
 
@@ -509,15 +531,10 @@ export const quoteController = {
             res.status(500).json({
                 success: false,
                 message: "Failed to process and share proposal PDF",
-                error: error.message,
-                delivery: {
-                    success: false,
-                    message: "Failed to process proposal",
-                    error: error.message
-                }
+                error: error.message
             });
         }
-    }
+    },
 
 };
 

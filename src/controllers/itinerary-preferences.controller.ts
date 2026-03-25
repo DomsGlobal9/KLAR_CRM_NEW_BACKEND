@@ -18,6 +18,7 @@ import { leadService } from '../services/lead.service';
 import { pdfDeliveryService } from '../services/pdfDelivery.service';
 import { DeliveryOptions, processPDFDelivery } from '../helpers/pdfDelivery.helper';
 import { sendErrorResponse, sendUploadResponse } from '../helpers/response.helper';
+import { itineraryPreferencesRepository } from '../repositories/itinerary-preferences.repository';
 
 export const itineraryPreferencesController = {
 
@@ -90,7 +91,10 @@ export const itineraryPreferencesController = {
      */
     async updatePreferences(req: Request, res: Response) {
         try {
+            console.log("The query we get", req.query.itineraryId);
+
             const { leadId } = req.params;
+            const itineraryId = req.params.itineraryId;
             const updateData: IUpdatePreferenceData = req.body;
 
             if (!leadId) {
@@ -107,7 +111,11 @@ export const itineraryPreferencesController = {
                 });
             }
 
-            const result = await itineraryPreferencesService.updatePreferences(leadId as string, updateData);
+            const result = await itineraryPreferencesService.updatePreferences(
+                leadId as string, 
+                updateData,
+                itineraryId as string, 
+            );
 
             if (!result.success) {
                 return res.status(400).json(result);
@@ -318,48 +326,73 @@ export const itineraryPreferencesController = {
             const userRole = userDetails?.role;
             const userId = userDetails?.id;
 
-            if (leadId) {
+            const withTimeout = async (promise: Promise<any>, label: string) => {
+                return Promise.race([
+                    promise,
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error(`${label} TIMEOUT ❌`)), 5000)
+                    )
+                ]);
+            };
 
+            const logResponse = (label: string, data: any) => {
+                console.log(`🔥 ${label}:`, JSON.stringify(data, null, 2));
+            };
+
+            if (leadId) {
                 if (userRole === 'rm') {
-                    const hasAccess = await itineraryPreferencesService.checkLeadAccess(leadId, userId as string);
+                    const hasAccess = await withTimeout(
+                        itineraryPreferencesService.checkLeadAccess(leadId, userId as string),
+                        "checkLeadAccess"
+                    );
+
                     if (!hasAccess) {
-                        return res.status(403).json({
+                        const response = {
                             success: false,
                             message: 'You do not have permission to access this lead'
-                        });
+                        };
+
+                        logResponse("403 Response", response);
+                        return res.status(403).json(response);
                     }
                 }
 
-                const singleResult = await itineraryPreferencesService.getPreferences(leadId);
+                const singleResult = await withTimeout(
+                    itineraryPreferencesService.getPreferences(leadId),
+                    "getPreferences"
+                );
 
                 if (!singleResult.success || !singleResult.data) {
-                    return res.status(404).json({
+                    const response = {
                         success: false,
                         message: `Lead with ID ${leadId} not found`
-                    });
+                    };
+
+                    logResponse("404 Response", response);
+                    return res.status(404).json(response);
                 }
 
-                return res.status(200).json({
+                const response = {
                     success: true,
                     data: {
                         leads: [singleResult.data],
                         total_count: 1
                     }
-                });
-            }
+                };
 
+                logResponse("Single Lead Response", response);
+                return res.status(200).json(response);
+            }
 
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || (minimal ? 100 : 50);
             const sortOrder = (req.query.sort_order as 'asc' | 'desc') || 'desc';
-
 
             const roleFilter = {
                 role: userRole,
                 userId: userId,
                 assignedToField: 'assigned_to'
             };
-
 
             if (detailed) {
                 const paginationParams: IPaginationParams = {
@@ -369,10 +402,14 @@ export const itineraryPreferencesController = {
                     sort_order: sortOrder
                 };
 
-                const result = await itineraryPreferencesService.getAllLeads(paginationParams, roleFilter);
+                const result = await withTimeout(
+                    itineraryPreferencesService.getAllLeads(paginationParams, roleFilter),
+                    "getAllLeads"
+                );
+
+                logResponse("Detailed Response", result);
                 return res.status(200).json(result);
             }
-
 
             const paginationParams: IPaginationParams = {
                 page: Math.max(1, page),
@@ -382,19 +419,30 @@ export const itineraryPreferencesController = {
             };
 
             if (minimal) {
-                const result = await itineraryPreferencesService.getAllLeadsMinimal(paginationParams, roleFilter);
+                const result = await withTimeout(
+                    itineraryPreferencesService.getAllLeadsMinimal(paginationParams, roleFilter),
+                    "getAllLeadsMinimal"
+                );
+
+                logResponse("Minimal Response", result);
                 return res.status(200).json(result);
             } else {
-                const result = await itineraryPreferencesService.getAllLeadsBasic(paginationParams, roleFilter);
+                const result = await withTimeout(
+                    itineraryPreferencesService.getAllLeadsBasic(paginationParams, roleFilter),
+                    "getAllLeadsBasic"
+                );
+
+                logResponse("Basic Response", result);
                 return res.status(200).json(result);
             }
 
-        } catch (error) {
-            console.error('Error in getAllLeads controller:', error);
-            return res.status(500).json({
+        } catch (error: any) {
+            const response = {
                 success: false,
-                message: 'Internal server error'
-            });
+                message: error.message || 'Internal server error'
+            };
+
+            return res.status(500).json(response);
         }
     },
 
@@ -465,6 +513,14 @@ export const itineraryPreferencesController = {
                 return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
             }
 
+            const prefSummary = itinResult.data.user_preferences_summary;
+            if (!prefSummary?.id) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User preference summary not found"
+                });
+            }
+
             const html = await itineraryPdfService.generateHTML(itinResult.data);
             const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -487,6 +543,18 @@ export const itineraryPreferencesController = {
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
 
+            const isDelivered =
+                deliveryResult?.whatsapp?.sent === true ||
+                deliveryResult?.email?.sent === true;
+
+            if (isDelivered) {
+                await itineraryPreferencesRepository.updateItineraryStatus(
+                    leadIdString,
+                    prefSummary.id,
+                    'Itinerary_send'
+                );
+            }
+
             return sendUploadResponse(res, {
                 success: true,
                 publicUrl,
@@ -500,7 +568,7 @@ export const itineraryPreferencesController = {
             console.error("❌ S3 Workflow Error:", error);
             return sendErrorResponse(res, error);
         }
-    }
+    },
 };
 
 

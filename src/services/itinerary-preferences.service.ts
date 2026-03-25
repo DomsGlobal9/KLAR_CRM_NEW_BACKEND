@@ -87,6 +87,12 @@ export const itineraryPreferencesService = {
 
             await leadRepository.updateLeadStageOnly(leadId, stageName);
 
+            await itineraryPreferencesRepository.updateItineraryStatus(
+                leadId,
+                data.user_preferences_summary.id,
+                'Itinerary_Created'
+            );
+
             return {
                 success: true,
                 data
@@ -103,7 +109,11 @@ export const itineraryPreferencesService = {
     /**
      * Update preferences
      */
-    async updatePreferences(leadId: string, updateData: IUpdatePreferenceData): Promise<{
+    async updatePreferences(
+        leadId: string, 
+        updateData: IUpdatePreferenceData,
+        itineraryId?: string,
+    ): Promise<{
         success: boolean;
         data?: IItineraryPreferencesResponse;
         message?: string;
@@ -116,7 +126,11 @@ export const itineraryPreferencesService = {
                 };
             }
 
-            const data = await itineraryPreferencesRepository.updatePreferences(leadId, updateData);
+            const data = await itineraryPreferencesRepository.updatePreferences(
+                leadId,
+                updateData,
+                itineraryId, 
+            );
             return {
                 success: true,
                 data
@@ -461,7 +475,10 @@ export const itineraryPreferencesService = {
     /**
      * Get all leads with minimal details
      */
-    async getAllLeadsMinimal(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<{
+    async getAllLeadsMinimal(
+        params?: IPaginationParams,
+        roleFilter?: IRoleFilter
+    ): Promise<{
         success: boolean;
         data?: {
             leads: Array<{
@@ -517,8 +534,8 @@ export const itineraryPreferencesService = {
                     }
                 }
             };
+
         } catch (error) {
-            console.error('Error in getAllLeadsMinimal service:', error);
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get leads'
