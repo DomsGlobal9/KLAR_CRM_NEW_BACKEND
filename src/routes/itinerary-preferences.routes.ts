@@ -32,12 +32,12 @@ router.delete('/:itinerary_id', itineraryPreferencesController.deletePreferences
 /* =======================
    Get Itinerary Pdf
    ======================= */
-router.get('/:leadId/download-itinerary',  itineraryPreferencesController.downloadItineraryOnlyPDF)
+router.get('/:itinerary_id/download-itinerary',  itineraryPreferencesController.downloadItineraryOnlyPDF)
 
 
 /**
  * Uploads to S3 and returns the URL for sharing
  */
-router.post('/:leadId/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
+router.post('/:itinerary_id/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
 
 export default router;

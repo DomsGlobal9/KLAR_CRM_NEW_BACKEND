@@ -482,8 +482,8 @@ export const itineraryPreferencesController = {
      * Display & Download Itinerary pdf
      */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
-        const { leadId } = req.params;
-        const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
+        const { itinerary_id } = req.params;
+        const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
         const html = await itineraryPdfService.generateHTML(itinResult.data);
         const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -495,17 +495,17 @@ export const itineraryPreferencesController = {
 
     async uploadItineraryToS3(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
             const { sendVia } = req.body;
 
-            const leadIdString = Array.isArray(leadId) ? leadId[0] : leadId;
+            const leadId = await itineraryPreferencesService.getleadByitineraryId(itinerary_id as string);
 
-            const leadData = await leadService.getLeadById(leadIdString);
+            const leadData = await leadService.getLeadById(leadId);
             if (!leadData) {
                 return res.status(404).json({ success: false, message: "Lead Data not found" });
             }
 
-            const itinResult = await itineraryPreferencesService.getPreferences(leadIdString);
+            const itinResult = await itineraryPreferencesService.getPreferences(leadId);
             if (!itinResult.data) {
                 return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
             }
@@ -522,7 +522,7 @@ export const itineraryPreferencesController = {
             const buffer = await itineraryPdfService.generateBuffer(html);
 
             const clientName = itinResult.data.lead_details?.name?.replace(/\s+/g, '_') || 'client';
-            const fileName = `itinerary_${leadIdString}_${clientName}.pdf`;
+            const fileName = `itinerary_${leadId}_${clientName}.pdf`;
 
             const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
 
@@ -530,7 +530,7 @@ export const itineraryPreferencesController = {
             const clientEmail = leadData.email || itinResult.data.lead_details?.email;
 
             const deliveryOptions: DeliveryOptions = {
-                leadId: leadIdString,
+                leadId: leadId,
                 clientName: itinResult.data.lead_details?.name || leadData.name || 'Client',
                 clientEmail: clientEmail,
                 clientPhone: clientPhone,
@@ -546,7 +546,7 @@ export const itineraryPreferencesController = {
 
             if (isDelivered) {
                 await itineraryPreferencesRepository.updateItineraryStatus(
-                    leadIdString,
+                    leadId,
                     prefSummary.id,
                     'Itinerary_send'
                 );
@@ -555,7 +555,7 @@ export const itineraryPreferencesController = {
             return sendUploadResponse(res, {
                 success: true,
                 publicUrl,
-                leadId: leadIdString,
+                leadId: leadId,
                 clientPhone,
                 clientEmail,
                 deliveryResult
