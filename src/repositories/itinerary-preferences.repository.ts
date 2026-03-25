@@ -13,6 +13,25 @@ import {
 
 export const itineraryPreferencesRepository = {
 
+    async getLeadIdByItineraryId(itinerary_id: string) {
+        if (itinerary_id) {
+            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('lead_id')
+                .eq('id', itinerary_id)
+                .maybeSingle();
+            if (itineraryError || !itineraryData) {
+                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+            }
+
+            const leadId = itineraryData.lead_id;
+
+            if (leadId) {
+                return leadId
+            }
+        }
+    },
+
     /**
      * Get lead_id from user preferences summary by summary ID
      */
@@ -1298,7 +1317,7 @@ export const itineraryPreferencesRepository = {
      */
     async getRecentLeads(limit: number = 10): Promise<IItineraryPreferencesResponse[]> {
         try {
-            
+
             const { data, error } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select(`
@@ -1316,10 +1335,10 @@ export const itineraryPreferencesRepository = {
                 return [];
             }
 
-            
+
             const leadIds = data.map(item => item.lead_id);
 
-            
+
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,

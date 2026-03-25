@@ -558,5 +558,8 @@ export const itineraryPreferencesService = {
         }
     },
 
+    async getleadByitineraryId(itinerary_id: string){
+        return itineraryPreferencesRepository.getLeadIdByItineraryId(itinerary_id)
+    },
 
 };
