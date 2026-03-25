@@ -25,7 +25,7 @@ export const itineraryPreferencesService = {
         message?: string;
     }> {
         try {
-            const data = await itineraryPreferencesRepository.getByLeadId(itinerary_id);
+            const data = await itineraryPreferencesRepository.getByItineraryId(itinerary_id);
             return {
                 success: true,
                 data
