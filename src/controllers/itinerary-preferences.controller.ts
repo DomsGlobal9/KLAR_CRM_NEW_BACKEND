@@ -27,16 +27,16 @@ export const itineraryPreferencesController = {
      */
     async getPreferences(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
                     message: 'Lead ID is required'
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferences(leadId as string);
+            const result = await itineraryPreferencesService.getPreferences(itinerary_id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -91,16 +91,14 @@ export const itineraryPreferencesController = {
      */
     async updatePreferences(req: Request, res: Response) {
         try {
-            console.log("The query we get", req.query.itineraryId);
 
-            const { leadId } = req.params;
-            const itineraryId = req.params.itineraryId;
+            const { itinerary_id } = req.params;
             const updateData: IUpdatePreferenceData = req.body;
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Lead ID is required'
+                    message: 'Itinerary ID is required'
                 });
             }
 
@@ -112,9 +110,8 @@ export const itineraryPreferencesController = {
             }
 
             const result = await itineraryPreferencesService.updatePreferences(
-                leadId as string, 
                 updateData,
-                itineraryId as string, 
+                itinerary_id as string, 
             );
 
             if (!result.success) {
@@ -139,16 +136,16 @@ export const itineraryPreferencesController = {
      */
     async deletePreferences(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
                     message: 'Lead ID is required'
                 });
             }
 
-            const result = await itineraryPreferencesService.deletePreferences(leadId as string);
+            const result = await itineraryPreferencesService.deletePreferences(itinerary_id as string);
 
             if (!result.success) {
                 return res.status(400).json(result);
@@ -193,35 +190,35 @@ export const itineraryPreferencesController = {
     /**
      * Save or update preferences (upsert)
      */
-    async saveOrUpdatePreferences(req: Request, res: Response) {
-        try {
-            const formData: IFrontendFormData = req.body;
+    // async saveOrUpdatePreferences(req: Request, res: Response) {
+    //     try {
+    //         const formData: IFrontendFormData = req.body;
 
-            if (!formData?.leadData?.id) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Lead ID is required'
-                });
-            }
+    //         if (!formData?.leadData?.id) {
+    //             return res.status(400).json({
+    //                 success: false,
+    //                 message: 'Lead ID is required'
+    //             });
+    //         }
 
-            const result = await itineraryPreferencesService.saveOrUpdatePreferences(formData);
+    //         const result = await itineraryPreferencesService.saveOrUpdatePreferences(formData);
 
-            if (!result.success) {
-                return res.status(400).json(result);
-            }
+    //         if (!result.success) {
+    //             return res.status(400).json(result);
+    //         }
 
-            return res.status(200).json({
-                ...result,
-                message: `Preferences ${result.action} successfully`
-            });
-        } catch (error) {
-            console.error('Error in saveOrUpdatePreferences controller:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error'
-            });
-        }
-    },
+    //         return res.status(200).json({
+    //             ...result,
+    //             message: `Preferences ${result.action} successfully`
+    //         });
+    //     } catch (error) {
+    //         console.error('Error in saveOrUpdatePreferences controller:', error);
+    //         return res.status(500).json({
+    //             success: false,
+    //             message: 'Internal server error'
+    //         });
+    //     }
+    // },
 
     /**
      * Get flight preference by ID

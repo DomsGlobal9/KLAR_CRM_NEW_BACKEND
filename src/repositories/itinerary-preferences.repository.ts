@@ -46,8 +46,20 @@ export const itineraryPreferencesRepository = {
     /**
      * Get all preferences for a lead
      */
-    async getByLeadId(clientID: string): Promise<IItineraryPreferencesResponse> {
+    async getByLeadId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
         try {
+            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('lead_id')
+                .eq('itinerary_id', itinerary_id)
+                .maybeSingle();
+
+            if (itineraryError || !itineraryData) {
+                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+            }
+
+            const clientID = itineraryData.lead_id;
+
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
@@ -124,21 +136,13 @@ export const itineraryPreferencesRepository = {
         const { leadId, flightPreferences, hotelPreferences, visaPreferences, userPreferences, leadDetails } = data;
 
         try {
-            // Check if preferences already exist
+
             const exists = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('id')
                 .eq('lead_id', leadId)
                 .maybeSingle();
 
-            // if (exists.data) {
-            //     throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
-            // }
-
-            // Clear existing data
-            // await this.deleteByLeadId(leadId);
-
-            // Save flight preferences
             let savedFlightPreferences: IFlightPreference[] = [];
             if (flightPreferences.length > 0) {
                 const flightPrefsToInsert = flightPreferences.map((pref, index) => ({
@@ -255,41 +259,44 @@ export const itineraryPreferencesRepository = {
      * Update specific preferences for a lead
      */
     async updatePreferences(
-        leadId: string,
         updateData: any,
-        itineraryId?: string,
+        itinerary_id: string,
     ): Promise<IItineraryPreferencesResponse> {
         try {
-            console.log("The update data we get", JSON.stringify(updateData, null, 2));
+            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('lead_id')
+                .eq('itinerary_id', itinerary_id)
+                .maybeSingle();
 
-            // First, check if an itinerary exists for this lead
+            if (itineraryError || !itineraryData) {
+                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+            }
+
+            const leadId = itineraryData.lead_id;
+
             const { data: existingItinerary, error: itineraryCheckError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('id')
-                .eq('lead_id', leadId)
+                .eq('id', itinerary_id)
                 .single();
 
             if (itineraryCheckError && itineraryCheckError.code !== 'PGRST116') {
-                // PGRST116 means no rows found - that's okay
                 throw new Error(`Failed to check existing itinerary: ${itineraryCheckError.message}`);
             }
 
-            // If we have an itineraryId parameter, use it to verify
-            if (itineraryId) {
-                // Verify that the itinerary exists and belongs to this lead
+            if (itinerary_id) {
                 const { data: itinerary, error: verifyError } = await supabaseAdmin
                     .from('user_itenary_preferences_summary')
                     .select('id')
-                    .eq('id', itineraryId)
-                    .eq('lead_id', leadId)
+                    .eq('id', itinerary_id)
                     .single();
 
                 if (verifyError || !itinerary) {
-                    throw new Error(`Itinerary ${itineraryId} not found for lead ${leadId}`);
+                    throw new Error(`Itinerary ${itinerary_id} not found`);
                 }
             }
 
-            // Update user preferences summary
             if (updateData.userPreferences) {
                 const userPrefsUpdate = {
                     flight_preferences_added: updateData.userPreferences.flightPreferencesAdded,
@@ -306,7 +313,6 @@ export const itineraryPreferencesRepository = {
                     updated_at: new Date().toISOString()
                 };
 
-                // Check if summary exists
                 const { data: existingSummary, error: summaryCheckError } = await supabaseAdmin
                     .from('user_itenary_preferences_summary')
                     .select('lead_id')
@@ -318,7 +324,6 @@ export const itineraryPreferencesRepository = {
                 }
 
                 if (existingSummary) {
-                    // Update existing
                     const { error } = await supabaseAdmin
                         .from('user_itenary_preferences_summary')
                         .update(userPrefsUpdate)
@@ -326,7 +331,6 @@ export const itineraryPreferencesRepository = {
 
                     if (error) throw new Error(`Failed to update user preferences: ${error.message}`);
                 } else {
-                    // Create new
                     const { error } = await supabaseAdmin
                         .from('user_itenary_preferences_summary')
                         .insert({
@@ -339,7 +343,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update flight preferences (delete and recreate)
             if (updateData.flightPreferences !== undefined) {
                 await supabaseAdmin
                     .from('flight_preferences')
@@ -350,7 +353,7 @@ export const itineraryPreferencesRepository = {
                     const flightPrefsToInsert = updateData.flightPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -364,7 +367,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update hotel preferences
             if (updateData.hotelPreferences !== undefined) {
                 await supabaseAdmin
                     .from('hotel_preferences')
@@ -375,7 +377,7 @@ export const itineraryPreferencesRepository = {
                     const hotelPrefsToInsert = updateData.hotelPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -389,7 +391,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update visa preferences
             if (updateData.visaPreferences !== undefined) {
                 await supabaseAdmin
                     .from('visa_preferences')
@@ -400,7 +401,7 @@ export const itineraryPreferencesRepository = {
                     const visaPrefsToInsert = updateData.visaPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -414,7 +415,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update transfer preferences
             if (updateData.transferPreferences !== undefined) {
                 await supabaseAdmin
                     .from('transfer_preferences')
@@ -425,7 +425,7 @@ export const itineraryPreferencesRepository = {
                     const transferPrefsToInsert = updateData.transferPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -439,7 +439,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update group booking preferences
             if (updateData.groupBookingPreferences !== undefined) {
                 await supabaseAdmin
                     .from('group_booking_preferences')
@@ -450,7 +449,7 @@ export const itineraryPreferencesRepository = {
                     const groupPrefsToInsert = updateData.groupBookingPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -464,7 +463,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update tour package preferences
             if (updateData.tourPackagePreferences !== undefined) {
                 await supabaseAdmin
                     .from('tour_package_preferences')
@@ -475,7 +473,7 @@ export const itineraryPreferencesRepository = {
                     const tourPrefsToInsert = updateData.tourPackagePreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -489,7 +487,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update aircraft charter preferences
             if (updateData.aircraftCharterPreferences !== undefined) {
                 await supabaseAdmin
                     .from('aircraft_charter_preferences')
@@ -500,7 +497,7 @@ export const itineraryPreferencesRepository = {
                     const aircraftPrefsToInsert = updateData.aircraftCharterPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -514,7 +511,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update event management preferences
             if (updateData.eventManagementPreferences !== undefined) {
                 await supabaseAdmin
                     .from('event_management_preferences')
@@ -525,7 +521,7 @@ export const itineraryPreferencesRepository = {
                     const eventPrefsToInsert = updateData.eventManagementPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -539,7 +535,6 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Update yacht charter preferences
             if (updateData.yachtCharterPreferences !== undefined) {
                 await supabaseAdmin
                     .from('yacht_charter_preferences')
@@ -550,7 +545,7 @@ export const itineraryPreferencesRepository = {
                     const yachtPrefsToInsert = updateData.yachtCharterPreferences.map((pref: any, index: number) => ({
                         ...pref,
                         lead_id: leadId,
-                        itinerary_id: itineraryId || null,
+                        itinerary_id: itinerary_id || null,
                         preference_order: index + 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -564,15 +559,14 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            // Also update the main itinerary table if needed
-            if (updateData.itineraryData && itineraryId) {
+            if (updateData.itineraryData && itinerary_id) {
                 const { error: itineraryUpdateError } = await supabaseAdmin
                     .from('user_itenary_preferences')
                     .update({
                         updated_at: new Date().toISOString(),
                         metadata: updateData.itineraryData.metadata || {}
                     })
-                    .eq('id', itineraryId)
+                    .eq('id', itinerary_id)
                     .eq('lead_id', leadId);
 
                 if (itineraryUpdateError) {
@@ -582,7 +576,6 @@ export const itineraryPreferencesRepository = {
 
             return this.getByLeadId(leadId);
         } catch (error) {
-            console.error('Error in updatePreferences:', error);
             throw new Error(`Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -590,8 +583,21 @@ export const itineraryPreferencesRepository = {
     /**
      * Delete all preferences for a lead
      */
-    async deleteByLeadId(leadId: string): Promise<void> {
+    async deleteByLeadId(itinerary_id: string): Promise<void> {
         try {
+
+            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('lead_id')
+                .eq('itinerary_id', itinerary_id)
+                .maybeSingle();
+
+            if (itineraryError || !itineraryData) {
+                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+            }
+
+            const leadId = itineraryData.lead_id;
+
             await Promise.all([
                 supabaseAdmin
                     .from('flight_preferences')
@@ -1463,7 +1469,7 @@ export const itineraryPreferencesRepository = {
     }, roleFilter?: IRoleFilter): Promise<{
         leads: Array<{
             lead_id: string;
-            itinerary_id: string; 
+            itinerary_id: string;
             lead_details: {
                 name: string;
                 email: string;
@@ -1524,7 +1530,7 @@ export const itineraryPreferencesRepository = {
             `, { count: 'exact' })
                 .order(sortBy, { ascending: sortOrder === 'asc' });
 
-            
+
             if (roleFilter?.role === 'rm' && roleFilter?.userId) {
                 query = query.eq('leads.assigned_to', roleFilter.userId);
             }
@@ -1614,7 +1620,7 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            
+
             const leads = summaries.map((summary: any) => {
                 const leadId = summary.lead_id;
                 const itineraryId = summary.id;
@@ -1639,7 +1645,7 @@ export const itineraryPreferencesRepository = {
 
                 return {
                     lead_id: leadId,
-                    itinerary_id: itineraryId, 
+                    itinerary_id: itineraryId,
                     lead_details: {
                         name: leadDetails.name,
                         email: leadDetails.email,

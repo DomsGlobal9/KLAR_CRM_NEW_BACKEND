@@ -45,7 +45,6 @@ export const leadController = {
 
             const mappedPayload = LeadDataMapper.mapFrontendToDatabase(payload);
 
-            // const { lead, travelPlan } = await leadService.createLead(mappedPayload);
             const lead = await leadService.createLead(mappedPayload);
 
             const frontendLead = LeadDataMapper.mapDatabaseToFrontend(lead);

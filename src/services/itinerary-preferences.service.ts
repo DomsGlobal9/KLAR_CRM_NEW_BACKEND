@@ -19,13 +19,13 @@ export const itineraryPreferencesService = {
     /**
      * Get all preferences for a lead
      */
-    async getPreferences(leadId: string): Promise<{
+    async getPreferences(itinerary_id: string): Promise<{
         success: boolean;
         data?: IItineraryPreferencesResponse;
         message?: string;
     }> {
         try {
-            const data = await itineraryPreferencesRepository.getByLeadId(leadId);
+            const data = await itineraryPreferencesRepository.getByLeadId(itinerary_id);
             return {
                 success: true,
                 data
@@ -110,26 +110,21 @@ export const itineraryPreferencesService = {
      * Update preferences
      */
     async updatePreferences(
-        leadId: string, 
         updateData: IUpdatePreferenceData,
-        itineraryId?: string,
+        itinerary_id: string,
     ): Promise<{
         success: boolean;
         data?: IItineraryPreferencesResponse;
         message?: string;
     }> {
         try {
-            if (!leadId) {
-                return {
-                    success: false,
-                    message: 'Lead ID is required'
-                };
+            if (!itinerary_id) {
+                throw new Error("Itinerary ID required in service");
             }
 
             const data = await itineraryPreferencesRepository.updatePreferences(
-                leadId,
                 updateData,
-                itineraryId, 
+                itinerary_id,
             );
             return {
                 success: true,
@@ -147,12 +142,12 @@ export const itineraryPreferencesService = {
     /**
      * Delete preferences
      */
-    async deletePreferences(leadId: string): Promise<{
+    async deletePreferences(itinerary_id: string): Promise<{
         success: boolean;
         message?: string;
     }> {
         try {
-            await itineraryPreferencesRepository.deleteByLeadId(leadId);
+            await itineraryPreferencesRepository.deleteByLeadId(itinerary_id);
             return {
                 success: true,
                 message: 'Preferences deleted successfully'
@@ -193,52 +188,53 @@ export const itineraryPreferencesService = {
     /**
      * Save or update preferences (upsert)
      */
-    async saveOrUpdatePreferences(formData: IFrontendFormData): Promise<{
-        success: boolean;
-        data?: IItineraryPreferencesResponse;
-        message?: string;
-        action: 'created' | 'updated';
-    }> {
-        try {
-            if (!formData.leadData?.id) {
-                return {
-                    success: false,
-                    message: 'Lead ID is required',
-                    action: 'created'
-                };
-            }
+    // async saveOrUpdatePreferences(formData: IFrontendFormData): Promise<{
+    //     success: boolean;
+    //     data?: IItineraryPreferencesResponse;
+    //     message?: string;
+    //     action: 'created' | 'updated';
+    // }> {
+    //     try {
+    //         if (!formData.leadData?.id) {
+    //             return {
+    //                 success: false,
+    //                 message: 'Lead ID is required',
+    //                 action: 'created'
+    //             };
+    //         }
 
-            const leadId = formData.leadData.id;
-            const { exists } = await this.checkPreferencesExist(leadId);
+    //         const leadId = formData.leadData.id;
+    //         const { exists } = await this.checkPreferencesExist(leadId);
 
-            const preferenceData = itineraryPreferencesRepository.transformFormData(formData);
+    //         const preferenceData = itineraryPreferencesRepository.transformFormData(formData);
 
-            let data: IItineraryPreferencesResponse;
-            if (exists) {
-                data = await itineraryPreferencesRepository.updatePreferences(leadId, {
-                    flightPreferences: preferenceData.flightPreferences,
-                    hotelPreferences: preferenceData.hotelPreferences,
-                    visaPreferences: preferenceData.visaPreferences,
-                    userPreferences: preferenceData.userPreferences
-                });
-            } else {
-                data = await itineraryPreferencesRepository.saveAllPreferences(preferenceData);
-            }
+    //         let data: IItineraryPreferencesResponse;
+    //         if (exists) {
+    //             data = await itineraryPreferencesRepository.updatePreferences(leadId,
+    //                 {
+    //                     flightPreferences: preferenceData.flightPreferences,
+    //                     hotelPreferences: preferenceData.hotelPreferences,
+    //                     visaPreferences: preferenceData.visaPreferences,
+    //                     userPreferences: preferenceData.userPreferences
+    //                 });
+    //         } else {
+    //             data = await itineraryPreferencesRepository.saveAllPreferences(preferenceData);
+    //         }
 
-            return {
-                success: true,
-                data,
-                action: exists ? 'updated' : 'created'
-            };
-        } catch (error) {
-            console.error('Error in saveOrUpdatePreferences:', error);
-            return {
-                success: false,
-                message: error instanceof Error ? error.message : 'Failed to save/update preferences',
-                action: 'created'
-            };
-        }
-    },
+    //         return {
+    //             success: true,
+    //             data,
+    //             action: exists ? 'updated' : 'created'
+    //         };
+    //     } catch (error) {
+    //         console.error('Error in saveOrUpdatePreferences:', error);
+    //         return {
+    //             success: false,
+    //             message: error instanceof Error ? error.message : 'Failed to save/update preferences',
+    //             action: 'created'
+    //         };
+    //     }
+    // },
 
     /**
      * Get flight preference by ID
