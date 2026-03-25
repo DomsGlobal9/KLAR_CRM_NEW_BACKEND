@@ -579,7 +579,7 @@ export const itineraryPreferencesRepository = {
                     throw new Error(`Failed to update itinerary: ${itineraryUpdateError.message}`);
                 }
             }
-            
+
             return this.getByLeadId(leadId);
         } catch (error) {
             console.error('Error in updatePreferences:', error);
@@ -1463,6 +1463,7 @@ export const itineraryPreferencesRepository = {
     }, roleFilter?: IRoleFilter): Promise<{
         leads: Array<{
             lead_id: string;
+            itinerary_id: string; 
             lead_details: {
                 name: string;
                 email: string;
@@ -1487,6 +1488,7 @@ export const itineraryPreferencesRepository = {
                 hotel_preferences_added: boolean;
                 visa_preferences_added: boolean;
                 last_updated: string;
+                status: string;
             };
             created_at: string;
         }>;
@@ -1501,11 +1503,16 @@ export const itineraryPreferencesRepository = {
             const sortBy = params?.sort_by || 'updated_at';
             const sortOrder = params?.sort_order || 'desc';
 
-            // Step 1: Build base query with role-based filtering
             let query = supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select(`
-                *,
+                id,
+                lead_id,
+                flight_preferences_added,
+                hotel_preferences_added,
+                visa_preferences_added,
+                last_updated,
+                status,
                 leads!inner(
                     id,
                     name,
@@ -1517,7 +1524,7 @@ export const itineraryPreferencesRepository = {
             `, { count: 'exact' })
                 .order(sortBy, { ascending: sortOrder === 'asc' });
 
-            // Apply RM role filter
+            
             if (roleFilter?.role === 'rm' && roleFilter?.userId) {
                 query = query.eq('leads.assigned_to', roleFilter.userId);
             }
@@ -1607,26 +1614,17 @@ export const itineraryPreferencesRepository = {
                 });
             }
 
-            const leads = summaries.map(summary => {
+            
+            const leads = summaries.map((summary: any) => {
                 const leadId = summary.lead_id;
-                const leadDetails = summary.leads as any;
+                const itineraryId = summary.id;
+                const leadDetails = summary.leads;
 
-                const services: Array<{
-                    service_id: string;
-                    service_name: string;
-                    service_code: string;
-                    categories: Array<{
-                        category_id: string;
-                        category_name: string;
-                        sub_services: Array<{
-                            sub_service_id: string;
-                            sub_service_name: string;
-                        }>;
-                    }>;
-                }> = [];
+                const services: any[] = [];
 
                 if (relationshipsByLead.has(leadId)) {
                     const serviceMap = relationshipsByLead.get(leadId)!;
+
                     services.push(...Array.from(serviceMap.values()).map(service => ({
                         service_id: service.service_id,
                         service_name: service.service_name,
@@ -1641,6 +1639,7 @@ export const itineraryPreferencesRepository = {
 
                 return {
                     lead_id: leadId,
+                    itinerary_id: itineraryId, 
                     lead_details: {
                         name: leadDetails.name,
                         email: leadDetails.email,
@@ -1666,6 +1665,7 @@ export const itineraryPreferencesRepository = {
                 limit,
                 total_pages: Math.ceil((count || 0) / limit)
             };
+
         } catch (error) {
             console.error('Error in getAllLeadsMinimal:', error);
             throw new Error(
