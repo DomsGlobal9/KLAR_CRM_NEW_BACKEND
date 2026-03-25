@@ -51,7 +51,7 @@ export const itineraryPreferencesRepository = {
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('lead_id')
-                .eq('itinerary_id', itinerary_id)
+                .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
