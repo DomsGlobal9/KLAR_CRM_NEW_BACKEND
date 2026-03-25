@@ -46,12 +46,12 @@ export const itineraryPreferencesRepository = {
     /**
      * Get all preferences for a lead
      */
-    async getByLeadId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
+    async getByItineraryId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
         try {
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('lead_id')
-                .eq('itinerary_id', itinerary_id)
+                .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
@@ -266,7 +266,7 @@ export const itineraryPreferencesRepository = {
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('lead_id')
-                .eq('itinerary_id', itinerary_id)
+                .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
@@ -574,7 +574,7 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
-            return this.getByLeadId(leadId);
+            return this.getByItineraryId(itinerary_id);
         } catch (error) {
             throw new Error(`Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -589,7 +589,7 @@ export const itineraryPreferencesRepository = {
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('lead_id')
-                .eq('itinerary_id', itinerary_id)
+                .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
@@ -1298,7 +1298,7 @@ export const itineraryPreferencesRepository = {
      */
     async getRecentLeads(limit: number = 10): Promise<IItineraryPreferencesResponse[]> {
         try {
-            // Get recent summaries with lead details
+            
             const { data, error } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select(`
@@ -1316,10 +1316,10 @@ export const itineraryPreferencesRepository = {
                 return [];
             }
 
-            // Extract lead IDs
+            
             const leadIds = data.map(item => item.lead_id);
 
-            // Fetch all preferences in bulk
+            
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
@@ -1382,79 +1382,6 @@ export const itineraryPreferencesRepository = {
         } catch (error) {
             console.error('Error in getRecentLeads:', error);
             throw new Error(`Failed to get recent leads: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    },
-
-    /**
-     * Get leads by date range
-     */
-    async getLeadsByDateRange(params: {
-        start_date: string;
-        end_date: string;
-        field?: 'created_at' | 'updated_at' | 'last_updated';
-    }): Promise<IItineraryPreferencesResponse[]> {
-        try {
-            const { start_date, end_date, field = 'last_updated' } = params;
-
-            let tableName = 'user_itenary_preferences_summary';
-            let fieldName = 'last_updated';
-
-            if (field === 'created_at') {
-                tableName = 'user_itenary_preferences_summary';
-                fieldName = 'created_at';
-            } else if (field === 'updated_at') {
-                tableName = 'user_itenary_preferences_summary';
-                fieldName = 'updated_at';
-            }
-
-            const { data, error } = await supabaseAdmin
-                .from(tableName)
-                .select('lead_id')
-                .gte(fieldName, start_date)
-                .lte(fieldName, end_date)
-                .order(fieldName, { ascending: false });
-
-            if (error) {
-                throw new Error(`Failed to get leads by date range: ${error.message}`);
-            }
-
-            if (!data || data.length === 0) {
-                return [];
-            }
-
-            // Get unique lead IDs
-            const leadIds = [...new Set(data.map(item => item.lead_id))];
-
-            // Fetch lead details
-            const leads = await Promise.all(
-                leadIds.map(leadId =>
-                    this.getByLeadId(leadId).catch(() => null)
-                )
-            );
-
-            // Filter out null results
-            const validLeads = leads.filter(Boolean) as IItineraryPreferencesResponse[];
-
-            // Sort by date field
-            return validLeads.sort((a, b) => {
-                let dateA: Date, dateB: Date;
-
-                if (field === 'created_at') {
-                    dateA = new Date(a.flight_preferences[0]?.created_at || a.hotel_preferences[0]?.created_at || a.visa_preferences[0]?.created_at || '2000-01-01');
-                    dateB = new Date(b.flight_preferences[0]?.created_at || b.hotel_preferences[0]?.created_at || b.visa_preferences[0]?.created_at || '2000-01-01');
-                } else if (field === 'updated_at') {
-                    dateA = new Date(a.flight_preferences[0]?.updated_at || a.hotel_preferences[0]?.updated_at || a.visa_preferences[0]?.updated_at || '2000-01-01');
-                    dateB = new Date(b.flight_preferences[0]?.updated_at || b.hotel_preferences[0]?.updated_at || b.visa_preferences[0]?.updated_at || '2000-01-01');
-                } else {
-                    dateA = new Date(a.user_preferences_summary?.last_updated || '2000-01-01');
-                    dateB = new Date(b.user_preferences_summary?.last_updated || '2000-01-01');
-                }
-
-                return dateB.getTime() - dateA.getTime();
-            });
-        } catch (error) {
-            console.error('Error in getLeadsByDateRange:', error);
-            throw new Error(`Failed to get leads by date range: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
 
