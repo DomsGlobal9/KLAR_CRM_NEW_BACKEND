@@ -66,99 +66,88 @@ export const itineraryPreferencesRepository = {
      * Get all preferences for a lead
      */
     async getByItineraryId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
-    try {
-        console.log('Fetching lead_id for itinerary_id:', itinerary_id);
+        try {
 
-        const { data: itineraryData, error: itineraryError } = await supabaseAdmin
-            .from('user_itenary_preferences_summary')
-            .select('lead_id')
-            .eq('id', itinerary_id)
-            .maybeSingle();
-
-        console.log('Itinerary query result:', itineraryData, itineraryError);
-
-        if (itineraryError || !itineraryData) {
-            throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
-        }
-
-        const clientID = itineraryData.lead_id;
-        console.log('Resolved clientID (lead_id):', clientID);
-
-        const [
-            flightPreferencesResult,
-            hotelPreferencesResult,
-            visaPreferencesResult,
-            userPreferencesResult,
-            servicePreferencesResult,
-            leadDetailsResult
-        ] = await Promise.all([
-            supabaseAdmin
-                .from('flight_preferences')
-                .select('*')
-                .eq('lead_id', clientID)
-                .order('preference_order', { ascending: true }),
-
-            supabaseAdmin
-                .from('hotel_preferences')
-                .select('*')
-                .eq('lead_id', clientID)
-                .order('preference_order', { ascending: true }),
-
-            supabaseAdmin
-                .from('visa_preferences')
-                .select('*')
-                .eq('lead_id', clientID)
-                .order('preference_order', { ascending: true }),
-
-            supabaseAdmin
+            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('*')
-                .eq('lead_id', clientID)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle(),
+                .select('lead_id')
+                .eq('id', itinerary_id)
+                .maybeSingle();
 
-            supabaseAdmin
-                .from('service_preferences')
-                .select('*')
-                .eq('lead_id', clientID),
+            if (itineraryError || !itineraryData) {
+                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+            }
 
-            supabaseAdmin
-                .from('leads')
-                .select('*')
-                .eq('id', clientID)
-                .single()
-        ]);
+            const clientID = itineraryData.lead_id;
 
-        console.log('Flight prefs:', flightPreferencesResult.data, flightPreferencesResult.error);
-        console.log('Hotel prefs:', hotelPreferencesResult.data, hotelPreferencesResult.error);
-        console.log('Visa prefs:', visaPreferencesResult.data, visaPreferencesResult.error);
-        console.log('User prefs summary:', userPreferencesResult.data, userPreferencesResult.error);
-        console.log('Service prefs:', servicePreferencesResult.data, servicePreferencesResult.error);
-        console.log('Lead details:', leadDetailsResult.data, leadDetailsResult.error);
+            const [
+                flightPreferencesResult,
+                hotelPreferencesResult,
+                visaPreferencesResult,
+                userPreferencesResult,
+                servicePreferencesResult,
+                leadDetailsResult
+            ] = await Promise.all([
+                supabaseAdmin
+                    .from('flight_preferences')
+                    .select('*')
+                    .eq('lead_id', clientID)
+                    .order('preference_order', { ascending: true }),
 
-        if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
-            throw new Error(`Failed to fetch service preferences: ${servicePreferencesResult.error.message}`);
+                supabaseAdmin
+                    .from('hotel_preferences')
+                    .select('*')
+                    .eq('lead_id', clientID)
+                    .order('preference_order', { ascending: true }),
+
+                supabaseAdmin
+                    .from('visa_preferences')
+                    .select('*')
+                    .eq('lead_id', clientID)
+                    .order('preference_order', { ascending: true }),
+
+                supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .select('*')
+                    .eq('lead_id', clientID)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle(),
+
+                supabaseAdmin
+                    .from('service_preferences')
+                    .select('*')
+                    .eq('lead_id', clientID),
+
+                supabaseAdmin
+                    .from('leads')
+                    .select('*')
+                    .eq('id', clientID)
+                    .single()
+            ]);
+
+            if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
+                throw new Error(`Failed to fetch service preferences: ${servicePreferencesResult.error.message}`);
+            }
+
+            let leadDetails: ILeadDetails | undefined;
+            if (leadDetailsResult.data) {
+                leadDetails = leadDetailsResult.data as ILeadDetails;
+            }
+
+            return {
+                flight_preferences: flightPreferencesResult.data ?? [],
+                hotel_preferences: hotelPreferencesResult.data ?? [],
+                visa_preferences: visaPreferencesResult.data ?? [],
+                service_preferences: servicePreferencesResult.data ?? [],
+                user_preferences_summary: userPreferencesResult.data ?? null,
+                lead_details: leadDetails
+            };
+        } catch (error) {
+            console.error('Error in getByItineraryId:', error);
+            throw new Error(`Failed to fetch lead preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-
-        let leadDetails: ILeadDetails | undefined;
-        if (leadDetailsResult.data) {
-            leadDetails = leadDetailsResult.data as ILeadDetails;
-        }
-
-        return {
-            flight_preferences: flightPreferencesResult.data ?? [],
-            hotel_preferences: hotelPreferencesResult.data ?? [],
-            visa_preferences: visaPreferencesResult.data ?? [],
-            service_preferences: servicePreferencesResult.data ?? [],
-            user_preferences_summary: userPreferencesResult.data ?? null,
-            lead_details: leadDetails
-        };
-    } catch (error) {
-        console.error('Error in getByItineraryId:', error);
-        throw new Error(`Failed to fetch lead preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-},
+    },
 
     /**
      * Save all preferences for a lead

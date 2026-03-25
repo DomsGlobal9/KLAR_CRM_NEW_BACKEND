@@ -332,10 +332,6 @@ export const itineraryPreferencesController = {
                 ]);
             };
 
-            const logResponse = (label: string, data: any) => {
-                console.log(`🔥 ${label}:`, JSON.stringify(data, null, 2));
-            };
-
             if (leadId) {
                 if (userRole === 'rm') {
                     const hasAccess = await withTimeout(
@@ -344,13 +340,10 @@ export const itineraryPreferencesController = {
                     );
 
                     if (!hasAccess) {
-                        const response = {
+                        return res.status(403).json({
                             success: false,
                             message: 'You do not have permission to access this lead'
-                        };
-
-                        logResponse("403 Response", response);
-                        return res.status(403).json(response);
+                        });
                     }
                 }
 
@@ -360,25 +353,19 @@ export const itineraryPreferencesController = {
                 );
 
                 if (!singleResult.success || !singleResult.data) {
-                    const response = {
+                    return res.status(404).json({
                         success: false,
                         message: `Lead with ID ${leadId} not found`
-                    };
-
-                    logResponse("404 Response", response);
-                    return res.status(404).json(response);
+                    });
                 }
 
-                const response = {
+                return res.status(200).json({
                     success: true,
                     data: {
                         leads: [singleResult.data],
                         total_count: 1
                     }
-                };
-
-                logResponse("Single Lead Response", response);
-                return res.status(200).json(response);
+                });
             }
 
             const page = parseInt(req.query.page as string) || 1;
@@ -404,7 +391,6 @@ export const itineraryPreferencesController = {
                     "getAllLeads"
                 );
 
-                logResponse("Detailed Response", result);
                 return res.status(200).json(result);
             }
 
@@ -421,7 +407,6 @@ export const itineraryPreferencesController = {
                     "getAllLeadsMinimal"
                 );
 
-                logResponse("Minimal Response", result);
                 return res.status(200).json(result);
             } else {
                 const result = await withTimeout(
@@ -429,17 +414,14 @@ export const itineraryPreferencesController = {
                     "getAllLeadsBasic"
                 );
 
-                logResponse("Basic Response", result);
                 return res.status(200).json(result);
             }
 
         } catch (error: any) {
-            const response = {
+            return res.status(500).json({
                 success: false,
                 message: error.message || 'Internal server error'
-            };
-
-            return res.status(500).json(response);
+            });
         }
     },
 
@@ -498,12 +480,12 @@ export const itineraryPreferencesController = {
             const { itinerary_id } = req.params;
             const { sendVia } = req.body;
 
-            
+
             const leadId = await itineraryPreferencesService.getleadByitineraryId(itinerary_id as string);
-            
+
 
             const leadData = await leadService.getLeadById(leadId);
-            
+
             if (!leadData) {
                 return res.status(404).json({ success: false, message: "Lead Data not found" });
             }
