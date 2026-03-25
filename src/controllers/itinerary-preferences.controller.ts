@@ -111,7 +111,7 @@ export const itineraryPreferencesController = {
 
             const result = await itineraryPreferencesService.updatePreferences(
                 updateData,
-                itinerary_id as string, 
+                itinerary_id as string,
             );
 
             if (!result.success) {
@@ -498,14 +498,17 @@ export const itineraryPreferencesController = {
             const { itinerary_id } = req.params;
             const { sendVia } = req.body;
 
+            
             const leadId = await itineraryPreferencesService.getleadByitineraryId(itinerary_id as string);
+            
 
             const leadData = await leadService.getLeadById(leadId);
+            
             if (!leadData) {
                 return res.status(404).json({ success: false, message: "Lead Data not found" });
             }
 
-            const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+            const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
             if (!itinResult.data) {
                 return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
             }
