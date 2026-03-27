@@ -2,6 +2,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { envConfig } from './env.config';
 
 export interface MailOptions {
+    from?: string;
     to: string | string[];
     subject: string;
     text?: string;
@@ -10,6 +11,7 @@ export interface MailOptions {
     bcc?: string | string[];
     replyTo?: string;
     attachments?: any[];
+    headers?: Record<string, string>;
 }
 
 class MailConfig {

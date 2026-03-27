@@ -1,5 +1,9 @@
+import { envConfig } from '../config';
 import { mailConfig, MailOptions } from '../config/mail.config';
 import { supabase } from '../config/supabase.config';
+import { emailRepository } from '../repositories/email.repository';
+import { v4 as uuidv4 } from 'uuid';
+
 
 export interface SendEmailPayload {
     to: string | string[];
@@ -10,6 +14,10 @@ export interface SendEmailPayload {
     bcc?: string | string[];
     replyTo?: string;
     requireNewLead?: boolean;
+    leadId?: string;
+    trackingId?: string;
+    threadId?: string;
+    source?: string;
     attachments?: Array<{
         filename: string;
         path?: string;
@@ -36,7 +44,6 @@ export class EmailService {
      */
     async sendEmail(payload: SendEmailPayload): Promise<EmailResponse> {
         try {
-            // Validate required fields
             if (!payload.to) {
                 throw new Error('Recipient (to) is required');
             }
@@ -47,7 +54,6 @@ export class EmailService {
                 throw new Error('Either text or html content is required');
             }
 
-            // Convert and deduplicate recipients
             const processRecipients = (recipients: string | string[] | undefined): string[] => {
                 if (!recipients) return [];
                 const arr = Array.isArray(recipients) ? recipients : [recipients];
@@ -58,38 +64,52 @@ export class EmailService {
             const uniqueCc = processRecipients(payload.cc);
             const uniqueBcc = processRecipients(payload.bcc);
 
+            /**
+             * 🔥 STEP 1: Generate trackingId
+             */
+            const trackingId = payload.trackingId || uuidv4();
 
-            // DEFAULT: Check if lead exists before sending (requireNewLead defaults to TRUE)
-            // Only skip this check if explicitly set to false (e.g., for quotation emails)
-            const shouldCheckLead = payload.requireNewLead !== false;
+            /**
+             * 🔥 STEP 2: Build subject with tracking
+             */
+            let finalSubject = payload.subject;
 
-            if (shouldCheckLead && uniqueTo.length > 0) {
-                // Check if any of the 'to' emails exist in leads table
-                const { count, error } = await supabase
-                    .from('leads')
-                    .select('id', { count: 'exact', head: true })
-                    .in('email', uniqueTo);
+            finalSubject += ` [TID:${trackingId}]`;
 
-                if (error) {
-                    console.error('Error checking lead existence:', error);
-                } else if (count && count > 0) {
-                    return {
-                        success: false,
-                        error: 'Email blocked: This email address already exists as a lead. Only one email per new lead is allowed.'
-                    };
-                }
+            if (payload.leadId) {
+                finalSubject += ` [LEAD_ID:${payload.leadId}]`;
             }
 
-            // Send email using mail config
+            /**
+             * 🔥 STEP 3: Send email with headers
+             */
             const result = await mailConfig.sendMail({
+                from: process.env.SMTP_FROM || envConfig.SMTP_USER,
                 to: uniqueTo,
-                subject: payload.subject,
+                subject: finalSubject,
                 text: payload.text,
                 html: payload.html,
                 cc: uniqueCc.length > 0 ? uniqueCc : undefined,
                 bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
-                replyTo: payload.replyTo,
+                replyTo: payload.replyTo || envConfig.SMTP_USER,
                 attachments: payload.attachments,
+                headers: payload.threadId
+                    ? {
+                        'In-Reply-To': payload.threadId,
+                        'References': payload.threadId,
+                    }
+                    : undefined,
+            });
+
+            /**
+             * 🔥 STEP 4: Store email log
+             */
+            await emailRepository.createEmailLog({
+                tracking_id: trackingId,
+                lead_id: payload.leadId || null,
+                message_id: result.messageId,
+                to_email: uniqueTo,
+                subject: finalSubject,
             });
 
             return {
@@ -97,6 +117,7 @@ export class EmailService {
                 messageId: result.messageId,
                 response: result.response,
             };
+
         } catch (error: any) {
             console.error('EmailService.sendEmail error:', error);
             return {
