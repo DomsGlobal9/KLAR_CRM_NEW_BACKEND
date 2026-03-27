@@ -65,17 +65,6 @@ export const itineraryPreferencesService = {
                 throw new Error('Lead not found in Itinerary preference Service');
             }
 
-            /**
-             * Check if preferences already exist
-             */
-            // const { exists } = await this.checkPreferencesExist(leadId);
-            // if (exists) {
-            //     return {
-            //         success: false,
-            //         message: 'Preferences already exist for this lead. Use update instead.'
-            //     };
-            // }
-
             // Transform and save to service_preferences table
             const preferenceData = itineraryPreferencesRepository.transformFormDataToServicePreferences(formData);
             const data = await itineraryPreferencesRepository.saveAllServicePreferences(preferenceData);
