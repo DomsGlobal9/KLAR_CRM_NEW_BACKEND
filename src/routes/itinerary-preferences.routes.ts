@@ -25,7 +25,7 @@ router.get('/visa/:id', itineraryPreferencesController.getVisaPreferenceById);
 router.get('/all', itineraryPreferencesController.getAllLeads); 
 router.get('/:leadId/check', itineraryPreferencesController.checkPreferencesExist);
 router.get('/:itinerary_id', itineraryPreferencesController.getPreferences);
-router.put('/:itinerary_id', itineraryPreferencesController.updatePreferences);
+router.patch('/:itinerary_id', itineraryPreferencesController.updatePreferences);
 router.delete('/:itinerary_id', itineraryPreferencesController.deletePreferences);
 
 

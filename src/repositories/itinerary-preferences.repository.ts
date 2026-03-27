@@ -283,320 +283,88 @@ export const itineraryPreferencesRepository = {
         itinerary_id: string,
     ): Promise<IItineraryPreferencesResponse> {
         try {
-            const { data: itineraryData, error: itineraryError } = await supabaseAdmin
-                .from('user_itenary_preferences_summary')
-                .select('lead_id')
-                .eq('id', itinerary_id)
-                .maybeSingle();
+            console.log("The update data we got", JSON.stringify(updateData, null, 2));
 
-            if (itineraryError || !itineraryData) {
-                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
-            }
-
-            const leadId = itineraryData.lead_id;
-
-            const { data: existingItinerary, error: itineraryCheckError } = await supabaseAdmin
+            const { data: existingItinerary, error: verifyError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .select('id')
                 .eq('id', itinerary_id)
                 .single();
 
-            if (itineraryCheckError && itineraryCheckError.code !== 'PGRST116') {
-                throw new Error(`Failed to check existing itinerary: ${itineraryCheckError.message}`);
-            }
-
-            if (itinerary_id) {
-                const { data: itinerary, error: verifyError } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('id')
-                    .eq('id', itinerary_id)
-                    .single();
-
-                if (verifyError || !itinerary) {
-                    throw new Error(`Itinerary ${itinerary_id} not found`);
-                }
+            if (verifyError || !existingItinerary) {
+                throw new Error(`Itinerary ${itinerary_id} not found`);
             }
 
             if (updateData.userPreferences) {
-                const userPrefsUpdate = {
-                    flight_preferences_added: updateData.userPreferences.flightPreferencesAdded,
-                    hotel_preferences_added: updateData.userPreferences.hotelPreferencesAdded,
-                    visa_preferences_added: updateData.userPreferences.visaPreferencesAdded,
-                    transfer_preferences_added: updateData.userPreferences.transferPreferencesAdded,
-                    group_booking_preferences_added: updateData.userPreferences.groupBookingPreferencesAdded,
-                    tour_package_preferences_added: updateData.userPreferences.tourPackagePreferencesAdded,
-                    aircraft_charter_preferences_added: updateData.userPreferences.aircraftCharterPreferencesAdded,
-                    event_management_preferences_added: updateData.userPreferences.eventManagementPreferencesAdded,
-                    yacht_charter_preferences_added: updateData.userPreferences.yachtCharterPreferencesAdded,
-                    last_updated: updateData.userPreferences.lastUpdated || new Date().toISOString(),
-                    metadata: updateData.userPreferences.metadata || {},
-                    updated_at: new Date().toISOString()
-                };
-
-                const { data: existingSummary, error: summaryCheckError } = await supabaseAdmin
+                const { error } = await supabaseAdmin
                     .from('user_itenary_preferences_summary')
-                    .select('lead_id')
-                    .eq('lead_id', leadId)
-                    .single();
-
-                if (summaryCheckError && summaryCheckError.code !== 'PGRST116') {
-                    throw new Error(`Failed to check existing summary: ${summaryCheckError.message}`);
-                }
-
-                if (existingSummary) {
-                    const { error } = await supabaseAdmin
-                        .from('user_itenary_preferences_summary')
-                        .update(userPrefsUpdate)
-                        .eq('lead_id', leadId);
-
-                    if (error) throw new Error(`Failed to update user preferences: ${error.message}`);
-                } else {
-                    const { error } = await supabaseAdmin
-                        .from('user_itenary_preferences_summary')
-                        .insert({
-                            ...userPrefsUpdate,
-                            lead_id: leadId,
-                            created_at: new Date().toISOString()
-                        });
-
-                    if (error) throw new Error(`Failed to create user preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.flightPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('flight_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.flightPreferences && Array.isArray(updateData.flightPreferences) && updateData.flightPreferences.length > 0) {
-                    const flightPrefsToInsert = updateData.flightPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('flight_preferences')
-                        .insert(flightPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update flight preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.hotelPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('hotel_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.hotelPreferences && Array.isArray(updateData.hotelPreferences) && updateData.hotelPreferences.length > 0) {
-                    const hotelPrefsToInsert = updateData.hotelPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('hotel_preferences')
-                        .insert(hotelPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update hotel preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.visaPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('visa_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.visaPreferences && Array.isArray(updateData.visaPreferences) && updateData.visaPreferences.length > 0) {
-                    const visaPrefsToInsert = updateData.visaPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('visa_preferences')
-                        .insert(visaPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update visa preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.transferPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('transfer_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.transferPreferences && Array.isArray(updateData.transferPreferences) && updateData.transferPreferences.length > 0) {
-                    const transferPrefsToInsert = updateData.transferPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('transfer_preferences')
-                        .insert(transferPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update transfer preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.groupBookingPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('group_booking_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.groupBookingPreferences && Array.isArray(updateData.groupBookingPreferences) && updateData.groupBookingPreferences.length > 0) {
-                    const groupPrefsToInsert = updateData.groupBookingPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('group_booking_preferences')
-                        .insert(groupPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update group booking preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.tourPackagePreferences !== undefined) {
-                await supabaseAdmin
-                    .from('tour_package_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.tourPackagePreferences && Array.isArray(updateData.tourPackagePreferences) && updateData.tourPackagePreferences.length > 0) {
-                    const tourPrefsToInsert = updateData.tourPackagePreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('tour_package_preferences')
-                        .insert(tourPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update tour package preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.aircraftCharterPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('aircraft_charter_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.aircraftCharterPreferences && Array.isArray(updateData.aircraftCharterPreferences) && updateData.aircraftCharterPreferences.length > 0) {
-                    const aircraftPrefsToInsert = updateData.aircraftCharterPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('aircraft_charter_preferences')
-                        .insert(aircraftPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update aircraft charter preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.eventManagementPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('event_management_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.eventManagementPreferences && Array.isArray(updateData.eventManagementPreferences) && updateData.eventManagementPreferences.length > 0) {
-                    const eventPrefsToInsert = updateData.eventManagementPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('event_management_preferences')
-                        .insert(eventPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update event management preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.yachtCharterPreferences !== undefined) {
-                await supabaseAdmin
-                    .from('yacht_charter_preferences')
-                    .delete()
-                    .eq('lead_id', leadId);
-
-                if (updateData.yachtCharterPreferences && Array.isArray(updateData.yachtCharterPreferences) && updateData.yachtCharterPreferences.length > 0) {
-                    const yachtPrefsToInsert = updateData.yachtCharterPreferences.map((pref: any, index: number) => ({
-                        ...pref,
-                        lead_id: leadId,
-                        itinerary_id: itinerary_id || null,
-                        preference_order: index + 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    const { error } = await supabaseAdmin
-                        .from('yacht_charter_preferences')
-                        .insert(yachtPrefsToInsert);
-
-                    if (error) throw new Error(`Failed to update yacht charter preferences: ${error.message}`);
-                }
-            }
-
-            if (updateData.itineraryData && itinerary_id) {
-                const { error: itineraryUpdateError } = await supabaseAdmin
-                    .from('user_itenary_preferences')
                     .update({
-                        updated_at: new Date().toISOString(),
-                        metadata: updateData.itineraryData.metadata || {}
+                        flight_preferences_added: updateData.userPreferences.flightPreferencesAdded,
+                        hotel_preferences_added: updateData.userPreferences.hotelPreferencesAdded,
+                        visa_preferences_added: updateData.userPreferences.visaPreferencesAdded,
+                        transfer_preferences_added: updateData.userPreferences.transferPreferencesAdded,
+                        group_booking_preferences_added: updateData.userPreferences.groupBookingPreferencesAdded,
+                        tour_package_preferences_added: updateData.userPreferences.tourPackagePreferencesAdded,
+                        aircraft_charter_preferences_added: updateData.userPreferences.aircraftCharterPreferencesAdded,
+                        event_management_preferences_added: updateData.userPreferences.eventManagementPreferencesAdded,
+                        yacht_charter_preferences_added: updateData.userPreferences.yachtCharterPreferencesAdded,
+                        last_updated: updateData.userPreferences.lastUpdated || new Date().toISOString(),
+                        metadata: updateData.userPreferences.metadata || {},
+                        updated_at: new Date().toISOString()
                     })
-                    .eq('id', itinerary_id)
-                    .eq('lead_id', leadId);
+                    .eq('id', itinerary_id);
 
-                if (itineraryUpdateError) {
-                    throw new Error(`Failed to update itinerary: ${itineraryUpdateError.message}`);
+                if (error) {
+                    throw new Error(`Failed to update user preferences: ${error.message}`);
+                }
+            }
+
+            if (updateData.service_preferences !== undefined) {
+
+                if (Array.isArray(updateData.service_preferences) && updateData.service_preferences.length > 0) {
+
+                    for (const pref of updateData.service_preferences) {
+
+                        if (pref.id) {
+                            const { id, ...updateFields } = pref;
+
+                            const { error } = await supabaseAdmin
+                                .from('service_preferences')
+                                .update({
+                                    ...updateFields,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', id);
+
+                            if (error) {
+                                throw new Error(`Failed to update service preference: ${error.message}`);
+                            }
+                        }
+
+                        else {
+                            const { error } = await supabaseAdmin
+                                .from('service_preferences')
+                                .insert({
+                                    ...pref,
+                                    itinerary_id: itinerary_id,
+                                    created_at: new Date().toISOString(),
+                                    updated_at: new Date().toISOString()
+                                });
+
+                            if (error) {
+                                throw new Error(`Failed to insert service preference: ${error.message}`);
+                            }
+                        }
+                    }
                 }
             }
 
             return this.getByItineraryId(itinerary_id);
+
         } catch (error) {
-            throw new Error(`Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(
+                `Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
         }
     },
 
@@ -2035,6 +1803,7 @@ export const itineraryPreferencesRepository = {
         };
     }): Promise<{
         lead_id: string;
+        itinerary_id: string;
         service_preferences: any[];
         user_preferences_summary: any;
         lead_details?: ILeadDetails;
@@ -2042,29 +1811,62 @@ export const itineraryPreferencesRepository = {
         const { leadId, servicePreferences, userPreferences } = data;
 
         try {
-            // Check if preferences already exist
-            const exists = await supabaseAdmin
+            // Calculate service counts and added services
+            const serviceCounts: Record<string, number> = {};
+            const servicesAdded: Record<string, boolean> = {};
+
+            servicePreferences.forEach(pref => {
+                const serviceType = pref.service_type;
+                if (!serviceCounts[serviceType]) {
+                    serviceCounts[serviceType] = 0;
+                    servicesAdded[serviceType] = true;
+                }
+                serviceCounts[serviceType]++;
+            });
+
+            // Step 1: Create the user preferences summary first to get itinerary_id
+            const userPrefsSummary: any = {
+                lead_id: leadId,
+                flight_preferences_added: userPreferences.flightPreferencesAdded,
+                hotel_preferences_added: userPreferences.hotelPreferencesAdded,
+                visa_preferences_added: userPreferences.visaPreferencesAdded,
+                transfer_preferences_added: userPreferences.transferPreferencesAdded,
+                group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
+                tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
+                aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
+                event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
+                yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
+                last_updated: userPreferences.lastUpdated || new Date().toISOString(),
+                metadata: {
+                    ...userPreferences.metadata,
+                    service_counts: serviceCounts,
+                    total_service_options: servicePreferences.length
+                },
+                services_added: servicesAdded,
+                service_counts: serviceCounts,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                status: 'Itinerary_Created'
+            };
+
+            const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('id')
-                .eq('lead_id', leadId)
-                .maybeSingle();
+                .insert(userPrefsSummary)
+                .select()
+                .single();
 
-            // if (exists.data) {
-            //     throw new Error(`Cannot create: preferences already exist for lead ${leadId}. Use update instead.`);
-            // }
+            if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
 
-            // Clear existing service preferences
-            // await supabaseAdmin
-            //     .from('service_preferences')
-            //     .delete()
-            //     .eq('lead_id', leadId);
+            const itineraryId = userPrefsData.id;
 
-            // Save service preferences
+            // Step 2: Insert service preferences with the itinerary_id
             let savedServicePreferences: any[] = [];
             if (servicePreferences.length > 0) {
-                const servicePrefsToInsert = servicePreferences.map(pref => ({
+                const servicePrefsToInsert = servicePreferences.map((pref, index) => ({
                     ...pref,
                     lead_id: leadId,
+                    itinerary_id: itineraryId, // ✅ Now we have the itinerary_id
+                    preference_order: pref.preference_order || index + 1,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }));
@@ -2078,45 +1880,7 @@ export const itineraryPreferencesRepository = {
                 savedServicePreferences = serviceData || [];
             }
 
-            // Save user preferences summary with service counts
-            const serviceCounts: Record<string, number> = {};
-            const servicesAdded: Record<string, boolean> = {};
-
-            servicePreferences.forEach(pref => {
-                const serviceType = pref.service_type;
-                if (!serviceCounts[serviceType]) {
-                    serviceCounts[serviceType] = 0;
-                    servicesAdded[serviceType] = true;
-                }
-                serviceCounts[serviceType]++;
-            });
-
-            const userPrefsSummary: any = {
-                lead_id: leadId,
-                flight_preferences_added: userPreferences.flightPreferencesAdded,
-                hotel_preferences_added: userPreferences.hotelPreferencesAdded,
-                visa_preferences_added: userPreferences.visaPreferencesAdded,
-                last_updated: userPreferences.lastUpdated || new Date().toISOString(),
-                metadata: {
-                    ...userPreferences.metadata,
-                    service_counts: serviceCounts,
-                    total_service_options: servicePreferences.length
-                },
-                services_added: servicesAdded,
-                service_counts: serviceCounts,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-
-            const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
-                .from('user_itenary_preferences_summary')
-                .insert(userPrefsSummary)
-                .select()
-                .single();
-
-            if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
-
-            // Fetch lead details
+            // Step 3: Fetch lead details
             let leadDetailsResult: ILeadDetails | undefined;
             try {
                 const { data: detailsData } = await supabaseAdmin
@@ -2126,12 +1890,26 @@ export const itineraryPreferencesRepository = {
                     .single();
 
                 leadDetailsResult = detailsData as ILeadDetails;
+
+                // Update lead stage if needed
+                if (leadDetailsResult && leadDetailsResult.stage !== 'Itinerary Generated') {
+                    await supabaseAdmin
+                        .from('leads')
+                        .update({
+                            stage: 'Itinerary Generated',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', leadId);
+
+                    leadDetailsResult.stage = 'Itinerary Generated';
+                }
             } catch (error) {
                 console.warn('Could not fetch lead details:', error);
             }
 
             return {
                 lead_id: leadId,
+                itinerary_id: itineraryId,
                 service_preferences: savedServicePreferences,
                 user_preferences_summary: userPrefsData,
                 lead_details: leadDetailsResult
