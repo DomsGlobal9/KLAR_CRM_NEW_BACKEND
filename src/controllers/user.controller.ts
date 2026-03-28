@@ -15,39 +15,12 @@ export const userController = {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const currentUser = await userService.getMe(userId);
-
-            const allowedFields = ['username', 'full_name', 'email', 'phone', 'department', 'notes', 'image'];
-            const updateData: any = {};
-
             const imageBuffer = req.file?.buffer;
             const originalName = req.file?.originalname;
 
-            if (Object.keys(updateData).length === 0 && !imageBuffer) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'No data provided for update'
-                });
-            }
-
-            const changedFields: string[] = [];
-
-            if (imageBuffer) {
-                changedFields.push('image');
-            }
-
-            if (changedFields.length === 0) {
-                return res.json({
-                    success: true,
-                    message: 'No changes detected',
-                    data: currentUser,
-                    updated_fields: []
-                });
-            }
-
             const result = await userService.updateSelf(
                 userId,
-                updateData,
+                req.body,
                 imageBuffer,
                 originalName
             );
@@ -58,7 +31,7 @@ export const userController = {
                 entity_type: 'user',
                 entity_id: userId,
                 metadata: {
-                    updated_fields: changedFields
+                    updated_fields: result.updated_fields
                 }
             });
 
@@ -83,7 +56,7 @@ export const userController = {
         try {
             const userId = req.user?.id;
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized 9876' });
+                return res.status(401).json({ error: 'Unauthorized' });
             }
 
             const user = await userService.getMe(userId);
@@ -99,4 +72,4 @@ export const userController = {
             });
         }
     }
-}
+};
