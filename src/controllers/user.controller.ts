@@ -17,18 +17,10 @@ export const userController = {
 
             const currentUser = await userService.getMe(userId);
 
-            const allowedFields = ['username', 'full_name', 'email', 'phone', 'department', 'notes', 'image'];
             const updateData: any = {};
 
             const imageBuffer = req.file?.buffer;
             const originalName = req.file?.originalname;
-
-            if (Object.keys(updateData).length === 0 && !imageBuffer) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'No data provided for update'
-                });
-            }
 
             const changedFields: string[] = [];
 
