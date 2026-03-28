@@ -325,11 +325,13 @@ export const quoteRepository = {
             }
         }
 
+        console.log("@#@#@#@#@#@#@#@",JSON.stringify(payload, null, 2));
+
         const { data, error } = await supabaseAdmin
             .from('quotes')
             .update({
                 ...payload,
-                updated_at: new Date().toISOString()
+                // updated_at: new Date().toISOString()
             })
             .eq('id', id)
             .select()
