@@ -8,9 +8,6 @@ export const userService = {
 
     /**
      * Upload image to S3
-     * @param imageBuffer 
-     * @param fileName 
-     * @returns 
      */
     async uploadImageToS3(imageBuffer: Buffer, fileName: string): Promise<string> {
         const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -45,8 +42,6 @@ export const userService = {
 
     /**
      * Get self user details
-     * @param userId 
-     * @returns 
      */
     async getMe(userId: string) {
         return userRepository.getById(userId);
@@ -54,11 +49,7 @@ export const userService = {
 
     /**
      * Update self user metadata with image upload
-     * @param userId 
-     * @param payload 
-     * @param imageBuffer 
-     * @param originalName 
-     * @returns 
+     * Only updates fields that have changed
      */
     async updateSelf(
         userId: string,
@@ -68,6 +59,7 @@ export const userService = {
     ) {
         const { data } = await userRepository.listUsers();
 
+
         if (payload.username) {
             const existingUser = data.users.find(
                 u => u.id !== userId && u.user_metadata?.username === payload.username
@@ -76,6 +68,7 @@ export const userService = {
                 throw new Error('Username already taken');
             }
         }
+
 
         if (payload.email) {
             const existingUser = data.users.find(
@@ -91,30 +84,75 @@ export const userService = {
             throw new Error('User not found');
         }
 
-        let imageUrl: string | undefined;
+        const currentMetadata = user.user_metadata || {};
+        const updates: any = {};
+        let hasChanges = false;
 
+
+        if (payload.username !== undefined && payload.username !== currentMetadata.username) {
+            updates.username = payload.username;
+            hasChanges = true;
+        }
+
+        if (payload.full_name !== undefined && payload.full_name !== currentMetadata.full_name) {
+            updates.full_name = payload.full_name;
+            hasChanges = true;
+        }
+
+        if (payload.phone !== undefined && payload.phone !== currentMetadata.phone) {
+            updates.phone = payload.phone;
+            hasChanges = true;
+        }
+
+        if (payload.department !== undefined && payload.department !== currentMetadata.department) {
+            updates.department = payload.department;
+            hasChanges = true;
+        }
+
+        if (payload.notes !== undefined && payload.notes !== currentMetadata.notes) {
+            updates.notes = payload.notes;
+            hasChanges = true;
+        }
+
+
+        let imageUrl: string | undefined;
         if (imageBuffer && originalName) {
             const ext = originalName.substring(originalName.lastIndexOf('.'));
             const fileName = `profile-${userId}-${Date.now()}${ext}`;
             imageUrl = await this.uploadImageToS3(imageBuffer, fileName);
+
+            if (imageUrl !== currentMetadata.image) {
+                updates.image = imageUrl;
+                hasChanges = true;
+            }
+        } else if (payload.image !== undefined && payload.image !== currentMetadata.image) {
+            updates.image = payload.image;
+            hasChanges = true;
         }
 
-        const updatedMetadata = {
-            ...user.user_metadata,
-            username: payload.username ?? user.user_metadata?.username,
-            full_name: payload.full_name ?? user.user_metadata?.full_name,
-            phone: payload.phone ?? user.user_metadata?.phone,
-            department: payload.department ?? user.user_metadata?.department,
-            notes: payload.notes ?? user.user_metadata?.notes,
-            image: imageUrl ?? payload.image ?? user.user_metadata?.image
-        };
+        if (hasChanges) {
+            const updatedMetadata = {
+                ...currentMetadata,
+                ...updates
+            };
 
-        const updatedUser = await userRepository.updateUserMetadata(userId, updatedMetadata);
+            await userRepository.updateUserMetadata(userId, updatedMetadata);
+        }
 
-        if (payload.email && payload.email !== user.email) {
+        let emailUpdated = false;
+        if (payload.email !== undefined && payload.email !== user.email) {
             await userRepository.updateUserEmail(userId, payload.email);
+            emailUpdated = true;
         }
 
-        return updatedUser;
+        const updatedUser = await userRepository.getById(userId);
+
+        return {
+            user: updatedUser,
+            updated_fields: {
+                ...updates,
+                email: emailUpdated ? payload.email : undefined
+            }
+        };
     }
 };

@@ -15,14 +15,10 @@ export const userController = {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const allowedFields = ['username', 'full_name', 'email', 'phone', 'department', 'notes'];
-            const updateData: any = {};
+            const currentUser = await userService.getMe(userId);
 
-            for (const field of allowedFields) {
-                if (req.body[field] !== undefined) {
-                    updateData[field] = req.body[field];
-                }
-            }
+            const allowedFields = ['username', 'full_name', 'email', 'phone', 'department', 'notes', 'image'];
+            const updateData: any = {};
 
             const imageBuffer = req.file?.buffer;
             const originalName = req.file?.originalname;
@@ -30,11 +26,31 @@ export const userController = {
             if (Object.keys(updateData).length === 0 && !imageBuffer) {
                 return res.status(400).json({
                     success: false,
-                    error: 'No valid fields to update'
+                    error: 'No data provided for update'
                 });
             }
 
-            await userService.updateSelf(userId, updateData, imageBuffer, originalName);
+            const changedFields: string[] = [];
+
+            if (imageBuffer) {
+                changedFields.push('image');
+            }
+
+            if (changedFields.length === 0) {
+                return res.json({
+                    success: true,
+                    message: 'No changes detected',
+                    data: currentUser,
+                    updated_fields: []
+                });
+            }
+
+            const result = await userService.updateSelf(
+                userId,
+                updateData,
+                imageBuffer,
+                originalName
+            );
 
             await createAuditLog({
                 user_id: userId,
@@ -42,15 +58,15 @@ export const userController = {
                 entity_type: 'user',
                 entity_id: userId,
                 metadata: {
-                    updated_fields: Object.keys(updateData),
-                    image_updated: !!imageBuffer
+                    updated_fields: changedFields
                 }
             });
 
             return res.json({
                 success: true,
                 message: 'Profile updated successfully',
-                data: updateData
+                data: result.user,
+                updated_fields: result.updated_fields
             });
         } catch (err: any) {
             return res.status(400).json({
