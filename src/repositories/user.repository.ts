@@ -49,7 +49,6 @@ export const userRepository = {
     async getById(userId: string) {
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
 
-        console.log("The user data we get", JSON.stringify(data, null, 2));
         if (error) throw error;
 
         const user = data.user;
@@ -74,13 +73,19 @@ export const userRepository = {
 
         return {
             id: user.id,
-            email: user.email,
-            role: user.user_metadata?.role_name,
-            username: user.user_metadata?.username,
-            full_name: user.user_metadata?.full_name,
-            image: user.user_metadata?.image,
-            team_id: user.user_metadata?.team_id,
+            email: user.email || null,
+            username: user.user_metadata?.username || null,
+            role: user.user_metadata?.role_name || null,
+            full_name: user.user_metadata?.full_name || null,
+            gender: user.user_metadata?.gender || null,
+            phone: user.phone || user.user_metadata?.phone || null,
+            dob: user.user_metadata?.dob || null,
+            status: user.user_metadata?.status || null,
+            team_id: user.user_metadata?.team_id || null,
             team_name: teamName,
+            image: user.user_metadata?.image || null,
+            created_at: user.created_at || null,
+            updated_at: user.updated_at || null
         };
     }
 };
