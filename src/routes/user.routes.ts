@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { userController } from '../controllers/user.controller';
 import { authenticate, requireRole } from '../middleware'; 
+import { upload } from '../middleware/upload.middleware';
 
 const router = Router();
 
@@ -18,6 +19,6 @@ router.get('/me', userController.getMe);
 /**
  * Update self user profile
  */
-router.put('/me', userController.updateMe);
+router.put('/me', authenticate, upload.single('image'), userController.updateMe);
 
 export default router;
