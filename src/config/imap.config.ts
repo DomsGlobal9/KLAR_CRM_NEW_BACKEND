@@ -17,4 +17,6 @@ export const imapConfig = {
     idleInterval: 300000,
     forceNoop: true,
   },
+
+  logger: false as false
 };
