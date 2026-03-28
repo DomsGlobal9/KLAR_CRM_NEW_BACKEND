@@ -48,6 +48,8 @@ export const userRepository = {
      */
     async getById(userId: string) {
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+        console.log("The user data we get", JSON.stringify(data, null, 2));
         if (error) throw error;
 
         const user = data.user;
@@ -78,7 +80,7 @@ export const userRepository = {
             full_name: user.user_metadata?.full_name,
             image: user.user_metadata?.image,
             team_id: user.user_metadata?.team_id,
-            team_name: teamName
+            team_name: teamName,
         };
     }
 };

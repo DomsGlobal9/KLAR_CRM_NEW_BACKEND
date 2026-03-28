@@ -49,7 +49,7 @@ export const userService = {
 
     /**
      * Update self user metadata with image upload
-     * Only updates fields that have changed
+     * Dynamically updates any fields sent from frontend
      */
     async updateSelf(
         userId: string,
@@ -59,7 +59,6 @@ export const userService = {
     ) {
         const { data } = await userRepository.listUsers();
 
-
         if (payload.username) {
             const existingUser = data.users.find(
                 u => u.id !== userId && u.user_metadata?.username === payload.username
@@ -68,7 +67,6 @@ export const userService = {
                 throw new Error('Username already taken');
             }
         }
-
 
         if (payload.email) {
             const existingUser = data.users.find(
@@ -88,32 +86,28 @@ export const userService = {
         const updates: any = {};
         let hasChanges = false;
 
+        const reservedFields = ['email', 'image'];
 
-        if (payload.username !== undefined && payload.username !== currentMetadata.username) {
-            updates.username = payload.username;
-            hasChanges = true;
+        for (const [key, value] of Object.entries(payload)) {
+            if (key === 'email') {
+                continue;
+            }
+
+            if (key === 'image' && !imageBuffer) {
+                if (value !== undefined && value !== currentMetadata[key]) {
+                    updates[key] = value;
+                    hasChanges = true;
+                }
+                continue;
+            }
+
+            if (!reservedFields.includes(key) && value !== undefined && value !== null) {
+                if (value !== currentMetadata[key]) {
+                    updates[key] = value;
+                    hasChanges = true;
+                }
+            }
         }
-
-        if (payload.full_name !== undefined && payload.full_name !== currentMetadata.full_name) {
-            updates.full_name = payload.full_name;
-            hasChanges = true;
-        }
-
-        if (payload.phone !== undefined && payload.phone !== currentMetadata.phone) {
-            updates.phone = payload.phone;
-            hasChanges = true;
-        }
-
-        if (payload.department !== undefined && payload.department !== currentMetadata.department) {
-            updates.department = payload.department;
-            hasChanges = true;
-        }
-
-        if (payload.notes !== undefined && payload.notes !== currentMetadata.notes) {
-            updates.notes = payload.notes;
-            hasChanges = true;
-        }
-
 
         let imageUrl: string | undefined;
         if (imageBuffer && originalName) {
@@ -125,9 +119,6 @@ export const userService = {
                 updates.image = imageUrl;
                 hasChanges = true;
             }
-        } else if (payload.image !== undefined && payload.image !== currentMetadata.image) {
-            updates.image = payload.image;
-            hasChanges = true;
         }
 
         if (hasChanges) {
@@ -147,12 +138,17 @@ export const userService = {
 
         const updatedUser = await userRepository.getById(userId);
 
+        const updatedFields: any = {};
+        for (const key of Object.keys(updates)) {
+            updatedFields[key] = updates[key];
+        }
+        if (emailUpdated) {
+            updatedFields.email = payload.email;
+        }
+
         return {
             user: updatedUser,
-            updated_fields: {
-                ...updates,
-                email: emailUpdated ? payload.email : undefined
-            }
+            updated_fields: updatedFields
         };
     }
 };
