@@ -19,6 +19,21 @@ export const userRepository = {
     },
 
     /**
+     * Update user email
+     * @param userId 
+     * @param email 
+     * @returns 
+     */
+    async updateUserEmail(userId: string, email: string) {
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+            userId,
+            { email }
+        );
+        if (error) throw error;
+        return data;
+    },
+
+    /**
      * List all users
      * @returns 
      */
@@ -34,13 +49,10 @@ export const userRepository = {
     async getById(userId: string) {
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (error) throw error;
-        
 
         const user = data.user;
-        // console.log("&&&&&&&&&& User data we get", user);
 
         let teamName: string | null = null;
-
         const teamId = user.user_metadata?.team_id;
 
         if (teamId) {
@@ -58,17 +70,15 @@ export const userRepository = {
             teamName = team?.name ?? null;
         }
 
-        console.log("Team name", teamName);
-
         return {
             id: user.id,
             email: user.email,
             role: user.user_metadata?.role_name,
             username: user.user_metadata?.username,
+            full_name: user.user_metadata?.full_name,
+            image: user.user_metadata?.image,
             team_id: user.user_metadata?.team_id,
             team_name: teamName
         };
     }
-
 };
-
