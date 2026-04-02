@@ -19,4 +19,5 @@ export const imapConfig = {
   },
 
   logger: false as false
+  // logger: console
 };

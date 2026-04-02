@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { EmailCleanerService } from '../utils/email-cleaner.utils';
 
 export const emailRepository = {
 
@@ -84,6 +85,11 @@ export const emailRepository = {
         in_reply_to?: string;
         raw_headers?: any;
     }) {
+
+        // Clean the email body
+        const cleanedBody = EmailCleanerService.cleanEmailBody(payload.body || '');
+        const newMessageOnly = EmailCleanerService.extractNewMessage(payload.body || '');
+
         const { data, error } = await supabaseAdmin
             .from('email_replies')
             .insert({
@@ -92,7 +98,9 @@ export const emailRepository = {
                 from_email: payload.from_email,
                 to_email: payload.to_email || null,
                 subject: payload.subject || null,
-                body: payload.body || null,
+                body: cleanedBody, 
+                original_body: payload.body, 
+                new_message: newMessageOnly, 
                 html_body: payload.html_body || null,
                 message_id: payload.message_id || null,
                 in_reply_to: payload.in_reply_to || null,
@@ -164,6 +172,35 @@ export const emailRepository = {
         if (error) {
             throw new Error(`Failed to store incoming email: ${error.message}`);
         }
+    },
+
+    async getReplyByMessageId(messageId: string) {
+        const { data, error } = await supabaseAdmin
+            .from('email_replies')
+            .select('*')
+            .eq('message_id', messageId)
+            .maybeSingle();
+
+        if (error) {
+            throw new Error(`Failed to fetch reply: ${error.message}`);
+        }
+
+        return data;
+    },
+
+    async getReplyByTrackingIdAndUid(trackingId: string, uid: number) {
+        const { data, error } = await supabaseAdmin
+            .from('email_replies')
+            .select('*')
+            .eq('tracking_id', trackingId)
+            .eq('uid', uid)
+            .maybeSingle();
+
+        if (error) {
+            return null;
+        }
+
+        return data;
     },
 
 };
