@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import emailRoutes from './email.routes';
+import emailResponseRoutes from './emailResponse.routes';
 import userRoutes from './user.routes';
 import authRoutes from './auth.routes';
 import rolesRoutes from './role.routes';
@@ -24,6 +25,7 @@ const router = Router();
  * Base API routes
  */
 router.use('/email', emailRoutes);
+router.use('/email-response', emailResponseRoutes);
 router.use('/role', rolesRoutes);
 router.use('/user', userRoutes);
 router.use('/team', teamRoutes);

@@ -27,16 +27,16 @@ export const itineraryPreferencesController = {
      */
     async getPreferences(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
                     message: 'Lead ID is required'
                 });
             }
 
-            const result = await itineraryPreferencesService.getPreferences(leadId as string);
+            const result = await itineraryPreferencesService.getPreferences(itinerary_id as string);
 
             if (!result.success) {
                 return res.status(404).json(result);
@@ -91,16 +91,15 @@ export const itineraryPreferencesController = {
      */
     async updatePreferences(req: Request, res: Response) {
         try {
-            console.log("The query we get", req.query.itineraryId);
 
-            const { leadId } = req.params;
-            const itineraryId = req.params.itineraryId;
+            const { itinerary_id } = req.params;
             const updateData: IUpdatePreferenceData = req.body;
+            console.log("CONTROLLER: THe update Data we got", JSON.stringify(updateData, null, 2));
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Lead ID is required'
+                    message: 'Itinerary ID is required'
                 });
             }
 
@@ -112,9 +111,8 @@ export const itineraryPreferencesController = {
             }
 
             const result = await itineraryPreferencesService.updatePreferences(
-                leadId as string, 
                 updateData,
-                itineraryId as string, 
+                itinerary_id as string,
             );
 
             if (!result.success) {
@@ -139,16 +137,16 @@ export const itineraryPreferencesController = {
      */
     async deletePreferences(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
 
-            if (!leadId) {
+            if (!itinerary_id) {
                 return res.status(400).json({
                     success: false,
                     message: 'Lead ID is required'
                 });
             }
 
-            const result = await itineraryPreferencesService.deletePreferences(leadId as string);
+            const result = await itineraryPreferencesService.deletePreferences(itinerary_id as string);
 
             if (!result.success) {
                 return res.status(400).json(result);
@@ -193,35 +191,35 @@ export const itineraryPreferencesController = {
     /**
      * Save or update preferences (upsert)
      */
-    async saveOrUpdatePreferences(req: Request, res: Response) {
-        try {
-            const formData: IFrontendFormData = req.body;
+    // async saveOrUpdatePreferences(req: Request, res: Response) {
+    //     try {
+    //         const formData: IFrontendFormData = req.body;
 
-            if (!formData?.leadData?.id) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Lead ID is required'
-                });
-            }
+    //         if (!formData?.leadData?.id) {
+    //             return res.status(400).json({
+    //                 success: false,
+    //                 message: 'Lead ID is required'
+    //             });
+    //         }
 
-            const result = await itineraryPreferencesService.saveOrUpdatePreferences(formData);
+    //         const result = await itineraryPreferencesService.saveOrUpdatePreferences(formData);
 
-            if (!result.success) {
-                return res.status(400).json(result);
-            }
+    //         if (!result.success) {
+    //             return res.status(400).json(result);
+    //         }
 
-            return res.status(200).json({
-                ...result,
-                message: `Preferences ${result.action} successfully`
-            });
-        } catch (error) {
-            console.error('Error in saveOrUpdatePreferences controller:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error'
-            });
-        }
-    },
+    //         return res.status(200).json({
+    //             ...result,
+    //             message: `Preferences ${result.action} successfully`
+    //         });
+    //     } catch (error) {
+    //         console.error('Error in saveOrUpdatePreferences controller:', error);
+    //         return res.status(500).json({
+    //             success: false,
+    //             message: 'Internal server error'
+    //         });
+    //     }
+    // },
 
     /**
      * Get flight preference by ID
@@ -335,10 +333,6 @@ export const itineraryPreferencesController = {
                 ]);
             };
 
-            const logResponse = (label: string, data: any) => {
-                console.log(`🔥 ${label}:`, JSON.stringify(data, null, 2));
-            };
-
             if (leadId) {
                 if (userRole === 'rm') {
                     const hasAccess = await withTimeout(
@@ -347,13 +341,10 @@ export const itineraryPreferencesController = {
                     );
 
                     if (!hasAccess) {
-                        const response = {
+                        return res.status(403).json({
                             success: false,
                             message: 'You do not have permission to access this lead'
-                        };
-
-                        logResponse("403 Response", response);
-                        return res.status(403).json(response);
+                        });
                     }
                 }
 
@@ -363,25 +354,19 @@ export const itineraryPreferencesController = {
                 );
 
                 if (!singleResult.success || !singleResult.data) {
-                    const response = {
+                    return res.status(404).json({
                         success: false,
                         message: `Lead with ID ${leadId} not found`
-                    };
-
-                    logResponse("404 Response", response);
-                    return res.status(404).json(response);
+                    });
                 }
 
-                const response = {
+                return res.status(200).json({
                     success: true,
                     data: {
                         leads: [singleResult.data],
                         total_count: 1
                     }
-                };
-
-                logResponse("Single Lead Response", response);
-                return res.status(200).json(response);
+                });
             }
 
             const page = parseInt(req.query.page as string) || 1;
@@ -407,7 +392,6 @@ export const itineraryPreferencesController = {
                     "getAllLeads"
                 );
 
-                logResponse("Detailed Response", result);
                 return res.status(200).json(result);
             }
 
@@ -424,7 +408,6 @@ export const itineraryPreferencesController = {
                     "getAllLeadsMinimal"
                 );
 
-                logResponse("Minimal Response", result);
                 return res.status(200).json(result);
             } else {
                 const result = await withTimeout(
@@ -432,17 +415,14 @@ export const itineraryPreferencesController = {
                     "getAllLeadsBasic"
                 );
 
-                logResponse("Basic Response", result);
                 return res.status(200).json(result);
             }
 
         } catch (error: any) {
-            const response = {
+            return res.status(500).json({
                 success: false,
                 message: error.message || 'Internal server error'
-            };
-
-            return res.status(500).json(response);
+            });
         }
     },
 
@@ -485,8 +465,8 @@ export const itineraryPreferencesController = {
      * Display & Download Itinerary pdf
      */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
-        const { leadId } = req.params;
-        const itinResult = await itineraryPreferencesService.getPreferences(leadId as string);
+        const { itinerary_id } = req.params;
+        const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
         const html = await itineraryPdfService.generateHTML(itinResult.data);
         const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -498,17 +478,20 @@ export const itineraryPreferencesController = {
 
     async uploadItineraryToS3(req: Request, res: Response) {
         try {
-            const { leadId } = req.params;
+            const { itinerary_id } = req.params;
             const { sendVia } = req.body;
 
-            const leadIdString = Array.isArray(leadId) ? leadId[0] : leadId;
 
-            const leadData = await leadService.getLeadById(leadIdString);
+            const leadId = await itineraryPreferencesService.getleadByitineraryId(itinerary_id as string);
+
+
+            const leadData = await leadService.getLeadById(leadId);
+
             if (!leadData) {
                 return res.status(404).json({ success: false, message: "Lead Data not found" });
             }
 
-            const itinResult = await itineraryPreferencesService.getPreferences(leadIdString);
+            const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
             if (!itinResult.data) {
                 return res.status(404).json({ success: false, message: "Itinerary preferences not found" });
             }
@@ -525,7 +508,7 @@ export const itineraryPreferencesController = {
             const buffer = await itineraryPdfService.generateBuffer(html);
 
             const clientName = itinResult.data.lead_details?.name?.replace(/\s+/g, '_') || 'client';
-            const fileName = `itinerary_${leadIdString}_${clientName}.pdf`;
+            const fileName = `itinerary_${leadId}_${clientName}.pdf`;
 
             const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
 
@@ -533,7 +516,7 @@ export const itineraryPreferencesController = {
             const clientEmail = leadData.email || itinResult.data.lead_details?.email;
 
             const deliveryOptions: DeliveryOptions = {
-                leadId: leadIdString,
+                leadId: leadId,
                 clientName: itinResult.data.lead_details?.name || leadData.name || 'Client',
                 clientEmail: clientEmail,
                 clientPhone: clientPhone,
@@ -549,7 +532,7 @@ export const itineraryPreferencesController = {
 
             if (isDelivered) {
                 await itineraryPreferencesRepository.updateItineraryStatus(
-                    leadIdString,
+                    leadId,
                     prefSummary.id,
                     'Itinerary_send'
                 );
@@ -558,7 +541,7 @@ export const itineraryPreferencesController = {
             return sendUploadResponse(res, {
                 success: true,
                 publicUrl,
-                leadId: leadIdString,
+                leadId: leadId,
                 clientPhone,
                 clientEmail,
                 deliveryResult
