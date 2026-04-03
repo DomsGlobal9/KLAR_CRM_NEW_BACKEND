@@ -37,10 +37,11 @@ import { sendErrorResponse } from '../helpers/response.helper';
 export const reminderController = {
   async setReminder(req: Request, res: Response) {
     try {
-      const { currentMemberId, reminderForId, title, content, sendVia } = req.body;
+      console.log("The set reminder data we get", JSON.stringify(req.body, null, 2));
+      const { lead_id, assigned_to, title, message, sendVia } = req.body;
 
       // Validation
-      if (!reminderForId || !title || !content) {
+      if (!assigned_to || !title || !message) {
         return res.status(400).json({
           success: false,
           message: "Recipient, Title, and Content are required"
@@ -57,11 +58,11 @@ export const reminderController = {
       }
 
       const result = await reminderService.sendReminder({
-        currentMemberId,
-        reminderForId,
+        currentMemberId: lead_id,
+        reminderForId: assigned_to,
         title,
-        content,
-        sendVia: sendVia || { email: true, whatsapp: true } // Default to both
+        content: message,
+        sendVia: sendVia || { email: true, whatsapp: true } 
       });
 
       return res.status(200).json(result);

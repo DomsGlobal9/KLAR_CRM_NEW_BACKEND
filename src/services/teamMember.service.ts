@@ -571,5 +571,76 @@ export const teamMemberService = {
         return user;
     },
 
+    async getFilteredTeamMembers(currentUser?: any) {
+        const { data, error } = await teamMemberRepository.listUsers();
+        if (error) throw error;
+
+        const allUsers = data.users;
+        const userRole = currentUser?.role; 
+        const currentUserId = currentUser?.id;
+
+        let filteredUsers: any[] = [];
+
+        if (userRole === 'superadmin' || userRole === 'admin') {
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                return roleName !== 'superadmin';
+            });
+        }
+        else if (userRole === 'tl' || userRole === 'rm') {
+            const currentUserMetadata = currentUser?.user_metadata || {};
+            const userTeamId = currentUserMetadata.team_id || currentUser?.team_id;
+
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                const userTeam = metadata.team_id;
+
+                if (roleName === 'admin') {
+                    return true;
+                }
+
+                if (userTeamId && userTeam === userTeamId) {
+                    return true;
+                }
+
+                if (u.id === currentUserId) {
+                    return true;
+                }
+
+                return false;
+            });
+        }
+        else {
+            filteredUsers = allUsers.filter(u => u.id === currentUserId);
+        }
+
+        const roles = await roleRepository.getAll();
+
+        return filteredUsers.map(user => {
+            const metadata = user.user_metadata || {};
+
+            let finalMetadata = metadata;
+            if (metadata.user_metadata) {
+                finalMetadata = metadata.user_metadata;
+            }
+
+            const role = roles.find(r => r.id === finalMetadata.role_id);
+
+            const userName = finalMetadata.full_name ||
+                finalMetadata.username ||
+                finalMetadata.name ||
+                user.email?.split('@')[0] ||
+                'Unknown';
+
+            return {
+                id: user.id,
+                name: userName,
+                email: user.email,
+                role_name: role?.name || finalMetadata.role_name || null
+            };
+        });
+    },
 
 };
