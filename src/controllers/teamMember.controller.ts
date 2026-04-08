@@ -171,14 +171,15 @@ export const teamMemberController = {
         try {
 
 
-            const { email, role_id, team_id } = req.body;
+            const { email, mobile_number, role_id, team_id } = req.body;
 
-            if (!email || !role_id) {
-                return res.status(400).json({ error: 'Email and role_id are required' });
+            if (!email || !role_id || !mobile_number) {
+                return res.status(400).json({ error: 'Email, role_id, and mobile_number are required' });
             }
 
             const result = await teamMemberService.sendAddMemberOTP({
                 email: email.toLowerCase(),
+                mobile_number,
                 role_id,
                 team_id: team_id || null,
                 requested_by: req.user?.id as string
@@ -250,6 +251,31 @@ export const teamMemberController = {
             });
         } catch (e: any) {
             res.status(400).json({ error: e.message });
+        }
+    },
+    
+    async getFilteredTeamMembers(req: AuthRequest, res: Response) {
+        try {
+            const users = await teamMemberService.getFilteredTeamMembers(req.user);
+
+            if (!users || users.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    data: []
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: users
+            });
+        } catch (error: any) {
+            console.error('Error fetching team members:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch team members',
+                error: error.message
+            });
         }
     },
 };

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import emailRoutes from './email.routes';
+import emailResponseRoutes from './emailResponse.routes';
 import userRoutes from './user.routes';
 import authRoutes from './auth.routes';
 import rolesRoutes from './role.routes';
@@ -16,6 +17,7 @@ import inquirySourcesRoutes from './inquirySources.routes';
 import teamLead from "./teamLead.routes";
 import travelPlanRoutes from "./travelplan.routes"
 import whatsappRoutes from './whatsapp.routes';
+import setReminder from "./setReminder.routes"
 
 const router = Router();
 
@@ -23,6 +25,7 @@ const router = Router();
  * Base API routes
  */
 router.use('/email', emailRoutes);
+router.use('/email-response', emailResponseRoutes);
 router.use('/role', rolesRoutes);
 router.use('/user', userRoutes);
 router.use('/team', teamRoutes);
@@ -39,5 +42,6 @@ router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
+router.use("/set-reminder", setReminder)
 
 export default router;
