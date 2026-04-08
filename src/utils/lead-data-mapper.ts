@@ -186,9 +186,7 @@ export class LeadDataMapper {
         categories: any[],
         subServices: any[]
     ): any[] {
-        console.log("🔄 Formatting service relationships for frontend");
-        console.log(`📊 Input: ${relationships.length} relationships, ${services.length} services, ${categories.length} categories, ${subServices.length} sub-services`);
-
+        
         // Create maps for quick lookup
         const serviceMap = new Map();
         const categoryMap = new Map();
@@ -212,9 +210,6 @@ export class LeadDataMapper {
                 subServiceMap.set(subService.id, subService);
             }
         });
-
-        console.log(`🗺️ Map sizes: services=${serviceMap.size}, categories=${categoryMap.size}, subServices=${subServiceMap.size}`);
-
 
         const serviceGroups = new Map();
 
@@ -272,8 +267,7 @@ export class LeadDataMapper {
         });
 
         const result = Array.from(serviceGroups.values());
-
-        console.log(`✅ Formatted ${result.length} service groups`);
+        
         result.forEach((group, idx) => {
             console.log(`  Service ${idx + 1}: ${group.service_name}, ${group.categories.length} categories`);
         });

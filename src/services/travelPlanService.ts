@@ -7,6 +7,7 @@ class TravelPlanService {
     async generateTravelPlan(leadData: any): Promise<any> {
         try {
             const travelRequest = this.prepareTravelRequest(leadData);
+            console.log("@@@@@@@@@@@@@@@@ The travel request we get\n", JSON.stringify(travelRequest, null, 2));
 
             const response = await axios.post(
                 this.PLAN_API_URL,
@@ -30,23 +31,34 @@ class TravelPlanService {
 
     private prepareTravelRequest(leadData: any): any {
 
+        console.log("############# LEad data we get", JSON.stringify(leadData, null, 2));
+        const budget = this.extractBudget(leadData);
+        const selectedPlanType = this.extractTravelType(leadData);
+        const from = this.extractFromLocation(leadData);
+        const to = this.extractDestination(leadData);
+        const travelers = leadData.travelers ||
+            leadData.service_specific?.guests ||
+            leadData.serviceSpecific?.guests ||
+            1;
+
+        
         const request: any = {
-            from: this.extractFromLocation(leadData),
-            to: this.extractDestination(leadData),
+            from: from,
+            to: to,
             days: this.extractDuration(leadData),
-            budget: this.extractBudget(leadData),
-            travel_type: this.extractTravelType(leadData),
+            budget: budget,
+            travel_type: selectedPlanType,
         };
 
         request.lead_data = {
             name: leadData.name,
             email: leadData.email,
             phone: leadData.phone,
-            travelers: leadData.travelers || leadData.service_specific?.guests,
+            travelers: travelers,
             preferred_contact: leadData.preferred_contact_method,
             inquiry_source: leadData.inquiry_source,
             country_city: leadData.country_city,
-            selected_plan_type: leadData.selectedPlanType,
+            selected_plan_type: selectedPlanType,
         };
 
         const services = leadData.service_selections || leadData.serviceSelections;

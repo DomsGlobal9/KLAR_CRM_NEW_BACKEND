@@ -10,6 +10,7 @@ export const travelPlanController = {
     async generateTravelPlan(req: AuthRequest, res: Response) {
         try {
             const leadData = req.body;
+            console.log("THe AI travel plan generate data we get", JSON.stringify(leadData, null, 2));
 
             const travelPlan = await travelPlanService.generateTravelPlan(leadData);
 
