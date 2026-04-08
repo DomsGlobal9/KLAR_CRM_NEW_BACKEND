@@ -253,4 +253,29 @@ export const teamMemberController = {
             res.status(400).json({ error: e.message });
         }
     },
+    
+    async getFilteredTeamMembers(req: AuthRequest, res: Response) {
+        try {
+            const users = await teamMemberService.getFilteredTeamMembers(req.user);
+
+            if (!users || users.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    data: []
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: users
+            });
+        } catch (error: any) {
+            console.error('Error fetching team members:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch team members',
+                error: error.message
+            });
+        }
+    },
 };

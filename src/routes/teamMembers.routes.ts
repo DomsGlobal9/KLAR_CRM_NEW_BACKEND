@@ -25,7 +25,14 @@ router.post('/', teamMemberController.addMember);
  * Get team members
  */
 router.get('/', teamMemberController.getAll);
- 
+
+/**
+ * Get filtered team members based on role
+ * - Superadmin/Admin: Get all members
+ * - TL/RM: Get admin + their team members
+ */
+router.get('/filtered', teamMemberController.getFilteredTeamMembers);
+
 /**
  * Get team members by team ID
  */
@@ -51,6 +58,5 @@ router.patch('/:memberId/status', teamMemberController.updateStatus);
  */
 router.delete('/:memberId', teamMemberController.remove);
 
+
 export default router;
-
-
