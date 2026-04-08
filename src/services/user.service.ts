@@ -1,6 +1,8 @@
 import { userRepository } from '../repositories/user.repository';
 import { UpdateSelfPayload } from '../interfaces/user.interface';
 
+
+
 export const userService = {
 
     /**
@@ -48,5 +50,13 @@ export const userService = {
         };
 
         return userRepository.updateUserMetadata(userId, updatedMetadata);
-    }
+    },
 };
+
+
+
+
+
+
+
+
