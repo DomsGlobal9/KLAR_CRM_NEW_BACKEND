@@ -93,7 +93,7 @@ class MailConfig {
         <p>Time: ${new Date().toLocaleString()}</p>
         <p>Environment: ${envConfig.NODE_ENV}</p>
       `,
-        };
+        };   
 
         return this.sendMail(testOptions);
     }

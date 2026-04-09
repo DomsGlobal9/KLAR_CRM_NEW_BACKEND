@@ -1,4 +1,4 @@
-import express from 'express';
+import express, {Application} from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -6,6 +6,7 @@ import routes from './routes';
 import { envConfig, corsOptions, cronJobConfigs } from './config';
 import { emailReaderService } from './services/emailReader.service';
 import cronService from './services';
+import connectDB from './config/mongodbDatabase.config';
 
 
 const app = express();
@@ -89,5 +90,7 @@ if (envConfig.NODE_ENV !== 'test') {
 
   console.log(`📥 Email polling started (every ${POLL_INTERVAL / 1000} sec)`);
 }
+
+connectDB()
 
 export default app;
