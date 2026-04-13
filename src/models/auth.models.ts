@@ -229,8 +229,6 @@ UserSchema.index(
 );
 
 
-// export const UserModel = mongoose.model<IUser>("User", UserSchema);
-
 
 export const getUserModel = () => {
     const conn = getDB("auth"); 

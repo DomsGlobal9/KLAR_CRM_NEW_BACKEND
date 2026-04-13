@@ -181,7 +181,6 @@ const FlightBookingSchema = new Schema<IFlightBooking>({
 FlightBookingSchema.index({ createdAt: -1 });
 FlightBookingSchema.index({ status: 1, createdAt: -1 });
 
-// export const FlightBookingModel = mongoose.model<IFlightBooking>('FlightBooking', FlightBookingSchema);
 
 
 export const getFlightBookingModel = () => {
