@@ -18,6 +18,7 @@ import teamLead from "./teamLead.routes";
 import travelPlanRoutes from "./travelplan.routes"
 import whatsappRoutes from './whatsapp.routes';
 import setReminder from "./setReminder.routes"
+import flight from "./flight.routes"
 
 const router = Router();
 
@@ -43,5 +44,8 @@ router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
 router.use("/set-reminder", setReminder)
+
+
+router.use("/flights", flight)
 
 export default router;

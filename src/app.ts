@@ -6,8 +6,8 @@ import routes from './routes';
 import { envConfig, corsOptions, cronJobConfigs } from './config';
 import { emailReaderService } from './services/emailReader.service';
 import cronService from './services';
-// import connectDB from './config/mongodbDatabase.config';
-import { connectFlightDB, connectAuthDB } from './config/mongodbDatabase.config';
+import connectDB from './config/mongodbDatabase.config';
+// import { connectFlightDB, connectAuthDB } from './config/mongodbDatabase.config';
 
 
 const app = express();
@@ -92,8 +92,8 @@ if (envConfig.NODE_ENV !== 'test') {
   console.log(`📥 Email polling started (every ${POLL_INTERVAL / 1000} sec)`);
 }
 
-// connectDB()
-connectFlightDB();
-connectAuthDB()
+connectDB()
+// connectFlightDB();
+// connectAuthDB()
 
 export default app;

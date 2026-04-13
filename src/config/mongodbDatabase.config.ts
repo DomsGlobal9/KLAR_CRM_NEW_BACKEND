@@ -1,55 +1,127 @@
-import mongoose, { Connection } from 'mongoose';
-import dotenv from 'dotenv';
+// import mongoose from "mongoose";
+// import dotenv from "dotenv";
+
+// dotenv.config(); // ✅ ensure env is loaded here too (safe fallback)
+
+// const connections: Record<string, mongoose.Connection> = {};
+
+// const connectDB = async () => {
+//   try {
+//     const mongoUrls = process.env.MONGO_URLS;
+
+//     console.log("👉 MONGO_URLS from env:", mongoUrls); // DEBUG
+
+//     if (!mongoUrls) {
+//       throw new Error("MONGO_URLS not found in .env");
+//     }
+
+//     const dbEntries = mongoUrls.split(",");
+
+//     await Promise.all(
+//       dbEntries.map(async (entry, index) => {
+//         let name = `db${index + 1}`;
+//         let url = entry;
+
+//         // support "name|url" format
+//         if (entry.includes("|")) {
+//           const parts = entry.split("|");
+//           name = parts[0];
+//           url = parts[1];
+//         }
+
+//         const conn = await mongoose.createConnection(url).asPromise();
+
+//         connections[name] = conn;
+
+//         console.log(`✅ Connected to ${name}`);
+//       })
+//     );
+
+//   } catch (error) {
+//     console.error("❌ MongoDB connection error:", error);
+//     process.exit(1);
+//   }
+// };
+
+// export const getDB = (name: string) => {
+//   if (!connections[name]) {
+//     throw new Error(`DB ${name} not found`);
+//   }
+//   return connections[name];
+// };
+
+// export default connectDB;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-// Independent connection objects to be used in your models
-export let flightConn: Connection;
-export let authConn: Connection;
+const connections: Record<string, mongoose.Connection> = {};
 
-/**
- * CONNECT TO FLIGHTS DATABASE
- */
-export const connectFlightDB = async (): Promise<Connection> => {
+const connectDB = async () => {
   try {
-    const flightURI = process.env.MONGODB_FLIGHT_URI;
+    const mongoUrls = process.env.MONGO_URLS;
 
-    if (!flightURI) {
-      throw new Error('MONGODB_FLIGHT_URI is missing in .env');
+    if (!mongoUrls) {
+      throw new Error("MONGO_URLS not found in .env");
     }
 
-    flightConn = mongoose.createConnection(flightURI);
-    
-    // Using event listeners for better logging
-    flightConn.on('connected', () => console.log('✅ MongoDB FlightConnecteds '));
-    flightConn.on('error', (err) => console.error(`❌ Flights DB Error: ${err}`));
+    // Use trim() to handle any accidental spaces in the .env string
+    const dbEntries = mongoUrls.split(",").map(entry => entry.trim());
 
-    return flightConn;
+    await Promise.all(
+      dbEntries.map(async (entry, index) => {
+        let name = `db${index + 1}`;
+        let url = entry;
+
+        if (entry.includes("|")) {
+          const [parsedName, parsedUrl] = entry.split("|");
+          name = parsedName;
+          url = parsedUrl;
+        }
+
+        const conn = mongoose.createConnection(url, {
+          maxPoolSize: 10, // Recommended for production
+        });
+
+        // Listen for runtime errors after initial connection
+        conn.on("error", (err) => console.error(`❌ MongoDB [${name}] error:`, err));
+        conn.on("disconnected", () => console.warn(`⚠️ MongoDB [${name}] disconnected`));
+
+        await conn.asPromise();
+        connections[name] = conn;
+
+        console.log(`✅ Connected to DB: ${name}`);
+      })
+    );
   } catch (error) {
-    console.error('Flights Connection Failed:', error);
+    console.error("❌ MongoDB initial connection error:", error);
     process.exit(1);
   }
 };
 
-/**
- * CONNECT TO AUTH DATABASE
- */
-export const connectAuthDB = async (): Promise<Connection> => {
-  try {
-    const authURI = process.env.MONGODB_AUTH_URI;
-
-    if (!authURI) {
-      throw new Error('MONGODB_AUTH_URI is missing in .env');
-    }
-
-    authConn = mongoose.createConnection(authURI);
-
-    authConn.on('connected', () => console.log('✅ MongoDB Auth Connected'));
-    authConn.on('error', (err) => console.error(`❌ Auth DB Error: ${err}`));
-
-    return authConn;
-  } catch (error) {
-    console.error('Auth Connection Failed:', error);
-    process.exit(1);
+export const getDB = (name: string): mongoose.Connection => {
+  const connection = connections[name];
+  if (!connection) {
+    throw new Error(`DB Connection "${name}" not found. Available: ${Object.keys(connections).join(", ")}`);
   }
+  return connection;
 };
+
+export default connectDB;
