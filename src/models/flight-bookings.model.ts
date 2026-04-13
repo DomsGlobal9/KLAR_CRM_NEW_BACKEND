@@ -175,7 +175,8 @@ const FlightBookingSchema = new Schema<IFlightBooking>({
     cancelledAt: { type: Date },
     confirmedAt: { type: Date }
 }, {
-    timestamps: true
+    timestamps: true,
+    collection: 'flightbookings'
 });
 
 FlightBookingSchema.index({ createdAt: -1 });
