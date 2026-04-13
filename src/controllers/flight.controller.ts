@@ -262,11 +262,12 @@
 
 
 import { Request, Response } from "express";
-import * as  UserService from "../services/user.service";
+// import * as  UserService from "../services/user.service";
+import { getAllFlightsWithUsers } from "../services/flight.service";
 
 export const getFlightReport = async (req: Request, res: Response) => {
     try {
-        const data = await UserService.getAllFlightsWithUsers();
+        const data = await getAllFlightsWithUsers();
         
         res.status(200).json({
             success: true,

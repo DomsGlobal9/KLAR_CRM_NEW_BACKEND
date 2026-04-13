@@ -90,10 +90,12 @@ const connectDB = async () => {
         let name = `db${index + 1}`;
         let url = entry;
 
+
+
         if (entry.includes("|")) {
           const [parsedName, parsedUrl] = entry.split("|");
-          name = parsedName;
-          url = parsedUrl;
+          name = parsedName.trim();
+          url = parsedUrl.trim();
         }
 
         const conn = mongoose.createConnection(url, {
