@@ -223,23 +223,60 @@
 
 
 
-import { Request, Response } from 'express';
-import * as FlightService from '../services/flight.service';
+// import { Request, Response } from 'express';
+// import * as FlightService from '../services/flight.service';
 
-export const getFlightDetails = async (req: Request, res: Response) => {
+// export const getFlightDetails = async (req: Request, res: Response) => {
+//     try {
+//         // We ignore the ID in the request as per your requirement
+//         const flights = await FlightService.getAllFlightsData();
+
+//         return res.status(200).json({
+//             success: true,
+//             count: flights.length,
+//             data: flights
+//         });
+//     } catch (error: any) {
+//         return res.status(500).json({
+//             success: false,
+//             message: error.message || "Internal Server Error"
+//         });
+//     }
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Request, Response } from "express";
+import * as  UserService from "../services/user.service";
+
+export const getFlightReport = async (req: Request, res: Response) => {
     try {
-        // We ignore the ID in the request as per your requirement
-        const flights = await FlightService.getAllFlightsData();
-
-        return res.status(200).json({
+        const data = await UserService.getAllFlightsWithUsers();
+        
+        res.status(200).json({
             success: true,
-            count: flights.length,
-            data: flights
+            count: Array.isArray(data) ? data.length : 0,
+            data: Array.isArray(data) ? data : []
         });
     } catch (error: any) {
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
-            message: error.message || "Internal Server Error"
+            message: error.message
         });
     }
 };

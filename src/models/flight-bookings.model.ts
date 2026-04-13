@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { getDB } from "../config/mongodbDatabase.config";
 
 export enum BookingStatus {
     PENDING = 'PENDING',
@@ -180,4 +181,10 @@ const FlightBookingSchema = new Schema<IFlightBooking>({
 FlightBookingSchema.index({ createdAt: -1 });
 FlightBookingSchema.index({ status: 1, createdAt: -1 });
 
-export const FlightBookingModel = mongoose.model<IFlightBooking>('FlightBooking', FlightBookingSchema);
+// export const FlightBookingModel = mongoose.model<IFlightBooking>('FlightBooking', FlightBookingSchema);
+
+
+export const getFlightBookingModel = () => {
+    const conn = getDB("b2b");
+    return conn.model<IFlightBooking>("FlightBooking", FlightBookingSchema);
+};

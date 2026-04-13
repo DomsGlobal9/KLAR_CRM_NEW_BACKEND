@@ -97,7 +97,7 @@ const connectDB = async () => {
         }
 
         const conn = mongoose.createConnection(url, {
-          maxPoolSize: 10, // Recommended for production
+          maxPoolSize: 10, 
         });
 
         // Listen for runtime errors after initial connection

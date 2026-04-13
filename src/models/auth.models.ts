@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { getDB } from "../config/mongodbDatabase.config";
 
 
 export enum Roles {
@@ -228,6 +229,10 @@ UserSchema.index(
 );
 
 
-export const UserModel = mongoose.model<IUser>("User", UserSchema);
+// export const UserModel = mongoose.model<IUser>("User", UserSchema);
 
 
+export const getUserModel = () => {
+    const conn = getDB("auth"); 
+    return conn.model<IUser>("User", UserSchema);
+};

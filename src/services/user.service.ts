@@ -104,3 +104,7 @@ export const userService = {
 
 
 
+export function getAllFlightsWithUsers() {
+    throw new Error("Function not implemented.");
+}
+
