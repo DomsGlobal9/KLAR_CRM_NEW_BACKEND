@@ -1,6 +1,8 @@
 import { getFlightBookingModel } from "../models/flight-bookings.model";
 import { getUserModel } from "../models/auth.models";
 
+
+//Get all flight booking details
 export const getAllFlightsWithUsers = async () => {
     const FlightModel = getFlightBookingModel();
     const UserModel = getUserModel();
@@ -32,4 +34,35 @@ export const getAllFlightsWithUsers = async () => {
             businessName: user?.businessProfile?.businessName || "N/A"
         };
     });
+};
+
+
+
+
+
+//Get single flight booking
+export const getSingleFlightDetails = async (bookingId: string) => {
+    const FlightModel = getFlightBookingModel();
+    const UserModel = getUserModel();
+
+    // 1. Find the specific booking by bookingId
+    const booking = await FlightModel.findOne({ bookingId }).lean();
+
+    if (!booking) {
+        throw new Error("Booking not found");
+    }
+
+    // 2. Fetch the user details for this specific booking
+    const user = await UserModel.findById(booking.userId).lean();
+
+    // 3. Return everything from the booking + userDetails
+    return {
+        ...booking,
+        userDetails: user ? {
+            businessName: user.businessProfile?.businessName,
+            email: user.email,
+            mobile: user.mobile,
+            clientType: user.clientType
+        } : null
+    };
 };
