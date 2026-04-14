@@ -33,3 +33,35 @@ export const getAllHotelsWithUsers = async () => {
             };
         });
 };
+
+
+
+
+
+
+
+
+export const getSingleHotelDetails = async (reservationId: string) => {
+    const HotelModel = getHotelBookingModel();
+    const UserModel = getUserModel();
+
+    // 1. Find the specific booking by reservationId
+    const booking = await HotelModel.findOne({ reservationId }).lean();
+
+    if (!booking) {
+        throw new Error("Hotel booking not found");
+    }
+
+    // 2. Fetch the associated user for business information
+    const user = await UserModel.findById(booking.userId).lean();
+
+    // 3. Return the full booking object merged with key user details
+    return {
+        ...booking,
+        userDetails: user ? {
+            businessName: user.businessProfile?.businessName,
+            email: user.email,
+            mobile: user.mobile
+        } : null
+    };
+};
