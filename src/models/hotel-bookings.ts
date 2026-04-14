@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { getDB } from '../config/mongodbDatabase.config';
 
 /**
  * Booking status enum
@@ -139,12 +140,22 @@ const bookingSchema = new Schema<IBooking>(
         tripJackResponse: { type: Schema.Types.Mixed },
     },
     {
-        timestamps: true
+        timestamps: true,
+        collection: 'bookings'
     }
 );
 
 bookingSchema.index({ reservationId: 1 });
 bookingSchema.index({ propertyId: 1, checkIn: 1 });
 
-export const BookingModel: Model<IBooking> =
-    mongoose.models.Booking || mongoose.model<IBooking>('Booking', bookingSchema);
+// export const BookingModel: Model<IBooking> =
+//     mongoose.models.Booking || mongoose.model<IBooking>('Booking', bookingSchema);
+
+
+
+
+
+export const getHotelBookingModel = () => {
+    const conn = getDB("auth"); 
+    return conn.model<IBooking>('Booking', bookingSchema);
+};
