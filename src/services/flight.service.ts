@@ -66,3 +66,6 @@ export const getSingleFlightDetails = async (bookingId: string) => {
         } : null
     };
 };
+
+
+
