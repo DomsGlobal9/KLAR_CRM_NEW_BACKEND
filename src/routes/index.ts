@@ -15,6 +15,7 @@ import itenaryUserPreference from "./itinerary-preferences.routes";
 import inquirySourcesRoutes from './inquirySources.routes';
 import teamLead from "./teamLead.routes"
 import whatsappRoutes from './whatsapp.routes';
+import paymentRoutes from './paymentTracking.routes';
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use('/itenary', itenaryRoutes);
 router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead)
 router.use('/whatsapp', whatsappRoutes);
+router.use('/payment', paymentRoutes);
 
 export default router;
