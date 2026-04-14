@@ -22,6 +22,18 @@ router.get('/:id', leadController.getLeadById);
 router.put('/:id', leadController.updateLead);
 router.delete('/:id', leadController.deleteLead);
 router.patch('/:id/stage', leadController.updateLeadStage);
-router.patch('/:id/assign', leadController.assignLead);
+router.post('/:id/assign', leadController.assignLead);
+// This allows n8n to bypass the login requirement if it provides the secret key
+router.post('/auto-assign', (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey && apiKey === process.env.INTERNAL_API_KEY) {
+        return next(); // Key matches, proceed!
+    }
+    // No key? Fall back to standard user authentication
+    authenticate(req, res, (err) => {
+        if (err) return next(err);
+        requireRole('superadmin', 'admin', 'rm', 'tl')(req, res, next);
+    });
+}, leadController.autoAssignLead);
 
 export default router;

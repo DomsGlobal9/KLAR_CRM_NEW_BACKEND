@@ -78,8 +78,10 @@ export const leadController = {
                 utm_campaign: req.query.utm_campaign as string,
                 utm_term: req.query.utm_term as string,
                 utm_content: req.query.utm_content as string,
-                source: req.query.source as string || 'web_form',
-                source_medium: req.query.source_medium as string
+                // Prioritize body source, then query source, then default
+                source: payload.source || (req.query.source as string) || 'website',
+                source_medium: (req.query.source_medium as string),
+                captured_from: 'web_form'
             };
 
 
@@ -327,6 +329,24 @@ export const leadController = {
                 success: false,
                 error: error.message
             });
+        }
+    },
+
+
+    /**
+     * Auto assign lead via Round Robin — called by n8n
+     */
+    async autoAssignLead(req: Request, res: Response) {
+        try {
+            const { lead_id } = req.body;
+            if (!lead_id) {
+                return res.status(400).json({ success: false, error: 'lead_id required' });
+            }
+
+            const result = await leadService.autoAssignLead(lead_id);
+            res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message });
         }
     },
 

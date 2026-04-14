@@ -9,6 +9,74 @@ import { leadRepository } from '../repositories/lead.repository';
 import { ValidationUtils } from '../utils';
 import { LeadDataMapper } from '../utils/lead-data-mapper';
 import { travelPlanService } from './travelPlanService';
+import { supabaseAdmin } from '../config';
+
+/**
+ * Round Robin — get RM with fewest open leads
+ */
+/**
+ * Round Robin — get RM with fewest open leads from Supabase Auth Metadata
+ */
+async function getRoundRobinRM(): Promise<string | null> {
+  try {
+    // 1. Fetch all users from Supabase Auth
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (error || !users || users.length === 0) {
+      console.log('⚠️  No users found in Auth dashboard');
+      return null;
+    }
+
+    // 2. Filter for Active RMs
+    const activeRMs = users.filter(user => {
+      // Handle potentially nested metadata
+      const metadata = user.user_metadata || {};
+      const status = metadata.status || (metadata.user_metadata?.status);
+      const role = metadata.role_name || (metadata.user_metadata?.role_name);
+
+      return role === 'rm' && status === 'active';
+    });
+
+    if (activeRMs.length === 0) {
+      console.log('⚠️  No active RMs found for auto-assignment');
+      return null;
+    }
+
+    // 3. Sort by assigned_leads_count (least first)
+    activeRMs.sort((a, b) => {
+      const countA = (a.user_metadata?.assigned_leads_count || a.user_metadata?.user_metadata?.assigned_leads_count || 0);
+      const countB = (b.user_metadata?.assigned_leads_count || b.user_metadata?.user_metadata?.assigned_leads_count || 0);
+      return countA - countB;
+    });
+
+    const selectedRM = activeRMs[0];
+    const currentCount = (selectedRM.user_metadata?.assigned_leads_count || selectedRM.user_metadata?.user_metadata?.assigned_leads_count || 0);
+    const newCount = currentCount + 1;
+
+    console.log(`✅ Round Robin selected: ${selectedRM.email} (Current count: ${currentCount})`);
+
+    // 4. Update the RM's metadata to increment the count
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      selectedRM.id,
+      {
+        user_metadata: {
+          ...selectedRM.user_metadata,
+          assigned_leads_count: newCount
+        }
+      }
+    );
+
+    if (updateError) {
+      console.error('❌ Failed to update RM lead count:', updateError.message);
+      // We still return the ID so the assignment isn't blocked by the counter failing
+    }
+
+    return selectedRM.id;
+  } catch (err) {
+    console.error('❌ Round Robin error:', err);
+    return null;
+  }
+}
 
 export const leadService = {
   /**
@@ -32,6 +100,14 @@ export const leadService = {
     }
 
     // const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
+
+    // Auto-assign via Round Robin if not already assigned
+    if (!sanitizedData.assigned_to) {
+      const rmId = await getRoundRobinRM();
+      if (rmId) {
+        sanitizedData.assigned_to = rmId;
+      }
+    }
 
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
 
@@ -189,6 +265,14 @@ export const leadService = {
     const sanitizedData = ValidationUtils.sanitizeLeadData(webLeadPayload);
 
 
+    // Auto-assign via Round Robin
+    if (!sanitizedData.assigned_to) {
+      const rmId = await getRoundRobinRM();
+      if (rmId) {
+        sanitizedData.assigned_to = rmId;
+      }
+    }
+
     return await leadRepository.createLeadWithRequirements(sanitizedData);
   },
 
@@ -224,6 +308,31 @@ export const leadService = {
 
     const payload: UpdateLeadPayload = { assigned_to: assignedTo };
     return await leadRepository.updateLeadWithRequirements(id, payload);
+  },
+
+
+  /**
+   * Auto assign lead via Round Robin
+   */
+  async autoAssignLead(leadId: string): Promise<{ success: boolean; rm_name?: string; rm_id?: string; error?: string }> {
+    try {
+      const lead = await leadRepository.getLeadById(leadId);
+      if (!lead) return { success: false, error: 'Lead not found' };
+
+      // Skip if already assigned
+      if (lead.assigned_to) {
+        return { success: true, rm_id: lead.assigned_to, rm_name: 'Already assigned' };
+      }
+
+      const rmId = await getRoundRobinRM();
+      if (!rmId) return { success: false, error: 'No active RMs found' };
+
+      await leadRepository.updateLeadWithRequirements(leadId, { assigned_to: rmId });
+
+      return { success: true, rm_id: rmId };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   },
 
   /**

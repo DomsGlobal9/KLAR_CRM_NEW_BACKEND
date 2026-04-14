@@ -90,6 +90,7 @@ export const teamMemberService = {
                 role_name: role.name,
                 role_id: payload.role_id,
                 team_id: payload.team_id ?? null,
+                assigned_leads_count: 0,
                 email_verified: true
             }
         });
@@ -549,6 +550,7 @@ export const teamMemberService = {
                 phone: phone || null,
                 email_verified: true,
                 created_by: requested_by,
+                assigned_leads_count: 0,
                 status: 'active',
             }
         });
