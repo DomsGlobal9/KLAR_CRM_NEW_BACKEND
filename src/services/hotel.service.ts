@@ -20,7 +20,6 @@ export const getAllHotelsWithUsers = async () => {
         return acc;
     }, {});
 
-    // 5. Transform and Filter: Only return requested fields for bookings with valid users
     return bookings
         .filter(booking => booking.userId && userMap[booking.userId.toString()])
         .map(booking => {
