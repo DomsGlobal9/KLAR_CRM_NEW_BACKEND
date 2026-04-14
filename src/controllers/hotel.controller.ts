@@ -7,8 +7,8 @@ export const getHotelReport = async (req: Request, res: Response) => {
         
         res.status(200).json({
             success: true,
-            count: data.length,
-            data
+            count: Array.isArray(data) ? data.length : 0,
+            data: Array.isArray(data) ? data : []
         });
     } catch (error: any) {
         res.status(500).json({

@@ -5,28 +5,31 @@ export const getAllHotelsWithUsers = async () => {
     const HotelModel = getHotelBookingModel();
     const UserModel = getUserModel();
 
-    // 1. Fetch all hotel bookings
+    // 1. Fetch all hotel bookings from hotel-booking-service
     const bookings = await HotelModel.find().lean();
 
-    // 2. Get unique user IDs and filter out empty/null ones
+    // 2. Extract unique userIds and filter nulls
     const userIds = [...new Set(bookings.map(b => b.userId?.toString()))].filter(Boolean);
 
-    // 3. Fetch users from the Auth database
+    // 3. Fetch matching users from auth-service database
     const users = await UserModel.find({ _id: { $in: userIds } }).lean();
 
-    // 4. Map users for quick lookup
+    // 4. Create a map for user lookups
     const userMap = users.reduce((acc: any, user: any) => {
         acc[user._id.toString()] = user;
         return acc;
     }, {});
 
-    // 5. Merge and Strict Filter: Only return if user exists
+    // 5. Transform and Filter: Only return requested fields for bookings with valid users
     return bookings
-        .filter(booking => booking.userId && userMap[booking.userId.toString()]) 
+        .filter(booking => booking.userId && userMap[booking.userId.toString()])
         .map(booking => {
             const user = userMap[booking.userId!.toString()];
+            
             return {
-                ...booking,
+                reservationId: booking.reservationId,
+                status: booking.status,
+                bookingDate: booking.createdAt, // Using createdAt as the booking date
                 businessName: user?.businessProfile?.businessName || "N/A"
             };
         });

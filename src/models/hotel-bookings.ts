@@ -157,5 +157,6 @@ bookingSchema.index({ propertyId: 1, checkIn: 1 });
 
 export const getHotelBookingModel = () => {
     const conn = getDB("auth"); 
-    return conn.model<IBooking>('Booking', bookingSchema);
+    const hotelDb = conn.useDb("hotel-booking-service");
+    return hotelDb.model<IBooking>('Booking', bookingSchema);
 };

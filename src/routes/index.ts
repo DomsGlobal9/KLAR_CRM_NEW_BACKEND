@@ -19,6 +19,7 @@ import travelPlanRoutes from "./travelplan.routes"
 import whatsappRoutes from './whatsapp.routes';
 import setReminder from "./setReminder.routes"
 import flight from "./flight.routes"
+import hotel from "./hotel.routes"
 
 const router = Router();
 
@@ -47,5 +48,6 @@ router.use("/set-reminder", setReminder)
 
 
 router.use("/flights", flight)
+router.use("/hotel", hotel)
 
 export default router;
