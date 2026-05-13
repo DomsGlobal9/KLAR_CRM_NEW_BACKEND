@@ -55,36 +55,41 @@ export const getAllFlightsWithUsers = async () => {
 
 
 
+/**
+ * Get detailed information for a single flight booking including agent details
+ */
+export const getSingleFlightDetails = async (bookingId: string) => {
+    const BookingModel = getBookingModel();
+    const UserModel = getUserModel();
 
+    // 1. Find the specific booking by bookingId (from the flight-service DB)
+    const booking = await BookingModel.findOne({ bookingId }).lean();
 
+    if (!booking) {
+        throw new Error("Booking not found");
+    }
 
+    // 2. Fetch the user details using the ID from the new schema's userInfo object
+    // We safely convert to string to ensure a match with the Auth DB _id
+    const userId = booking.userInfo?.id?.toString();
+    
+    let userDetails = null;
+    if (userId) {
+        const user = await UserModel.findById(userId).lean();
+        if (user) {
+            userDetails = {
+                businessName: user.businessProfile?.businessName || "N/A",
+                email: user.email,
+                mobile: user.mobile,
+                clientType: user.clientType,
+                role: user.roles?.[0] || "USER"
+            };
+        }
+    }
 
-// //Get single flight booking
-// export const getSingleFlightDetails = async (bookingId: string) => {
-//     const BookingModel = BookingModel; // Use the new model
-//     const UserModel = getUserModel();
-
-//     // 1. Find the specific booking by bookingId
-//     const booking = await BookingModel.findOne({ bookingId }).lean();
-
-//     if (!booking) {
-//         throw new Error("Booking not found");
-//     }
-
-//     // 2. Fetch the user details for this specific booking
-//     const user = await UserModel.findById(booking.userId).lean();
-
-//     // 3. Return everything from the booking + userDetails
-//     return {
-//         ...booking,
-//         userDetails: user ? {
-//             businessName: user.businessProfile?.businessName,
-//             email: user.email,
-//             mobile: user.mobile,
-//             clientType: user.clientType
-//         } : null
-//     };
-// };
-
-
-
+    // 3. Return the full booking document plus the merged userDetails
+    return {
+        ...booking,
+        userDetails // Added as a separate object for the frontend to consume
+    };
+};
