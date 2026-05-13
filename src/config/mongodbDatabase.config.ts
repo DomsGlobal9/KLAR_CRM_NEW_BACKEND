@@ -32,7 +32,7 @@ const connectDB = async () => {
         const conn = mongoose.createConnection(url, {
           maxPoolSize: 10, 
 
-          dbName: name === 'b2b' ? 'search_service' : 'auth-service'
+          dbName: name === 'b2b' ? 'flight-service' : 'auth-service'
         });
 
         // Listen for runtime errors after initial connection

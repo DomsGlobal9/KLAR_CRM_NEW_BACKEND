@@ -4,6 +4,7 @@ import { getAllFlightsWithUsers, getSingleFlightDetails } from "../services/flig
 export const getFlightReport = async (req: Request, res: Response) => {
     try {
         const data = await getAllFlightsWithUsers();
+        console.log("flight.controller.ts - getFlightReport - data:", data); // Debug log to check the data structure
         
         res.status(200).json({
             success: true,
@@ -24,26 +25,26 @@ export const getFlightReport = async (req: Request, res: Response) => {
 
 
 
-export const getSingleBooking = async (req: Request, res: Response) => {
-    try {
-        const { bookingId } = req.params; 
+// export const getSingleBooking = async (req: Request, res: Response) => {
+//     try {
+//         const { bookingId } = req.params; 
         
-        if (!bookingId) {
-            return res.status(400).json({ success: false, message: "Booking ID is required" });
-        }
+//         if (!bookingId) {
+//             return res.status(400).json({ success: false, message: "Booking ID is required" });
+//         }
 
-        const id = Array.isArray(bookingId) ? bookingId[0] : bookingId;
-        const data = await getSingleFlightDetails(id);
+//         const id = Array.isArray(bookingId) ? bookingId[0] : bookingId;
+//         const data = await getSingleFlightDetails(id);
         
-        res.status(200).json({
-            success: true,
-            data
-        });
-    } catch (error: any) {
-        const statusCode = error.message === "Booking not found" ? 404 : 500;
-        res.status(statusCode).json({
-            success: false,
-            message: error.message
-        });
-    }
-};
+//         res.status(200).json({
+//             success: true,
+//             data
+//         });
+//     } catch (error: any) {
+//         const statusCode = error.message === "Booking not found" ? 404 : 500;
+//         res.status(statusCode).json({
+//             success: false,
+//             message: error.message
+//         });
+//     }
+// };
