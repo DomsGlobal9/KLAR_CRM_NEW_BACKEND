@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { getDB } from '../config/mongodbDatabase.config';
+
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -178,6 +180,19 @@ const insuranceBookingSchema = new Schema<IInsuranceBooking>(
     { timestamps: true }
 );
 
-export const InsuranceBookingModel: Model<IInsuranceBooking> =
-    mongoose.models.InsuranceBooking ||
-    mongoose.model<IInsuranceBooking>("InsuranceBooking", insuranceBookingSchema);
+// export const InsuranceBookingModel: Model<IInsuranceBooking> =
+//     mongoose.models.InsuranceBooking ||
+//     mongoose.model<IInsuranceBooking>("InsuranceBooking", insuranceBookingSchema);
+
+
+
+
+/**
+ * Dynamic Model Getter
+ * Uses the "b2b" connection and targets the "insurance-service" database
+ */
+export const InsuranceBookingModel = () => {
+    const conn = getDB("b2b"); 
+    const insuranceDb = conn.useDb("insurance-service");
+    return insuranceDb.model<IInsuranceBooking>("InsuranceBooking", insuranceBookingSchema);
+};
