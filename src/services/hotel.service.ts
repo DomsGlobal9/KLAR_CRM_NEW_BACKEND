@@ -9,7 +9,7 @@ export const getAllHotelsWithUsers = async () => {
     const bookings = await HotelModel.find().lean();
 
     // 2. Extract unique userIds and filter nulls
-    const userIds = [...new Set(bookings.map(b => b.userId?.toString()))].filter(Boolean);
+    const userIds = [...new Set(bookings.map(b => b.agentId?.toString()))].filter(Boolean);
 
     // 3. Fetch matching users from auth-service database
     const users = await UserModel.find({ _id: { $in: userIds } }).lean();
@@ -21,9 +21,9 @@ export const getAllHotelsWithUsers = async () => {
     }, {});
 
     return bookings
-        .filter(booking => booking.userId && userMap[booking.userId.toString()])
+        .filter(booking => booking.agentId && userMap[booking.agentId.toString()])
         .map(booking => {
-            const user = userMap[booking.userId!.toString()];
+            const user = userMap[booking.agentId!.toString()];
             
             return {
                 reservationId: booking.reservationId,
@@ -53,7 +53,7 @@ export const getSingleHotelDetails = async (reservationId: string) => {
     }
 
     // 2. Fetch the associated user for business information
-    const user = await UserModel.findById(booking.userId).lean();
+    const user = await UserModel.findById(booking.agentId).lean();
 
     // 3. Return the full booking object merged with key user details
     return {
