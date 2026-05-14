@@ -18,7 +18,7 @@
 
 
 
-import { InsuranceBookingModel, IInsuranceBooking } from "../models/insurance.model";
+import { InsuranceBookingModel, IInsuranceBooking } from "../models/insurance-booking.model";
 
 export const findInsuranceBookings = async (query: any = {}) => {
     return await InsuranceBookingModel.find(query).lean();
