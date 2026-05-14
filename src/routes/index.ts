@@ -20,6 +20,7 @@ import whatsappRoutes from './whatsapp.routes';
 import setReminder from "./setReminder.routes"
 import flight from "./flight.routes"
 import hotel from "./hotel.routes"
+import insuranceRoutes from "./insurance.routes"
 
 const router = Router();
 
@@ -49,5 +50,5 @@ router.use("/set-reminder", setReminder)
 
 router.use("/flights", flight)
 router.use("/hotel", hotel)
-
+router.use("/insurance", insuranceRoutes)
 export default router;
