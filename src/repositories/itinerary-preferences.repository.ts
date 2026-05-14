@@ -283,11 +283,10 @@ export const itineraryPreferencesRepository = {
         itinerary_id: string,
     ): Promise<IItineraryPreferencesResponse> {
         try {
-            console.log("The update data we got", JSON.stringify(updateData, null, 2));
-
+            
             const { data: existingItinerary, error: verifyError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('id')
+                .select('id, lead_id') 
                 .eq('id', itinerary_id)
                 .single();
 
@@ -295,6 +294,13 @@ export const itineraryPreferencesRepository = {
                 throw new Error(`Itinerary ${itinerary_id} not found`);
             }
 
+            const leadId = existingItinerary.lead_id;  
+
+            if (!leadId) {
+                throw new Error(`Lead ID not found for itinerary ${itinerary_id}`);
+            }
+
+            // Update user preferences summary (your existing code remains)
             if (updateData.userPreferences) {
                 const { data: existingSummary, error: fetchError } = await supabaseAdmin
                     .from('user_itenary_preferences_summary')
@@ -358,15 +364,15 @@ export const itineraryPreferencesRepository = {
                         if (updateError) {
                             throw new Error(`Failed to update user preferences: ${updateError.message}`);
                         }
-
-                        console.log('Updated user preferences with fields:', Object.keys(updateFields).filter(k => k !== 'updated_at'));
                     }
                 }
             }
 
+            // Handle service preferences
             if (updateData.service_preferences !== undefined && Array.isArray(updateData.service_preferences)) {
                 for (const pref of updateData.service_preferences) {
                     if (pref.id) {
+                        // UPDATE existing record
                         const { data: existingPref, error: fetchError } = await supabaseAdmin
                             .from('service_preferences')
                             .select('*')
@@ -409,11 +415,6 @@ export const itineraryPreferencesRepository = {
                                 existingPref.preferences || {},
                                 pref.preferences
                             );
-                            console.log('Merged preferences:', {
-                                existing: existingPref.preferences,
-                                incoming: pref.preferences,
-                                merged: updateFields.preferences
-                            });
                         }
 
                         if (pref.metadata !== undefined && typeof pref.metadata === 'object') {
@@ -432,33 +433,41 @@ export const itineraryPreferencesRepository = {
                             if (updateError) {
                                 throw new Error(`Failed to update service preference ${pref.id}: ${updateError.message}`);
                             }
-
-                            console.log(`Updated service preference ${pref.id} with fields:`,
-                                Object.keys(updateFields).filter(k => k !== 'updated_at'));
-                        } else {
-                            console.log(`No fields to update for service preference ${pref.id}`);
                         }
                     } else {
                         const insertData: any = {
-                            ...pref,
+                            service_type: pref.service_type?.toUpperCase(),
+                            title: pref.title,
+                            description: pref.description,
+                            estimated_price: pref.estimated_price,
+                            currency: pref.currency || 'INR',
+                            preference_order: pref.preference_order,
+                            is_active: pref.is_active !== undefined ? pref.is_active : true,
+                            preferences: pref.preferences || {},
+                            metadata: pref.metadata || {},
                             itinerary_id: itinerary_id,
+                            lead_id: leadId,  
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         };
 
-                        if (insertData.service_type) {
-                            insertData.service_type = insertData.service_type.toUpperCase();
-                        }
+                        // Remove any undefined values
+                        Object.keys(insertData).forEach(key => {
+                            if (insertData[key] === undefined || insertData[key] === null) {
+                                delete insertData[key];
+                            }
+                        });
 
                         const { error: insertError } = await supabaseAdmin
                             .from('service_preferences')
                             .insert(insertData);
 
                         if (insertError) {
+                            console.error('Insert error:', insertError);
                             throw new Error(`Failed to insert service preference: ${insertError.message}`);
                         }
 
-                        console.log(`Inserted new service preference`);
+                        console.log(`Inserted new service preference for lead ${leadId}`);
                     }
                 }
             }

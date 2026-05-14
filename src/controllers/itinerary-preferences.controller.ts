@@ -94,7 +94,6 @@ export const itineraryPreferencesController = {
 
             const { itinerary_id } = req.params;
             const updateData: IUpdatePreferenceData = req.body;
-            console.log("CONTROLLER: THe update Data we got", JSON.stringify(updateData, null, 2));
 
             if (!itinerary_id) {
                 return res.status(400).json({
