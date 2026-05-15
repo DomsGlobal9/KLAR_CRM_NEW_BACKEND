@@ -57,7 +57,7 @@ export const quoteRepository = {
         const totals = payload.totals || {};
         const taxAmount = payload.tax_amount || (totals as any).tax_amount || (totals as any).taxes || 0;
         const finalAmount = payload.final_amount || (totals as any).final_amount || (totals as any).totalAmount || 0;
-        const taxRate = payload.tax_rate || (totals as any).tax_rate || 18;
+        const taxRate = payload.tax_rate || (totals as any).tax_rate || 0;
         const subtotal = payload.subtotal || (totals as any).subtotal || 0;
         const total = payload.total || finalAmount;
 
@@ -301,43 +301,156 @@ export const quoteRepository = {
     },
 
     /**
-     * Update quote
-     */
+ * Update quote
+ */
     async updateQuote(id: string, payload: IUpdateQuoteDTO): Promise<IQuote> {
-        // If updating line items or pricing, recalculate totals
-        if (payload.line_items || payload.subtotal !== undefined) {
-            const currentQuote = await this.getQuoteById(id);
-            if (!currentQuote) {
-                throw new Error('Quote not found');
+        // Create a clean update object
+        const updateData: any = {
+            ...payload,
+            updated_at: new Date().toISOString()
+        };
+
+        // Remove any old tax_amount from root level to avoid conflicts
+        if (updateData.tax_amount_old) {
+            delete updateData.tax_amount_old;
+        }
+
+        // Recalculate totals from line items if present
+        if (payload.line_items && Array.isArray(payload.line_items) && payload.line_items.length > 0) {
+            let subtotal = 0;
+            let taxAmount = 0;
+
+            // Calculate totals from each line item
+            payload.line_items.forEach((item: any) => {
+                // Get base price (prefer total_price, fallback to total or unit_price)
+                let itemBasePrice = 0;
+                if (item.total_price !== undefined && item.total_price > 0) {
+                    itemBasePrice = item.total_price;
+                } else if (item.total !== undefined && item.total > 0) {
+                    itemBasePrice = item.total;
+                } else if (item.unit_price !== undefined && item.unit_price > 0) {
+                    itemBasePrice = item.unit_price * (item.quantity || 1);
+                }
+
+                // Get tax amount for this line item
+                let itemTaxAmount = 0;
+                if (item.tax_amount !== undefined && item.tax_amount > 0) {
+                    itemTaxAmount = item.tax_amount;
+                } else if (item.details?.taxes !== undefined && item.details.taxes > 0) {
+                    itemTaxAmount = item.details.taxes;
+                } else if (item.details?.tax !== undefined && item.details.tax > 0) {
+                    itemTaxAmount = item.details.tax;
+                } else if (item.details?.gst !== undefined && item.details.gst > 0) {
+                    itemTaxAmount = item.details.gst;
+                }
+
+                subtotal += itemBasePrice;
+                taxAmount += itemTaxAmount;
+
+                // Ensure line item has correct tax_amount at root level
+                if (item.tax_amount !== itemTaxAmount) {
+                    item.tax_amount = itemTaxAmount;
+                }
+
+                // Ensure line item has correct total (base + tax if needed)
+                if (item.total_with_tax) {
+                    // If total_with_tax exists, use it
+                    if (item.total !== item.total_with_tax) {
+                        item.total = item.total_with_tax;
+                    }
+                } else if (item.total !== (itemBasePrice + itemTaxAmount)) {
+                    // Otherwise set total as base + tax
+                    item.total = itemBasePrice + itemTaxAmount;
+                }
+            });
+
+            // Update the payload with recalculated values
+            updateData.subtotal = subtotal;
+            updateData.tax_amount = taxAmount;
+            updateData.total = subtotal + taxAmount;
+            updateData.final_amount = subtotal + taxAmount;
+
+            // Also update tax_rate to 0 since we're using fixed tax amounts
+            updateData.tax_rate = 0;
+
+            // Update the line_items in updateData with cleaned values
+            updateData.line_items = payload.line_items.map((item: any) => {
+                // Clean up each line item - remove any duplicate tax fields
+                const cleanedItem = { ...item };
+
+                // Ensure tax_amount is consistent
+                if (cleanedItem.details) {
+                    // If tax is in details, make sure root tax_amount matches
+                    if (cleanedItem.details.taxes && cleanedItem.details.taxes > 0) {
+                        cleanedItem.tax_amount = cleanedItem.details.taxes;
+                    } else if (cleanedItem.details.tax && cleanedItem.details.tax > 0) {
+                        cleanedItem.tax_amount = cleanedItem.details.tax;
+                    } else if (cleanedItem.details.gst && cleanedItem.details.gst > 0) {
+                        cleanedItem.tax_amount = cleanedItem.details.gst;
+                    }
+                }
+
+                return cleanedItem;
+            });
+
+            console.log('Recalculated totals in repository:', {
+                subtotal: updateData.subtotal,
+                tax_amount: updateData.tax_amount,
+                total: updateData.total,
+                final_amount: updateData.final_amount
+            });
+        }
+
+        // If no line items but subtotal is provided directly, still ensure tax_rate is 0
+        if (!payload.line_items && payload.subtotal !== undefined) {
+            updateData.tax_rate = 0;
+            if (updateData.tax_amount === undefined || updateData.tax_amount === null) {
+                updateData.tax_amount = 0;
             }
-
-            // Recalculate if line items are updated
-            if (payload.line_items) {
-                const subtotal = payload.line_items.reduce((sum, item) => sum + item.total, 0);
-                const taxAmount = subtotal * (currentQuote.tax_rate || 0.18);
-                const total = subtotal + taxAmount;
-                const finalAmount = total - (payload.discount_amount || currentQuote.discount_amount || 0);
-
-                payload.subtotal = subtotal;
-                payload.tax_amount = taxAmount;
-                payload.total = total;
-                payload.final_amount = finalAmount;
+            if (updateData.total === undefined) {
+                updateData.total = (updateData.subtotal || 0) + (updateData.tax_amount || 0);
+            }
+            if (updateData.final_amount === undefined) {
+                updateData.final_amount = updateData.total;
             }
         }
 
+        // Remove any fields that shouldn't be updated directly
+        const forbiddenFields = ['created_at', 'id', 'quote_number'];
+        forbiddenFields.forEach(field => {
+            delete updateData[field];
+        });
+
+        console.log('Final update data being sent to database:', JSON.stringify({
+            ...updateData,
+            // Don't log the entire line_items if too large
+            line_items_count: updateData.line_items?.length,
+            subtotal: updateData.subtotal,
+            tax_amount: updateData.tax_amount,
+            total: updateData.total,
+            final_amount: updateData.final_amount
+        }, null, 2));
+
         const { data, error } = await supabaseAdmin
             .from('quotes')
-            .update({
-                ...payload,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
 
         if (error) {
+            console.error('Failed to update quote:', error);
             throw new Error(`Failed to update quote: ${error.message}`);
         }
+
+        console.log('Quote updated successfully:', {
+            id: data.id,
+            quote_number: data.quote_number,
+            subtotal: data.subtotal,
+            tax_amount: data.tax_amount,
+            total: data.total,
+            final_amount: data.final_amount
+        });
 
         return data as IQuote;
     },
