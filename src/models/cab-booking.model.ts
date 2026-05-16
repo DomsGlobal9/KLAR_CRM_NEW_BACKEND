@@ -83,7 +83,7 @@ const CabBookingSchema = new Schema<ICabBooking>(
     },
     {
         timestamps: true,
-        collection: 'cabbookings' // Matching your MongoDB image collection name
+        collection: 'cabbookings' 
     }
 );
 
