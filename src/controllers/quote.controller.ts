@@ -469,7 +469,7 @@ export const quoteController = {
 
             const quote = quoteResult.data;
 
-            const itinResult = await itineraryPreferencesService.getPreferences(quote.lead_id);
+            const itinResult = await itineraryPreferencesService.getPreferences(quote.itinerary_id);
             if (!itinResult.success || !itinResult.data) {
                 throw new Error("Itinerary details missing");
             }
