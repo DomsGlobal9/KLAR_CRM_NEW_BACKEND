@@ -91,5 +91,24 @@ const CabBookingSchema = new Schema<ICabBooking>(
     }
 );
 
-export const CabBookingModel: Model<ICabBooking> =
-    mongoose.models.CabBooking || mongoose.model<ICabBooking>('CabBooking', CabBookingSchema);
+// export const CabBookingModel: Model<ICabBooking> =
+//     mongoose.models.CabBooking || mongoose.model<ICabBooking>('CabBooking', CabBookingSchema);
+
+
+
+
+
+CabBookingSchema.index({ agentId: 1, createdAt: -1 });
+CabBookingSchema.index({ userId: 1, createdAt: -1 });
+
+
+
+/**
+ * Connects to the specific Cab Booking microservice database 
+ * following the B2B multi-database architecture.
+ */
+export const getCabBookingModel = () => {
+    const conn = getDB("b2b"); 
+    const cabDb = conn.useDb("cab-booking-service");
+    return cabDb.model<ICabBooking>('CabBooking', CabBookingSchema);
+};
