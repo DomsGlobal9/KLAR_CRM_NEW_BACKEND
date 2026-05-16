@@ -1,35 +1,3 @@
-// import { getCabBookingModel, ICabBooking } from "../models/cab-booking.model"
-// export class CabsManagementRepository {
-//     /**
-//      * Fetch all cab bookings with flexible structural filtering (e.g., by agentId or userId)
-//      */
-//     async findAllCabBookings(filter: Record<string, any> = {}): Promise<ICabBooking[]> {
-//         const CabBookingModel = getCabBookingModel();
-//         return await CabBookingModel.find(filter).sort({ createdAt: -1 }).lean();
-//     }
-
-//     /**
-//      * Find a single cab booking record using its unique domain id
-//      */
-//     async findCabBookingById(bookingId: string): Promise<ICabBooking | null> {
-//         const CabBookingModel = getCabBookingModel();
-//         return await CabBookingModel.findOne({ bookingId }).lean();
-//     }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { getCabBookingModel, ICabBooking } from '../models/cab-booking.model';
 import { getUserModel } from "../models/auth.models"
 

@@ -52,5 +52,5 @@ router.use("/set-reminder", setReminder)
 router.use("/flights", flight)
 router.use("/hotel", hotel)
 router.use("/insurance", insuranceRoutes)
-router.use("./cabs", cabsRoutes)
+router.use("/cabs", cabsRoutes)
 export default router;
