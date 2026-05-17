@@ -92,6 +92,8 @@ CabBookingSchema.index({ userId: 1, createdAt: -1 });
 
 export const getCabBookingModel = (): Model<ICabBooking> => {
     const conn = getDB("b2b"); 
-    const cabDb = conn.useDb("cabs-service"); // Matching your MongoDB image database name
-    return cabDb.model<ICabBooking>('CabBooking', CabBookingSchema);
+    const cabDb = conn.useDb("cabs-service");   
+    return cabDb.models.CabBooking 
+        ? (cabDb.models.CabBooking as Model<ICabBooking>)
+        : cabDb.model<ICabBooking>('CabBooking', CabBookingSchema, 'cabbookings');
 };
