@@ -851,17 +851,6 @@ export const leadRepository = {
             return [];
         }
 
-        if (data && data.length > 0) {
-            console.log("📋 Sample relationship:", {
-                has_service: !!data[0].service,
-                service_name: data[0].service?.name,
-                has_category: !!data[0].category,
-                category_name: data[0].category?.name,
-                has_sub_service: !!data[0].sub_service,
-                sub_service_name: data[0].sub_service?.name
-            });
-        }
-
         return data || [];
     },
 
@@ -1088,7 +1077,6 @@ export const leadRepository = {
      * Get lead with full details including service relationships
      */
     async getLeadWithFullDetails(leadId: string): Promise<LeadWithRequirements> {
-        console.log("🔍 Getting full details for lead:", leadId);
 
         const { data: leadData, error: leadError } = await supabaseAdmin
             .from('leads')

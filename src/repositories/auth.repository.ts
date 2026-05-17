@@ -82,10 +82,7 @@ export const AuthRepository = {
                 await supabaseAdmin.auth.admin.getUserById(userId);
 
             if (error || !data?.user) {
-                console.error(
-                    `❌ Error fetching user ${userId}:`,
-                    error?.message
-                );
+                
                 return null;
             }
 

@@ -47,6 +47,7 @@ export const leadService = {
    */
   async getLeadById(id: string): Promise<LeadWithRequirements> {
     const lead = await leadRepository.getLeadWithFullDetails(id);
+    
     if (!lead) {
       throw new Error('Lead not found');
     }

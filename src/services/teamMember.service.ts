@@ -13,6 +13,7 @@ import { cleanUserMetadata } from '../helpers/user.service.helper';
  * Temporary storage for pending member creation (in-memory or Redis in production)
  */
 const pendingMemberCreations = new Map<string, {
+    mobile_number: string;
     role_id: string;
     team_id: string | null;
     requested_by: string;
@@ -458,11 +459,12 @@ export const teamMemberService = {
      */
     async sendAddMemberOTP(payload: {
         email: string;
+        mobile_number: string,
         role_id: string;
         team_id?: string | null;
         requested_by: string;
     }) {
-        const { email, role_id, team_id, requested_by } = payload;
+        const { email, mobile_number, role_id, team_id, requested_by } = payload;
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role not found');
@@ -488,6 +490,7 @@ export const teamMemberService = {
         const result = await otpService.sendOTP(email, 'registration');
 
         pendingMemberCreations.set(email, {
+            mobile_number,
             role_id,
             team_id: team_id || null,
             requested_by,
@@ -542,6 +545,7 @@ export const teamMemberService = {
             email_confirm: true,
             user_metadata: {
                 username,
+                mobile_number: pending.mobile_number,
                 role_id,
                 role_name: role.name,
                 team_id: team_id,
@@ -567,5 +571,76 @@ export const teamMemberService = {
         return user;
     },
 
+    async getFilteredTeamMembers(currentUser?: any) {
+        const { data, error } = await teamMemberRepository.listUsers();
+        if (error) throw error;
+
+        const allUsers = data.users;
+        const userRole = currentUser?.role; 
+        const currentUserId = currentUser?.id;
+
+        let filteredUsers: any[] = [];
+
+        if (userRole === 'superadmin' || userRole === 'admin') {
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                return roleName !== 'superadmin';
+            });
+        }
+        else if (userRole === 'tl' || userRole === 'rm') {
+            const currentUserMetadata = currentUser?.user_metadata || {};
+            const userTeamId = currentUserMetadata.team_id || currentUser?.team_id;
+
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                const userTeam = metadata.team_id;
+
+                if (roleName === 'admin') {
+                    return true;
+                }
+
+                if (userTeamId && userTeam === userTeamId) {
+                    return true;
+                }
+
+                if (u.id === currentUserId) {
+                    return true;
+                }
+
+                return false;
+            });
+        }
+        else {
+            filteredUsers = allUsers.filter(u => u.id === currentUserId);
+        }
+
+        const roles = await roleRepository.getAll();
+
+        return filteredUsers.map(user => {
+            const metadata = user.user_metadata || {};
+
+            let finalMetadata = metadata;
+            if (metadata.user_metadata) {
+                finalMetadata = metadata.user_metadata;
+            }
+
+            const role = roles.find(r => r.id === finalMetadata.role_id);
+
+            const userName = finalMetadata.full_name ||
+                finalMetadata.username ||
+                finalMetadata.name ||
+                user.email?.split('@')[0] ||
+                'Unknown';
+
+            return {
+                id: user.id,
+                name: userName,
+                email: user.email,
+                role_name: role?.name || finalMetadata.role_name || null
+            };
+        });
+    },
 
 };

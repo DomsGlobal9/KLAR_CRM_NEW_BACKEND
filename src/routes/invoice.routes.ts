@@ -9,6 +9,9 @@ router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
 // GET  /api/v1/invoice
 router.get('/', invoiceController.getAllInvoices);
 
+// Get paid customer
+router.get('/paid-customers', invoiceController.getPaidCustomers);
+
 
 // POST /api/v1/invoice/convert-from-quote  ← MUST stay above /:id routes
 router.post('/convert-from-quote', invoiceController.convertQuoteToInvoice);

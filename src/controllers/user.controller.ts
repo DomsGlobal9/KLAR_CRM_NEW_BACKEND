@@ -12,21 +12,34 @@ export const userController = {
         try {
             const userId = req.user?.id;
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized 1234' });
+                return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            await userService.updateSelf(userId, req.body);
+            const imageBuffer = req.file?.buffer;
+            const originalName = req.file?.originalname;
+
+            const result = await userService.updateSelf(
+                userId,
+                req.body,
+                imageBuffer,
+                originalName
+            );
 
             await createAuditLog({
                 user_id: userId,
                 action: 'USER_UPDATED_SELF',
                 entity_type: 'user',
-                entity_id: userId
+                entity_id: userId,
+                metadata: {
+                    updated_fields: result.updated_fields
+                }
             });
 
             return res.json({
                 success: true,
-                message: 'Profile updated successfully'
+                message: 'Profile updated successfully',
+                data: result.user,
+                updated_fields: result.updated_fields
             });
         } catch (err: any) {
             return res.status(400).json({
@@ -43,7 +56,7 @@ export const userController = {
         try {
             const userId = req.user?.id;
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized 9876' });
+                return res.status(401).json({ error: 'Unauthorized' });
             }
 
             const user = await userService.getMe(userId);
@@ -59,10 +72,4 @@ export const userController = {
             });
         }
     }
-  
-}
-
-
-
-
-
+};
