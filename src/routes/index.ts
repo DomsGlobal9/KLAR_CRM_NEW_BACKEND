@@ -26,6 +26,7 @@ const router = Router();
 /**
  * Base API routes
  */
+router.use(authRoutes);
 router.use('/email', emailRoutes);
 router.use('/email-response', emailResponseRoutes);
 router.use('/role', rolesRoutes);
@@ -35,7 +36,6 @@ router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
 router.use('/lead', leadRoutes); 
 router.use('/inquiry-sources', inquirySourcesRoutes);
-router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
