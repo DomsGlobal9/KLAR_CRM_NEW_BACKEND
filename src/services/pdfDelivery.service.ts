@@ -387,7 +387,7 @@ private createReminderHTML(clientName: string, title: string, content: string): 
 /**
  * NEW: Styled WhatsApp Message (No PDF link)
  */
-private createReminderWhatsApp(clientName: string, title: string, content: string): string {
+createReminderWhatsApp(clientName: string, title: string, content: string): string {
     return `
 🔔 *REMINDER FOR ${clientName.toUpperCase()}*
 

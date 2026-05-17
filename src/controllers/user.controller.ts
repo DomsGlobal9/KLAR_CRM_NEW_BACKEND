@@ -25,21 +25,21 @@ export const userController = {
                 originalName
             );
 
-            await createAuditLog({
-                user_id: userId,
-                action: 'USER_UPDATED_SELF',
-                entity_type: 'user',
-                entity_id: userId,
-                metadata: {
-                    updated_fields: result.updated_fields
-                }
-            });
+            // await createAuditLog({
+            //     user_id: userId,
+            //     action: 'USER_UPDATED_SELF',
+            //     entity_type: 'user',
+            //     entity_id: userId,
+            //     metadata: {
+            //         updated_fields: result.updated_fields
+            //     }
+            // });
 
             return res.json({
                 success: true,
                 message: 'Profile updated successfully',
                 data: result.user,
-                updated_fields: result.updated_fields
+                // updated_fields: result.updated_fields
             });
         } catch (err: any) {
             return res.status(400).json({
