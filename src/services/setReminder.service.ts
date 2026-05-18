@@ -33,6 +33,7 @@
 import { teamMemberRepository } from '../repositories/teamMember.repository';
 import { pdfDeliveryService } from './pdfDelivery.service';
 import { ReminderRequest } from '../interfaces/setReminder.interface';
+import { default as WhatsAppService } from '../services/whatsapp.service';
 
 // export const reminderService = {
 //   async sendReminder(data: ReminderRequest) {

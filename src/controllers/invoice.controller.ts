@@ -500,6 +500,23 @@ export class InvoiceController {
         }
     }
 
+    getPaidCustomers = async (req: Request, res: Response) => {
+        try {
+            const customers = await invoiceService.getPaidCustomers();
+            
+            res.status(200).json({
+                success: true,
+                count: customers.length,
+                data: customers
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to fetch paid customers'
+            });
+        }
+    }
+
 }
 
 export const invoiceController = new InvoiceController();

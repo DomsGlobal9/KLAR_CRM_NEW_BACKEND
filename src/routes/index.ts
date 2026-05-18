@@ -20,6 +20,7 @@ import whatsappRoutes from './whatsapp.routes';
 import setReminder from "./setReminder.routes"
 import flight from "./flight.routes"
 import hotel from "./hotel.routes"
+import paymentRoutes from './paymentTracking.routes';
 import insuranceRoutes from "./insurance.routes"
 import cabsRoutes from "./cabs-routing.routes"
 
@@ -28,6 +29,7 @@ const router = Router();
 /**
  * Base API routes
  */
+router.use(authRoutes);
 router.use('/email', emailRoutes);
 router.use('/email-response', emailResponseRoutes);
 router.use('/role', rolesRoutes);
@@ -37,7 +39,6 @@ router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
 router.use('/lead', leadRoutes); 
 router.use('/inquiry-sources', inquirySourcesRoutes);
-router.use(authRoutes);
 router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/service', serviceRoutes);
@@ -51,6 +52,7 @@ router.use("/set-reminder", setReminder)
 
 router.use("/flights", flight)
 router.use("/hotel", hotel)
+router.use('/payment', paymentRoutes);
 router.use("/insurance", insuranceRoutes)
 router.use("/cabs", cabsRoutes)
 export default router;

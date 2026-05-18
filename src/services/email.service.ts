@@ -104,13 +104,13 @@ export class EmailService {
             /**
              * 🔥 STEP 4: Store email log
              */
-            await emailRepository.createEmailLog({
-                tracking_id: trackingId,
-                lead_id: payload.leadId || null,
-                message_id: result.messageId,
-                to_email: uniqueTo,
-                subject: finalSubject,
-            });
+            // await emailRepository.createEmailLog({
+            //     tracking_id: trackingId,
+            //     lead_id: payload.leadId || null,
+            //     message_id: result.messageId,
+            //     to_email: uniqueTo,
+            //     subject: finalSubject,
+            // });
 
             return {
                 success: true,

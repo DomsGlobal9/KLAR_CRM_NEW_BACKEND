@@ -331,8 +331,8 @@ export const quoteController = {
             const quote = quoteResult.data;
 
             // 2. Fetch data from Itinerary Preference Repository using lead_id
-            const leadId = quote.lead_id;
-            const itinResult = await itineraryPreferencesService.getPreferences(leadId);
+            const itinerary_id = quote.itinerary_id;
+            const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id);
             if (!itinResult.success) throw new Error("Itinerary details missing");
             const itinerary = itinResult.data;
 
@@ -469,7 +469,7 @@ export const quoteController = {
 
             const quote = quoteResult.data;
 
-            const itinResult = await itineraryPreferencesService.getPreferences(quote.lead_id);
+            const itinResult = await itineraryPreferencesService.getPreferences(quote.itinerary_id);
             if (!itinResult.success || !itinResult.data) {
                 throw new Error("Itinerary details missing");
             }

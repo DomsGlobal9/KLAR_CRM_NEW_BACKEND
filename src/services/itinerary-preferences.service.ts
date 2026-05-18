@@ -175,57 +175,6 @@ export const itineraryPreferencesService = {
     },
 
     /**
-     * Save or update preferences (upsert)
-     */
-    // async saveOrUpdatePreferences(formData: IFrontendFormData): Promise<{
-    //     success: boolean;
-    //     data?: IItineraryPreferencesResponse;
-    //     message?: string;
-    //     action: 'created' | 'updated';
-    // }> {
-    //     try {
-    //         if (!formData.leadData?.id) {
-    //             return {
-    //                 success: false,
-    //                 message: 'Lead ID is required',
-    //                 action: 'created'
-    //             };
-    //         }
-
-    //         const leadId = formData.leadData.id;
-    //         const { exists } = await this.checkPreferencesExist(leadId);
-
-    //         const preferenceData = itineraryPreferencesRepository.transformFormData(formData);
-
-    //         let data: IItineraryPreferencesResponse;
-    //         if (exists) {
-    //             data = await itineraryPreferencesRepository.updatePreferences(leadId,
-    //                 {
-    //                     flightPreferences: preferenceData.flightPreferences,
-    //                     hotelPreferences: preferenceData.hotelPreferences,
-    //                     visaPreferences: preferenceData.visaPreferences,
-    //                     userPreferences: preferenceData.userPreferences
-    //                 });
-    //         } else {
-    //             data = await itineraryPreferencesRepository.saveAllPreferences(preferenceData);
-    //         }
-
-    //         return {
-    //             success: true,
-    //             data,
-    //             action: exists ? 'updated' : 'created'
-    //         };
-    //     } catch (error) {
-    //         console.error('Error in saveOrUpdatePreferences:', error);
-    //         return {
-    //             success: false,
-    //             message: error instanceof Error ? error.message : 'Failed to save/update preferences',
-    //             action: 'created'
-    //         };
-    //     }
-    // },
-
-    /**
      * Get flight preference by ID
      */
     async getFlightPreferenceById(id: string): Promise<{
