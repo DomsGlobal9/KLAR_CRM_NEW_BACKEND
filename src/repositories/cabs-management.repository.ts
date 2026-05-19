@@ -1,16 +1,12 @@
 import { getCabBookingModel } from '../models/cab-booking.model';
 import { getUserModel } from "../models/auth.models";
+import mongoose from "mongoose"; // 1. Import mongoose at the top
 
 export class CabsManagementRepository {
-    /**
-     * Finds cab bookings and supplements them with cross-database User profile records
-     */
     async findAllCabBookings(filter: Record<string, any> = {}): Promise<any[]> {
         const CabBookingModel = getCabBookingModel();
         const UserModel = getUserModel();
 
-        // 🛠️ CRITICAL SAFETY PATCH: Force the filter's userId to be a string if it exists.
-        // This ensures an exact data-type match against the string field in your DB collection.
         if (filter && filter.userId) {
             filter.userId = filter.userId.toString();
         }
@@ -20,24 +16,17 @@ export class CabsManagementRepository {
 
         if (bookings.length === 0) return [];
 
-        // 2. Extract unique string values for userIds, filtering out undefined/null
-        const userIds = [...new Set(
-            bookings
-                .map(b => b.userId?.toString())
-                .filter((id): id is string => Boolean(id)) // Type guard to ensure string
-        )];
+        // 2. Extract unique string values, then map them to valid ObjectIds
+        const userIds = [...new Set(bookings.map(b => b.userId?.toString()).filter(Boolean))]
+            .map(id => new mongoose.Types.ObjectId(id)); // 🌟 CRITICAL FIX HERE
 
-        // 3. Only query if we have userIds
-        let users: any[] = [];
-        if (userIds.length > 0) {
-            // Query across to the auth service database
-            users = await UserModel.find({ _id: { $in: userIds } }).lean();
-        }
+        // 3. Query across to the auth service database using real ObjectIds
+        const users = await UserModel.find({ _id: { $in: userIds } }).lean();
 
-        // 4. Map users using clear plain string keys
+        // 4. Map users using plain string keys for matching
         const userMap = users.reduce((acc, user) => {
             if (user?._id) {
-                const userIdStr = user._id.toString();
+                const userIdStr = user._id.toString(); // Convert ObjectId back to string for the map key
                 acc[userIdStr] = {
                     email: user.email,
                     mobile: user.mobile,
@@ -61,7 +50,7 @@ export class CabsManagementRepository {
     }
 
     /**
-     * Finds a distinct booking and maps the matching target user document profiles
+     * Also update your findCabBookingById method to ensure it queries auth accurately!
      */
     async findCabBookingById(bookingId: string): Promise<any | null> {
         const CabBookingModel = getCabBookingModel();
@@ -72,7 +61,10 @@ export class CabsManagementRepository {
 
         let userProfile = null;
         if (booking.userId) {
-            const foundUser = await UserModel.findById(booking.userId).lean();
+            // 🌟 CRITICAL FIX HERE: Convert string userId to native ObjectId
+            const userObjectId = new mongoose.Types.ObjectId(booking.userId.toString());
+            const foundUser = await UserModel.findById(userObjectId).lean();
+            
             if (foundUser) {
                 userProfile = {
                     email: foundUser.email,
