@@ -21,6 +21,8 @@ import setReminder from "./setReminder.routes"
 import flight from "./flight.routes"
 import hotel from "./hotel.routes"
 import paymentRoutes from './paymentTracking.routes';
+import insuranceRoutes from "./insurance.routes"
+import cabsRoutes from "./cabs-routing.routes"
 
 const router = Router();
 
@@ -51,5 +53,6 @@ router.use("/set-reminder", setReminder)
 router.use("/flights", flight)
 router.use("/hotel", hotel)
 router.use('/payment', paymentRoutes);
-
+router.use("/insurance", insuranceRoutes)
+router.use("/cabs", cabsRoutes)
 export default router;

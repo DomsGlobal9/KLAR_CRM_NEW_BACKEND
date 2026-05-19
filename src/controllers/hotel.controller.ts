@@ -4,6 +4,7 @@ import { getAllHotelsWithUsers, getSingleHotelDetails } from "../services/hotel.
 export const getHotelReport = async (req: Request, res: Response) => {
     try {
         const data = await getAllHotelsWithUsers();
+        console.log("hotel.controller.ts - getHotelReport - data:", data);
         
         res.status(200).json({
             success: true,
