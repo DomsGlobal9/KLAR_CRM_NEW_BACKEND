@@ -466,6 +466,7 @@ export const itineraryPreferencesController = {
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
         const { itinerary_id } = req.params;
         const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
+        console.log("469 itinerary-preferences.controller.ts-PDF Generation Data:", itinResult.data);
         const html = await itineraryPdfService.generateHTML(itinResult.data);
         const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -473,6 +474,7 @@ export const itineraryPreferencesController = {
         res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
         return res.send(buffer);
     },
+
 
 
     async uploadItineraryToS3(req: Request, res: Response) {
