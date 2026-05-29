@@ -8,6 +8,7 @@ export interface DeliveryOptions {
     clientPhone?: string;
     pdfUrl: string;
     pdfFileName: string;
+    htmlContent?: string;
 }
 
 export interface SendViaOptions {

@@ -522,7 +522,8 @@ export const itineraryPreferencesController = {
                 clientEmail: clientEmail,
                 clientPhone: clientPhone,
                 pdfUrl: publicUrl,
-                pdfFileName: fileName
+                pdfFileName: fileName,
+                htmlContent: html,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

@@ -8,6 +8,7 @@ export interface PDFDeliveryOptions {
     clientPhone?: string;
     pdfUrl: string;
     pdfFileName: string;
+    htmlContent?: string;
 }
 
 export interface DeliveryResult {
@@ -62,7 +63,7 @@ class PDFDeliveryService {
     /**
      * Send PDF via Email only
      */
-    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string, htmlContent: string | undefined): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             if (!emailAddress) {
                 return { success: false, error: 'Email address is required' };
@@ -77,7 +78,7 @@ class PDFDeliveryService {
                 to: emailAddress,
                 subject: `Your Itinerary PDF - ${clientName}`,
                 text: this.createEmailText(clientName, pdfUrl),
-                html: this.createEmailHTML(clientName, pdfUrl),
+                html: htmlContent || this.createEmailHTML(clientName, pdfUrl),
                 requireNewLead: false, 
                 attachments: [] 
             };
@@ -109,7 +110,7 @@ class PDFDeliveryService {
      * Send PDF via both WhatsApp and Email
      */
     async deliverPDF(options: PDFDeliveryOptions): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
+        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
 
         const result: DeliveryResult = {
             success: false,
@@ -143,7 +144,7 @@ class PDFDeliveryService {
 
         if (clientEmail) {
             console.log(`📧 Attempting email delivery to ${clientEmail}...`);
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent);
 
             result.email = {
                 sent: emailResult.success,
@@ -181,7 +182,7 @@ class PDFDeliveryService {
         options: PDFDeliveryOptions,
         channels: { whatsapp?: boolean; email?: boolean }
     ): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
+        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
 
         const result: DeliveryResult = {
             success: false,
@@ -201,7 +202,7 @@ class PDFDeliveryService {
         }
 
         if (channels.email && clientEmail) {
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent);
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
