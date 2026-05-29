@@ -402,7 +402,8 @@ export const quoteController = {
                 clientEmail: quote.client_email,
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
-                pdfFileName: fileName
+                pdfFileName: fileName,
+                htmlContent: html
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
@@ -490,7 +491,8 @@ export const quoteController = {
                 clientEmail: quote.client_email,
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
-                pdfFileName: fileName
+                pdfFileName: fileName,
+                htmlContent: html
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
