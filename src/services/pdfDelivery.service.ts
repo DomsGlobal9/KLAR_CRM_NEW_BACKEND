@@ -256,11 +256,6 @@ _Best regards,_
 
 
 
-
-
-
-
-
     /**
      * Create plain text email content
      */
