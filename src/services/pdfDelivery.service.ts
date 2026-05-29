@@ -27,12 +27,43 @@ export interface DeliveryResult {
     message: string;
 }
 
+type DocumentType = 'invoice' | 'quotation' | 'proposal' | 'itinerary';
+
 class PDFDeliveryService {
+
+     /**
+     * Helper to detect document type based on the file name
+     */
+    private detectDocumentType(fileName: string): DocumentType {
+        const lowerName = fileName.toLowerCase();
+        if (lowerName.includes('invoice')) return 'invoice';
+        if (lowerName.includes('quotation')) return 'quotation';
+        if (lowerName.includes('proposal')) return 'proposal';
+        return 'itinerary';
+    }
+
+
+
+    /**
+     * Cleans phone numbers to ensure compatibility with standard WhatsApp formats
+     */
+    private sanitizePhoneNumber(phone: string): string {
+        // Strip out spaces, dashes, parentheses, and leading plus signs
+        let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+        
+        // If the number is 10 digits (common in India), pre-pend the country code '91' 
+        // Adjust this country code prefix fallback as per your business target demographic
+        if (cleaned.length === 10) {
+            cleaned = '91' + cleaned;
+        }
+        return cleaned;
+    }
+
 
     /**
      * Send PDF via WhatsApp only
      */
-    async sendViaWhatsApp(phoneNumber: string, pdfUrl: string, clientName: string): Promise<{ success: boolean; error?: string }> {
+    async sendViaWhatsApp(phoneNumber: string, pdfUrl: string, clientName: string, pdfFileName: string): Promise<{ success: boolean; error?: string }> {
         try {
             if (!phoneNumber) {
                 return { success: false, error: 'Phone number is required' };
@@ -42,9 +73,13 @@ class PDFDeliveryService {
                 return { success: false, error: 'WhatsApp service is not ready' };
             }
 
-            const message = this.createWhatsAppMessage(clientName, pdfUrl);
+              // Clean number to prevent API delivery failures
+            const sanitizedPhone = this.sanitizePhoneNumber(phoneNumber);
+            const docType = this.detectDocumentType(pdfFileName);
 
-            const sent = await WhatsAppService.sendMessage(phoneNumber, message);
+            const message = this.createWhatsAppMessage(clientName, pdfUrl, docType);
+
+            const sent = await WhatsAppService.sendMessage(sanitizedPhone, message);
 
             if (sent) {
                 return { success: true };
@@ -63,7 +98,7 @@ class PDFDeliveryService {
     /**
      * Send PDF via Email only
      */
-    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string, htmlContent: string | undefined): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string, htmlContent: string | undefined, pdfFileName: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             if (!emailAddress) {
                 return { success: false, error: 'Email address is required' };
@@ -74,11 +109,19 @@ class PDFDeliveryService {
                 return { success: false, error: 'Invalid email format' };
             }
 
+            const docType = this.detectDocumentType(pdfFileName);
+            const subjects: Record<DocumentType, string> = {
+                invoice: `Your Invoice Details - ${clientName}`,
+                quotation: `Your Quote Details - ${clientName}`,
+                proposal: `Your Travel Proposal - ${clientName}`,
+                itinerary: `Your Custom Itinerary Details - ${clientName}`
+            };
+
             const emailPayload: SendEmailPayload = {
                 to: emailAddress,
                 subject: `Your Itinerary PDF - ${clientName}`,
                 text: this.createEmailText(clientName, pdfUrl),
-                html: htmlContent || this.createEmailHTML(clientName, pdfUrl),
+                html: htmlContent || this.createEmailHTML(clientName, pdfUrl, docType),
                 requireNewLead: false,
                 attachments: []
             };
@@ -124,7 +167,7 @@ class PDFDeliveryService {
 
         if (clientPhone) {
             console.log(`📱 Attempting WhatsApp delivery to ${clientPhone}...`);
-            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName);
+            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
 
             result.whatsapp = {
                 sent: whatsappResult.success,
@@ -144,13 +187,13 @@ class PDFDeliveryService {
 
         if (clientEmail) {
             console.log(`📧 Attempting email delivery to ${clientEmail}...`);
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent,  pdfFileName);
 
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
                 messageId: emailResult.messageId,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString()     
             };
 
             if (emailResult.success) {
@@ -192,7 +235,7 @@ class PDFDeliveryService {
         let anySuccess = false;
 
         if (channels.whatsapp && clientPhone) {
-            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName);
+            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
             result.whatsapp = {
                 sent: whatsappResult.success,
                 error: whatsappResult.error,
@@ -202,7 +245,7 @@ class PDFDeliveryService {
         }
 
         if (channels.email && clientEmail) {
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent,  pdfFileName);
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
