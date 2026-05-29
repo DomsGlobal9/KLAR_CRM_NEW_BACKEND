@@ -468,7 +468,8 @@ export class InvoiceController {
                 clientEmail: invoice.client_email,
                 clientPhone: invoice.client_phone,
                 pdfUrl: publicUrl,
-                pdfFileName: fileName
+                pdfFileName: fileName,
+                htmlContent: html
             };
 
             // 5. Process delivery based on sendVia options
