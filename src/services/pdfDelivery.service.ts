@@ -41,7 +41,7 @@ class PDFDeliveryService {
             if (!WhatsAppService.getStatus()) {
                 return { success: false, error: 'WhatsApp service is not ready' };
             }
-            
+
             const message = this.createWhatsAppMessage(clientName, pdfUrl);
 
             const sent = await WhatsAppService.sendMessage(phoneNumber, message);
@@ -79,11 +79,11 @@ class PDFDeliveryService {
                 subject: `Your Itinerary PDF - ${clientName}`,
                 text: this.createEmailText(clientName, pdfUrl),
                 html: htmlContent || this.createEmailHTML(clientName, pdfUrl),
-                requireNewLead: false, 
-                attachments: [] 
+                requireNewLead: false,
+                attachments: []
             };
 
-            
+
             const result = await emailService.sendEmail(emailPayload);
 
             if (result.success) {
@@ -220,26 +220,46 @@ class PDFDeliveryService {
         return result;
     }
 
+
+
+
+
+
     /**
-     * Create WhatsApp message with PDF link
+     * Create WhatsApp message with a compact, smaller monospace font format and styled emojis
      */
+
     private createWhatsAppMessage(clientName: string, pdfUrl: string): string {
-        return `
-            Dear ${clientName},
+        return `🔔 *KLAR TRAVELS • ITINERARY UPDATE*
 
-            Your customized itinerary is ready! 
+✨ _Dear ${clientName},_
 
-            📎 Click here to view/download your PDF:
-            ${pdfUrl}
+Your customized travel itinerary has been successfully generated and is ready for your review! ✈️🌍
 
-            You can also download and save this PDF for your reference.
+\`\`\`━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\`\`
+📄 *DOCUMENT DETAILS*
+• *Type:* Dynamic Travel Proposal
+• *Access:* Public Link (Downloadable)
+\`\`\`━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\`\`
 
-            Thank you for choosing our services! ✈️🌍
+📥 \`\`\`Click the secure link below to view:\`\`\`
+${pdfUrl}
 
-            Best regards,
-            Your Travel Team
-                    `.trim();
+_💡 Note: You can download and save this PDF directly to your smartphone for seamless offline access during your trip._
+
+Thank you for choosing our services! If you have any modifications or questions, simply reply to this chat. 🙌
+
+_Best regards,_
+*Your Travel Team* 🌟`.trim();
     }
+
+
+
+
+
+
+
+
 
     /**
      * Create plain text email content
@@ -335,25 +355,25 @@ class PDFDeliveryService {
 
 
 
-/**
- * Send Text Reminder via Email
- */
-async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<any> {
-    const emailPayload = {
-        to: emailAddress,
-        subject: `🔔 Reminder: ${title}`,
-        text: `${title}\n\n${content}`, // Fallback plain text
-        html: this.createReminderHTML(clientName, title, content),
-        requireNewLead: false,
-    };
-    return await emailService.sendEmail(emailPayload);
-}
+    /**
+     * Send Text Reminder via Email
+     */
+    async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<any> {
+        const emailPayload = {
+            to: emailAddress,
+            subject: `🔔 Reminder: ${title}`,
+            text: `${title}\n\n${content}`, // Fallback plain text
+            html: this.createReminderHTML(clientName, title, content),
+            requireNewLead: false,
+        };
+        return await emailService.sendEmail(emailPayload);
+    }
 
-/**
- * NEW: Clean HTML Template for Text Reminders
- */
-private createReminderHTML(clientName: string, title: string, content: string): string {
-    return `
+    /**
+     * NEW: Clean HTML Template for Text Reminders
+     */
+    private createReminderHTML(clientName: string, title: string, content: string): string {
+        return `
 <!DOCTYPE html>
 <html>
 <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7f9; padding: 20px;">
@@ -383,13 +403,13 @@ private createReminderHTML(clientName: string, title: string, content: string): 
 </body>
 </html>
     `.trim();
-}
+    }
 
-/**
- * NEW: Styled WhatsApp Message (No PDF link)
- */
-createReminderWhatsApp(clientName: string, title: string, content: string): string {
-    return `
+    /**
+     * NEW: Styled WhatsApp Message (No PDF link)
+     */
+    createReminderWhatsApp(clientName: string, title: string, content: string): string {
+        return `
 🔔 *REMINDER FOR ${clientName.toUpperCase()}*
 
 *Topic:* ${title}
@@ -398,7 +418,7 @@ ${content}
 
 _Reply to this message if you have any questions._
     `.trim();
-}
+    }
 
 }
 
