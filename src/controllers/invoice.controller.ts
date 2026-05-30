@@ -442,6 +442,8 @@ export class InvoiceController {
             const { id } = req.params;
             const { sendVia } = req.body;
 
+            console.log(`Received request to share invoice ${id} via ${sendVia}`);
+
             const invoice = await invoiceService.getInvoiceById(id as string);
             if (!invoice) {
                 return res.status(404).json({
@@ -461,6 +463,13 @@ export class InvoiceController {
             // 3. Upload to S3 Server
             const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
 
+            if(!publicUrl) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to upload invoice to S3"
+                });
+            }
+
             // 4. Prepare delivery options
             const deliveryOptions: DeliveryOptions = {
                 leadId: invoice.lead_id || id as string,
@@ -474,6 +483,7 @@ export class InvoiceController {
 
             // 5. Process delivery based on sendVia options
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
+            
 
             // 6. Return JSON with the link and delivery info
             return res.status(200).json({

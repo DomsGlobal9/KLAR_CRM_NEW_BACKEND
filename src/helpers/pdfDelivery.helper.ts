@@ -24,6 +24,7 @@ export async function processPDFDelivery(
     sendVia?: SendViaOptions
 ) {
     const { clientPhone, clientEmail } = options;
+    console.log('Processing PDF delivery with options:', options.clientEmail, options.clientPhone, sendVia);
 
 
     if (!clientPhone && !clientEmail) {

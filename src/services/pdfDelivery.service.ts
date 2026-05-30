@@ -31,9 +31,9 @@ type DocumentType = 'invoice' | 'quotation' | 'proposal' | 'itinerary';
 
 class PDFDeliveryService {
 
-     /**
-     * Helper to detect document type based on the file name
-     */
+    /**
+    * Helper to detect document type based on the file name
+    */
     private detectDocumentType(fileName: string): DocumentType {
         const lowerName = fileName.toLowerCase();
         if (lowerName.includes('invoice')) return 'invoice';
@@ -50,7 +50,7 @@ class PDFDeliveryService {
     private sanitizePhoneNumber(phone: string): string {
         // Strip out spaces, dashes, parentheses, and leading plus signs
         let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-        
+
         // If the number is 10 digits (common in India), pre-pend the country code '91' 
         // Adjust this country code prefix fallback as per your business target demographic
         if (cleaned.length === 10) {
@@ -73,11 +73,11 @@ class PDFDeliveryService {
                 return { success: false, error: 'WhatsApp service is not ready' };
             }
 
-              // Clean number to prevent API delivery failures
+            // Clean number to prevent API delivery failures
             const sanitizedPhone = this.sanitizePhoneNumber(phoneNumber);
             const docType = this.detectDocumentType(pdfFileName);
 
-            const message = this.createWhatsAppMessage(clientName, pdfUrl, docType);
+            const message = this.createWhatsAppMessage(clientName, pdfUrl);
 
             const sent = await WhatsAppService.sendMessage(sanitizedPhone, message);
 
@@ -119,7 +119,7 @@ class PDFDeliveryService {
 
             const emailPayload: SendEmailPayload = {
                 to: emailAddress,
-                subject: `Your Itinerary PDF - ${clientName}`,
+                subject: subjects[docType] || `Your ${docType} - ${clientName}`,
                 text: this.createEmailText(clientName, pdfUrl),
                 html: htmlContent || this.createEmailHTML(clientName, pdfUrl, docType),
                 requireNewLead: false,
@@ -187,13 +187,13 @@ class PDFDeliveryService {
 
         if (clientEmail) {
             console.log(`📧 Attempting email delivery to ${clientEmail}...`);
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent,  pdfFileName);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
 
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
                 messageId: emailResult.messageId,
-                timestamp: new Date().toISOString()     
+                timestamp: new Date().toISOString()
             };
 
             if (emailResult.success) {
@@ -245,7 +245,7 @@ class PDFDeliveryService {
         }
 
         if (channels.email && clientEmail) {
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent,  pdfFileName);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
@@ -264,40 +264,17 @@ class PDFDeliveryService {
     }
 
 
-
-
-
-
     /**
-     * Create WhatsApp message with a compact, smaller monospace font format and styled emojis
+     * Create WhatsApp message (Original version without styled emojis)
      */
-
     private createWhatsAppMessage(clientName: string, pdfUrl: string): string {
-        return `🔔 *KLAR TRAVELS • ITINERARY UPDATE*
+        return `Hello ${clientName},
 
-✨ _Dear ${clientName},_
-
-Your customized travel itinerary has been successfully generated and is ready for your review! ✈️🌍
-
-\`\`\`━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\`\`
-📄 *DOCUMENT DETAILS*
-• *Type:* Dynamic Travel Proposal
-• *Access:* Public Link (Downloadable)
-\`\`\`━━━━━━━━━━━━━━━━━━━━━━━━━━━\`\`\`
-
-📥 \`\`\`Click the secure link below to view:\`\`\`
+Your PDF document is ready. You can access it at:
 ${pdfUrl}
 
-_💡 Note: You can download and save this PDF directly to your smartphone for seamless offline access during your trip._
-
-Thank you for choosing our services! If you have any modifications or questions, simply reply to this chat. 🙌
-
-_Best regards,_
-*Your Travel Team* 🌟`.trim();
+Thank you for choosing our services.`;
     }
-
-
-
 
     /**
      * Create plain text email content
@@ -317,13 +294,20 @@ _Best regards,_
 
             Best regards,
             Your Travel Team
-                    `.trim();
+        `.trim();
     }
 
     /**
-     * Create HTML email content
+     * Create HTML email content (Enhanced version with custom HTML support)
      */
-    private createEmailHTML(clientName: string, pdfUrl: string): string {
+    private createEmailHTML(clientName: string, pdfUrl: string, docType: DocumentType): string {
+        const titles: Record<DocumentType, string> = {
+            invoice: 'Your Invoice',
+            quotation: 'Your Quotation',
+            proposal: 'Your Travel Proposal',
+            itinerary: 'Your Itinerary'
+        };
+
         return `
 <!DOCTYPE html>
 <html>
@@ -333,18 +317,18 @@ _Best regards,_
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px; text-align: center;">
-        <h1 style="color: #0066cc; margin-bottom: 10px;">Your Itinerary is Ready! 🎉</h1>
+        <h1 style="color: #0066cc; margin-bottom: 10px;">${titles[docType]} is Ready! 🎉</h1>
         <p style="font-size: 18px; color: #555;">Dear ${clientName},</p>
     </div>
 
     <div style="background-color: #ffffff; border-radius: 8px; padding: 25px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
-        <h2 style="color: #0066cc; margin-top: 0;">Your PDF Itinerary</h2>
-        <p>Your customized travel itinerary has been generated and is ready for viewing.</p>
+        <h2 style="color: #0066cc; margin-top: 0;">Your PDF Document</h2>
+        <p>Your ${docType} has been generated and is ready for viewing.</p>
         
         <div style="background-color: #f0f7ff; border-radius: 6px; padding: 20px; margin: 20px 0; text-align: center;">
             <a href="${pdfUrl}" 
-               style="display: inline-block; background-color: #25D366; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">
-                📄 View Your Itinerary PDF
+               style="display: inline-block; background-color: #0066cc; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                📄 View Your PDF
             </a>
             <p style="margin-top: 10px; color: #666; font-size: 14px;">
                 Click the button above to view and download your PDF
@@ -388,11 +372,6 @@ _Best regards,_
         };
     }
 
-
-
-
-
-
     /**
      * Send Text Reminder via Email
      */
@@ -408,7 +387,7 @@ _Best regards,_
     }
 
     /**
-     * NEW: Clean HTML Template for Text Reminders
+     * HTML Template for Text Reminders
      */
     private createReminderHTML(clientName: string, title: string, content: string): string {
         return `
@@ -443,9 +422,10 @@ _Best regards,_
     `.trim();
     }
 
+
     /**
-     * NEW: Styled WhatsApp Message (No PDF link)
-     */
+ * NEW: Styled WhatsApp Message (No PDF link)
+ */
     createReminderWhatsApp(clientName: string, title: string, content: string): string {
         return `
 🔔 *REMINDER FOR ${clientName.toUpperCase()}*
@@ -458,12 +438,7 @@ _Reply to this message if you have any questions._
     `.trim();
     }
 
+
 }
-
-
-
-
-
-
 
 export const pdfDeliveryService = new PDFDeliveryService();
