@@ -385,7 +385,7 @@ export const itineraryPreferencesRepository = {
                 for (const pref of updateData.service_preferences) {
                     const insertData: any = {
                         service_type: pref.service_type?.toUpperCase(),
-                        service_code: pref.service_code || pref.service_type, 
+                        service_code: pref.service_code || pref.service_type,
                         title: pref.title,
                         description: pref.description,
                         estimated_price: pref.estimated_price,
@@ -1628,6 +1628,11 @@ export const itineraryPreferencesRepository = {
         // Hotel Service Preferences
         if (hotelOptions.length > 0) {
             hotelOptions.forEach((hotel: any, index: number) => {
+                console.log(`Hotel Option ${index + 1}:`, {
+                    checkInDate: hotel.checkInDate,
+                    checkOutDate: hotel.checkOutDate,
+                    hotelName: hotel.hotelName
+                });
                 servicePreferences.push({
                     service_type: 'HOTELS',
                     service_code: 'HOTELS',
@@ -1648,7 +1653,8 @@ export const itineraryPreferencesRepository = {
                         estimated_total_stay_cost: hotel.estimatedTotalStayCost ? parseFloat(hotel.estimatedTotalStayCost) : 0,
                         premium_amenities: hotel.premiumAmenities || '',
                         experience_highlights: hotel.experienceHighlights || '',
-                        date: hotel.date || '',
+                        check_in_date: hotel.checkInDate || '',
+                        check_out_date: hotel.checkOutDate || '',
                         notes: ''
                     },
                     is_active: true,
@@ -2043,6 +2049,48 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
+            const hotelPreferencesData = servicePreferences
+                .filter(sp => sp.service_type === 'HOTELS')
+                .map((sp, index) => ({
+                    lead_id: leadId,
+                    itinerary_id: itineraryId,
+                    preference_order: sp.preference_order,
+                    hotel_name: sp.preferences.hotel_name,
+                    hotel_category: sp.preferences.hotel_category,
+                    room_type: sp.preferences.room_type,
+                    stay_type: sp.preferences.stay_type,
+                    meal_plan: sp.preferences.meal_plan,
+                    location: sp.preferences.location,
+                    better_location: sp.preferences.better_location,
+                    premium_amenities: sp.preferences.premium_amenities,
+                    experience_highlights: sp.preferences.experience_highlights,
+                    check_in_date: sp.preferences.check_in_date,
+                    check_out_date: sp.preferences.check_out_date,
+                    estimated_price_per_night: sp.preferences.estimated_price_per_night,
+                    estimated_total_stay_cost: sp.preferences.estimated_total_stay_cost,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+
+            if (hotelPreferencesData.length > 0) {
+                console.log('🏨 Attempting to insert hotel data:', JSON.stringify(hotelPreferencesData, null, 2));
+
+                const { data: insertedHotelData, error: hotelError } = await supabaseAdmin
+                    .from('hotel_preferences')
+                    .insert(hotelPreferencesData)
+                    .select();  // Add .select() to return inserted data
+
+                if (hotelError) {
+                    console.error('❌ Hotel insert error details:', {
+                        message: hotelError.message,
+                        details: hotelError.details,
+                        hint: hotelError.hint,
+                        code: hotelError.code
+                    });
+                } else {
+                    console.log('✅ Hotel preferences saved successfully:', insertedHotelData);
+                }
+            }
             // Step 2: Insert service preferences with the itinerary_id
             let savedServicePreferences: any[] = [];
             if (servicePreferences.length > 0) {

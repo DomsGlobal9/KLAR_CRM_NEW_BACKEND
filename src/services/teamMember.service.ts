@@ -261,15 +261,26 @@ export const teamMemberService = {
         const oldRoleId = currentMetadata.role_id;
         const oldTeamId = currentMetadata.team_id;
 
-        const newRoleId = payload.role_id ?? oldRoleId;
-        const newTeamId = payload.team_id ?? oldTeamId;
+        let newRoleId = payload.role_id ?? oldRoleId;
+        let newTeamId = payload.team_id ?? oldTeamId;
 
         const updateMetadata: any = {};
 
-        // Validate TL limit
+        // If the new role is admin, force team_id to be null/undefined
+        if (newRoleId) {
+            const role = await roleRepository.getById(newRoleId);
+            if (role?.name === 'admin') {
+                newTeamId = null; // or undefined, or '' based on your schema
+                // Also ensure payload team_id is ignored
+                if (payload.team_id !== undefined) {
+                    console.log("Admin role detected - ignoring team_id assignment");
+                }
+            }
+        }
+
+        // Validate TL limit (only if role is tl and has a team)
         if (newRoleId && newTeamId) {
             const role = await roleRepository.getById(newRoleId);
-
             if (role?.name === 'tl') {
                 await this.validateTeamLeadLimit(newTeamId, userId);
             }
@@ -277,7 +288,6 @@ export const teamMemberService = {
 
         // Role update
         if (payload.role_id && payload.role_id !== oldRoleId) {
-
             const newRole = await roleRepository.getById(payload.role_id);
             if (!newRole) throw new Error('Role not found');
 
@@ -291,20 +301,30 @@ export const teamMemberService = {
             await roleRepository.incrementAssignedCount(payload.role_id);
         }
 
-        // Team update
-        if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
+        // Team update - Skip if role is admin (admin should have no team)
+        if (newRoleId) {
+            const currentRole = await roleRepository.getById(newRoleId);
+            const isAdmin = currentRole?.name === 'admin';
 
-            const team = await teamRepository.getById(payload.team_id as string);
-            if (payload.team_id && !team) throw new Error('Team not found');
+            if (!isAdmin && newTeamId !== oldTeamId) {
+                const team = await teamRepository.getById(newTeamId as string);
+                if (newTeamId && !team) throw new Error('Team not found');
 
-            updateMetadata.team_id = payload.team_id;
+                updateMetadata.team_id = newTeamId;
 
-            if (oldTeamId) {
-                await teamRepository.decrementMembersCount(oldTeamId);
-            }
+                if (oldTeamId) {
+                    await teamRepository.decrementMembersCount(oldTeamId);
+                }
 
-            if (payload.team_id) {
-                await teamRepository.incrementMembersCount(payload.team_id);
+                if (newTeamId) {
+                    await teamRepository.incrementMembersCount(newTeamId);
+                }
+            } else if (isAdmin && oldTeamId) {
+                // If changing to admin, remove team assignment
+                updateMetadata.team_id = null;
+                if (oldTeamId) {
+                    await teamRepository.decrementMembersCount(oldTeamId);
+                }
             }
         }
 
@@ -576,7 +596,7 @@ export const teamMemberService = {
         if (error) throw error;
 
         const allUsers = data.users;
-        const userRole = currentUser?.role; 
+        const userRole = currentUser?.role;
         const currentUserId = currentUser?.id;
 
         let filteredUsers: any[] = [];
