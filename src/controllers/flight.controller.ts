@@ -3,9 +3,7 @@ import { getAllFlightsWithUsers, getSingleFlightDetails } from "../services/flig
 
 export const getFlightReport = async (req: Request, res: Response) => {
     try {
-        const data = await getAllFlightsWithUsers();
-        console.log("flight.controller.ts - getFlightReport - data:", data); // Debug log to check the data structure
-        
+        const data = await getAllFlightsWithUsers(); 
         res.status(200).json({
             success: true,
             count: Array.isArray(data) ? data.length : 0,

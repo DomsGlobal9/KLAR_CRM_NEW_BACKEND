@@ -48,6 +48,7 @@ export const itineraryPreferencesService = {
         message?: string;
     }> {
         try {
+
             if (!formData.leadData?.id) {
                 return {
                     success: false,
@@ -64,8 +65,6 @@ export const itineraryPreferencesService = {
             if (!isLeadExist) {
                 throw new Error('Lead not found in Itinerary preference Service');
             }
-
-            // Transform and save to service_preferences table
             const preferenceData = itineraryPreferencesRepository.transformFormDataToServicePreferences(formData);
             const data = await itineraryPreferencesRepository.saveAllServicePreferences(preferenceData);
 
@@ -496,7 +495,7 @@ export const itineraryPreferencesService = {
         }
     },
 
-    async getleadByitineraryId(itinerary_id: string){
+    async getleadByitineraryId(itinerary_id: string) {
         return itineraryPreferencesRepository.getLeadIdByItineraryId(itinerary_id)
     },
 
