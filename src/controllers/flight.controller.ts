@@ -36,6 +36,7 @@ export const getSingleBooking = async (req: Request, res: Response) => {
         // Handle case where bookingId might be an array or string
         const id = Array.isArray(bookingId) ? bookingId[0] : bookingId;
         const data = await getSingleFlightDetails(id);
+        console.log("flight.controller.ts - getSingleBooking - data:", data); 
         
         res.status(200).json({
             success: true,
