@@ -1,10 +1,13 @@
-import express from 'express';
+import express, {Application} from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import routes from './routes';
 import { envConfig, corsOptions, cronJobConfigs } from './config';
+import { emailReaderService } from './services/emailReader.service';
 import cronService from './services';
+import connectDB from './config/mongodbDatabase.config';
+// import { connectFlightDB, connectAuthDB } from './config/mongodbDatabase.config';
 
 
 const app = express();
@@ -27,7 +30,7 @@ app.use((req, res, next) => {
 /**
  * Routes (API included inside)
  */
-app.use('/api/v1', routes); 
+app.use('/api/v1', routes);
 
 /**
  * Health check
@@ -66,5 +69,31 @@ app.get('/api/v1/cron/status', (_req, res) => {
     environment: envConfig.NODE_ENV
   });
 });
+
+
+/**
+ * Start Email Reader Polling
+ */
+if (envConfig.NODE_ENV !== 'test') {
+
+  const POLL_INTERVAL = 30000;
+
+  const pollEmails = async () => {
+    try {
+      await emailReaderService.readEmails();
+    } catch (error) {
+      console.error('❌ Email polling error:', error);
+    } finally {
+      setTimeout(pollEmails, POLL_INTERVAL);
+    }
+  };
+  pollEmails();
+
+  console.log(`📥 Email polling started (every ${POLL_INTERVAL / 1000} sec)`);
+}
+
+connectDB()
+// connectFlightDB();
+// connectAuthDB()
 
 export default app;

@@ -7,7 +7,6 @@ export interface User {
     status: 'active' | 'inactive' | 'suspended';
     full_name?: string;
     phone?: string;
-    profile_image_url?: string;
     department?: string;
     notes?: string;
     created_by?: string;
@@ -16,6 +15,7 @@ export interface User {
     last_login_at?: Date;
     created_at: Date;
     updated_at: Date;
+
 }
 
 export interface CreateUserInput {
@@ -68,3 +68,8 @@ export interface AuditLog {
     user_agent?: string;
     created_at: Date;
 }
+
+
+
+
+

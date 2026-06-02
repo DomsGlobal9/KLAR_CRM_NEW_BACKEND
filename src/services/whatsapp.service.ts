@@ -33,7 +33,6 @@ class WhatsAppService {
         });
 
         this.client.on('qr', (qr) => {
-            console.log('\n🔴 New QR code generated — visit /api/v1/whatsapp/qr-page to scan');
             this.currentQrString = qr;
             this.connectionStatus = 'waiting_qr';
         });

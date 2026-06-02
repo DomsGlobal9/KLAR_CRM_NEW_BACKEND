@@ -13,6 +13,29 @@ export interface IFlightPreference {
     better_connection_duration?: string;
     flexible_schedule?: boolean;
     notes?: string;
+
+    // NEW FIELDS - Add these
+    trip_type?: 'one-way' | 'return' | 'multi-city' ;
+    departure_city?: string;
+    arrival_city?: string;
+    departure_date?: string;
+    arrival_date?: string;
+    return_departure_date?: string;
+    return_arrival_date?: string;
+    segments?: Array<{
+        id: string;
+        departureCity: string;
+        arrivalCity: string;
+        departureDate: string;
+        arrivalDate: string;
+        departureArrivalTime?: string;
+    }>;
+    estimated_total_price?: number;
+    itinerary_id?: string;
+    status?: 'draft' | 'confirmed' | 'cancelled';
+    currency?: string;
+    route_details?: Record<string, any>;
+
     created_at: string;
     updated_at: string;
 }

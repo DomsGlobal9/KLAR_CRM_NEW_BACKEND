@@ -13,6 +13,7 @@ import { cleanUserMetadata } from '../helpers/user.service.helper';
  * Temporary storage for pending member creation (in-memory or Redis in production)
  */
 const pendingMemberCreations = new Map<string, {
+    mobile_number: string;
     role_id: string;
     team_id: string | null;
     requested_by: string;
@@ -261,15 +262,26 @@ export const teamMemberService = {
         const oldRoleId = currentMetadata.role_id;
         const oldTeamId = currentMetadata.team_id;
 
-        const newRoleId = payload.role_id ?? oldRoleId;
-        const newTeamId = payload.team_id ?? oldTeamId;
+        let newRoleId = payload.role_id ?? oldRoleId;
+        let newTeamId = payload.team_id ?? oldTeamId;
 
         const updateMetadata: any = {};
 
-        // Validate TL limit
+        // If the new role is admin, force team_id to be null/undefined
+        if (newRoleId) {
+            const role = await roleRepository.getById(newRoleId);
+            if (role?.name === 'admin') {
+                newTeamId = null; // or undefined, or '' based on your schema
+                // Also ensure payload team_id is ignored
+                if (payload.team_id !== undefined) {
+                    console.log("Admin role detected - ignoring team_id assignment");
+                }
+            }
+        }
+
+        // Validate TL limit (only if role is tl and has a team)
         if (newRoleId && newTeamId) {
             const role = await roleRepository.getById(newRoleId);
-
             if (role?.name === 'tl') {
                 await this.validateTeamLeadLimit(newTeamId, userId);
             }
@@ -277,7 +289,6 @@ export const teamMemberService = {
 
         // Role update
         if (payload.role_id && payload.role_id !== oldRoleId) {
-
             const newRole = await roleRepository.getById(payload.role_id);
             if (!newRole) throw new Error('Role not found');
 
@@ -291,20 +302,30 @@ export const teamMemberService = {
             await roleRepository.incrementAssignedCount(payload.role_id);
         }
 
-        // Team update
-        if (payload.team_id !== undefined && payload.team_id !== oldTeamId) {
+        // Team update - Skip if role is admin (admin should have no team)
+        if (newRoleId) {
+            const currentRole = await roleRepository.getById(newRoleId);
+            const isAdmin = currentRole?.name === 'admin';
 
-            const team = await teamRepository.getById(payload.team_id as string);
-            if (payload.team_id && !team) throw new Error('Team not found');
+            if (!isAdmin && newTeamId !== oldTeamId) {
+                const team = await teamRepository.getById(newTeamId as string);
+                if (newTeamId && !team) throw new Error('Team not found');
 
-            updateMetadata.team_id = payload.team_id;
+                updateMetadata.team_id = newTeamId;
 
-            if (oldTeamId) {
-                await teamRepository.decrementMembersCount(oldTeamId);
-            }
+                if (oldTeamId) {
+                    await teamRepository.decrementMembersCount(oldTeamId);
+                }
 
-            if (payload.team_id) {
-                await teamRepository.incrementMembersCount(payload.team_id);
+                if (newTeamId) {
+                    await teamRepository.incrementMembersCount(newTeamId);
+                }
+            } else if (isAdmin && oldTeamId) {
+                // If changing to admin, remove team assignment
+                updateMetadata.team_id = null;
+                if (oldTeamId) {
+                    await teamRepository.decrementMembersCount(oldTeamId);
+                }
             }
         }
 
@@ -459,11 +480,12 @@ export const teamMemberService = {
      */
     async sendAddMemberOTP(payload: {
         email: string;
+        mobile_number: string,
         role_id: string;
         team_id?: string | null;
         requested_by: string;
     }) {
-        const { email, role_id, team_id, requested_by } = payload;
+        const { email, mobile_number, role_id, team_id, requested_by } = payload;
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role not found');
@@ -489,6 +511,7 @@ export const teamMemberService = {
         const result = await otpService.sendOTP(email, 'registration');
 
         pendingMemberCreations.set(email, {
+            mobile_number,
             role_id,
             team_id: team_id || null,
             requested_by,
@@ -543,6 +566,7 @@ export const teamMemberService = {
             email_confirm: true,
             user_metadata: {
                 username,
+                mobile_number: pending.mobile_number,
                 role_id,
                 role_name: role.name,
                 team_id: team_id,
@@ -569,5 +593,76 @@ export const teamMemberService = {
         return user;
     },
 
+    async getFilteredTeamMembers(currentUser?: any) {
+        const { data, error } = await teamMemberRepository.listUsers();
+        if (error) throw error;
+
+        const allUsers = data.users;
+        const userRole = currentUser?.role;
+        const currentUserId = currentUser?.id;
+
+        let filteredUsers: any[] = [];
+
+        if (userRole === 'superadmin' || userRole === 'admin') {
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                return roleName !== 'superadmin';
+            });
+        }
+        else if (userRole === 'tl' || userRole === 'rm') {
+            const currentUserMetadata = currentUser?.user_metadata || {};
+            const userTeamId = currentUserMetadata.team_id || currentUser?.team_id;
+
+            filteredUsers = allUsers.filter(u => {
+                const metadata = u.user_metadata || {};
+                const roleName = metadata.role_name;
+                const userTeam = metadata.team_id;
+
+                if (roleName === 'admin') {
+                    return true;
+                }
+
+                if (userTeamId && userTeam === userTeamId) {
+                    return true;
+                }
+
+                if (u.id === currentUserId) {
+                    return true;
+                }
+
+                return false;
+            });
+        }
+        else {
+            filteredUsers = allUsers.filter(u => u.id === currentUserId);
+        }
+
+        const roles = await roleRepository.getAll();
+
+        return filteredUsers.map(user => {
+            const metadata = user.user_metadata || {};
+
+            let finalMetadata = metadata;
+            if (metadata.user_metadata) {
+                finalMetadata = metadata.user_metadata;
+            }
+
+            const role = roles.find(r => r.id === finalMetadata.role_id);
+
+            const userName = finalMetadata.full_name ||
+                finalMetadata.username ||
+                finalMetadata.name ||
+                user.email?.split('@')[0] ||
+                'Unknown';
+
+            return {
+                id: user.id,
+                name: userName,
+                email: user.email,
+                role_name: role?.name || finalMetadata.role_name || null
+            };
+        });
+    },
 
 };

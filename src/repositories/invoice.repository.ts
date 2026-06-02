@@ -224,5 +224,44 @@ export const invoiceRepository = {
         });
 
         return stats;
-    }
+    },
+
+    /**
+   * Get fully paid customers
+   */
+    async getPaidCustomers(): Promise<any[]> {
+
+        const { data, error } = await supabaseAdmin
+            .from('invoices')
+            .select(`
+            id,
+            invoice_number,
+            quote_number,
+            client_name,
+            client_email,
+            client_phone,
+            total,
+            paid_amount,
+            status,
+            created_at
+        `)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            throw new Error(`Failed to fetch paid customers: ${error.message}`);
+        }
+
+        // Only fully paid invoices
+        return (data || []).filter(invoice => {
+
+            const total = Number(invoice.total || 0);
+            const paid = Number(invoice.paid_amount || 0);
+
+            return (
+                invoice.status === 'paid' &&
+                total > 0 &&
+                paid >= total
+            );
+        });
+    },
 };

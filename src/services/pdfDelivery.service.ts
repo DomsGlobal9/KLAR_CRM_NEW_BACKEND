@@ -8,6 +8,7 @@ export interface PDFDeliveryOptions {
     clientPhone?: string;
     pdfUrl: string;
     pdfFileName: string;
+    htmlContent?: string;
 }
 
 export interface DeliveryResult {
@@ -26,12 +27,43 @@ export interface DeliveryResult {
     message: string;
 }
 
+type DocumentType = 'invoice' | 'quotation' | 'proposal' | 'itinerary';
+
 class PDFDeliveryService {
+
+    /**
+    * Helper to detect document type based on the file name
+    */
+    private detectDocumentType(fileName: string): DocumentType {
+        const lowerName = fileName.toLowerCase();
+        if (lowerName.includes('invoice')) return 'invoice';
+        if (lowerName.includes('quotation')) return 'quotation';
+        if (lowerName.includes('proposal')) return 'proposal';
+        return 'itinerary';
+    }
+
+
+
+    /**
+     * Cleans phone numbers to ensure compatibility with standard WhatsApp formats
+     */
+    private sanitizePhoneNumber(phone: string): string {
+        // Strip out spaces, dashes, parentheses, and leading plus signs
+        let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+
+        // If the number is 10 digits (common in India), pre-pend the country code '91' 
+        // Adjust this country code prefix fallback as per your business target demographic
+        if (cleaned.length === 10) {
+            cleaned = '91' + cleaned;
+        }
+        return cleaned;
+    }
+
 
     /**
      * Send PDF via WhatsApp only
      */
-    async sendViaWhatsApp(phoneNumber: string, pdfUrl: string, clientName: string): Promise<{ success: boolean; error?: string }> {
+    async sendViaWhatsApp(phoneNumber: string, pdfUrl: string, clientName: string, pdfFileName: string): Promise<{ success: boolean; error?: string }> {
         try {
             if (!phoneNumber) {
                 return { success: false, error: 'Phone number is required' };
@@ -40,10 +72,14 @@ class PDFDeliveryService {
             if (!WhatsAppService.getStatus()) {
                 return { success: false, error: 'WhatsApp service is not ready' };
             }
-            
+
+            // Clean number to prevent API delivery failures
+            const sanitizedPhone = this.sanitizePhoneNumber(phoneNumber);
+            const docType = this.detectDocumentType(pdfFileName);
+
             const message = this.createWhatsAppMessage(clientName, pdfUrl);
 
-            const sent = await WhatsAppService.sendMessage(phoneNumber, message);
+            const sent = await WhatsAppService.sendMessage(sanitizedPhone, message);
 
             if (sent) {
                 return { success: true };
@@ -62,7 +98,7 @@ class PDFDeliveryService {
     /**
      * Send PDF via Email only
      */
-    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string, htmlContent: string | undefined, pdfFileName: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             if (!emailAddress) {
                 return { success: false, error: 'Email address is required' };
@@ -73,16 +109,24 @@ class PDFDeliveryService {
                 return { success: false, error: 'Invalid email format' };
             }
 
-            const emailPayload: SendEmailPayload = {
-                to: emailAddress,
-                subject: `Your Itinerary PDF - ${clientName}`,
-                text: this.createEmailText(clientName, pdfUrl),
-                html: this.createEmailHTML(clientName, pdfUrl),
-                requireNewLead: false, 
-                attachments: [] 
+            const docType = this.detectDocumentType(pdfFileName);
+            const subjects: Record<DocumentType, string> = {
+                invoice: `Your Invoice Details - ${clientName}`,
+                quotation: `Your Quote Details - ${clientName}`,
+                proposal: `Your Travel Proposal - ${clientName}`,
+                itinerary: `Your Custom Itinerary Details - ${clientName}`
             };
 
-            
+            const emailPayload: SendEmailPayload = {
+                to: emailAddress,
+                subject: subjects[docType] || `Your ${docType} - ${clientName}`,
+                text: this.createEmailText(clientName, pdfUrl),
+                html: htmlContent || this.createEmailHTML(clientName, pdfUrl, docType),
+                requireNewLead: false,
+                attachments: []
+            };
+
+
             const result = await emailService.sendEmail(emailPayload);
 
             if (result.success) {
@@ -109,7 +153,7 @@ class PDFDeliveryService {
      * Send PDF via both WhatsApp and Email
      */
     async deliverPDF(options: PDFDeliveryOptions): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
+        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
 
         const result: DeliveryResult = {
             success: false,
@@ -123,7 +167,7 @@ class PDFDeliveryService {
 
         if (clientPhone) {
             console.log(`📱 Attempting WhatsApp delivery to ${clientPhone}...`);
-            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName);
+            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
 
             result.whatsapp = {
                 sent: whatsappResult.success,
@@ -143,7 +187,7 @@ class PDFDeliveryService {
 
         if (clientEmail) {
             console.log(`📧 Attempting email delivery to ${clientEmail}...`);
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
 
             result.email = {
                 sent: emailResult.success,
@@ -181,7 +225,7 @@ class PDFDeliveryService {
         options: PDFDeliveryOptions,
         channels: { whatsapp?: boolean; email?: boolean }
     ): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
+        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
 
         const result: DeliveryResult = {
             success: false,
@@ -191,7 +235,7 @@ class PDFDeliveryService {
         let anySuccess = false;
 
         if (channels.whatsapp && clientPhone) {
-            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName);
+            const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
             result.whatsapp = {
                 sent: whatsappResult.success,
                 error: whatsappResult.error,
@@ -201,7 +245,7 @@ class PDFDeliveryService {
         }
 
         if (channels.email && clientEmail) {
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId);
+            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
@@ -219,25 +263,17 @@ class PDFDeliveryService {
         return result;
     }
 
+
     /**
-     * Create WhatsApp message with PDF link
+     * Create WhatsApp message (Original version without styled emojis)
      */
     private createWhatsAppMessage(clientName: string, pdfUrl: string): string {
-        return `
-            Dear ${clientName},
+        return `Hello ${clientName},
 
-            Your customized itinerary is ready! 
+Your PDF document is ready. You can access it at:
+${pdfUrl}
 
-            📎 Click here to view/download your PDF:
-            ${pdfUrl}
-
-            You can also download and save this PDF for your reference.
-
-            Thank you for choosing our services! ✈️🌍
-
-            Best regards,
-            Your Travel Team
-                    `.trim();
+Thank you for choosing our services.`;
     }
 
     /**
@@ -258,13 +294,20 @@ class PDFDeliveryService {
 
             Best regards,
             Your Travel Team
-                    `.trim();
+        `.trim();
     }
 
     /**
-     * Create HTML email content
+     * Create HTML email content (Enhanced version with custom HTML support)
      */
-    private createEmailHTML(clientName: string, pdfUrl: string): string {
+    private createEmailHTML(clientName: string, pdfUrl: string, docType: DocumentType): string {
+        const titles: Record<DocumentType, string> = {
+            invoice: 'Your Invoice',
+            quotation: 'Your Quotation',
+            proposal: 'Your Travel Proposal',
+            itinerary: 'Your Itinerary'
+        };
+
         return `
 <!DOCTYPE html>
 <html>
@@ -274,18 +317,18 @@ class PDFDeliveryService {
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px; text-align: center;">
-        <h1 style="color: #0066cc; margin-bottom: 10px;">Your Itinerary is Ready! 🎉</h1>
+        <h1 style="color: #0066cc; margin-bottom: 10px;">${titles[docType]} is Ready! 🎉</h1>
         <p style="font-size: 18px; color: #555;">Dear ${clientName},</p>
     </div>
 
     <div style="background-color: #ffffff; border-radius: 8px; padding: 25px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
-        <h2 style="color: #0066cc; margin-top: 0;">Your PDF Itinerary</h2>
-        <p>Your customized travel itinerary has been generated and is ready for viewing.</p>
+        <h2 style="color: #0066cc; margin-top: 0;">Your PDF Document</h2>
+        <p>Your ${docType} has been generated and is ready for viewing.</p>
         
         <div style="background-color: #f0f7ff; border-radius: 6px; padding: 20px; margin: 20px 0; text-align: center;">
             <a href="${pdfUrl}" 
-               style="display: inline-block; background-color: #25D366; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">
-                📄 View Your Itinerary PDF
+               style="display: inline-block; background-color: #0066cc; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                📄 View Your PDF
             </a>
             <p style="margin-top: 10px; color: #666; font-size: 14px;">
                 Click the button above to view and download your PDF
@@ -328,6 +371,74 @@ class PDFDeliveryService {
             }
         };
     }
+
+    /**
+     * Send Text Reminder via Email
+     */
+    async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<any> {
+        const emailPayload = {
+            to: emailAddress,
+            subject: `🔔 Reminder: ${title}`,
+            text: `${title}\n\n${content}`, // Fallback plain text
+            html: this.createReminderHTML(clientName, title, content),
+            requireNewLead: false,
+        };
+        return await emailService.sendEmail(emailPayload);
+    }
+
+    /**
+     * HTML Template for Text Reminders
+     */
+    private createReminderHTML(clientName: string, title: string, content: string): string {
+        return `
+<!DOCTYPE html>
+<html>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7f9; padding: 20px;">
+    <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e1e8ed; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        
+        <div style="background-color: #244875; padding: 20px; text-align: center;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">New Reminder</h2>
+        </div>
+
+        <div style="padding: 30px;">
+            <p style="font-size: 16px; color: #64748b; margin-top: 0;">Hi <strong>${clientName}</strong>,</p>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 18px;">${title}</h3>
+                <p style="margin: 0; color: #475569; font-size: 15px; line-height: 1.5;">${content}</p>
+            </div>
+
+            <p style="font-size: 14px; color: #94a3b8; margin-bottom: 0;">
+                This is an automated notification from your travel team.
+            </p>
+        </div>
+
+        <div style="background-color: #f1f5f9; padding: 15px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; 2026 Your Travel Agency</p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+    }
+
+
+    /**
+ * NEW: Styled WhatsApp Message (No PDF link)
+ */
+    createReminderWhatsApp(clientName: string, title: string, content: string): string {
+        return `
+🔔 *REMINDER FOR ${clientName.toUpperCase()}*
+
+*Topic:* ${title}
+
+${content}
+
+_Reply to this message if you have any questions._
+    `.trim();
+    }
+
+
 }
 
 export const pdfDeliveryService = new PDFDeliveryService();

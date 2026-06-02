@@ -1,6 +1,8 @@
 export interface UpdateSelfPayload {
     username?: string;
     full_name?: string;
+    email?: string;
+    image?: string;
     phone?: string;
     department?: string;
     notes?: string;
@@ -10,7 +12,7 @@ export interface UserMetadata {
     username: string;
     role_id: string;
     role_name: string;
-    team_id?: string | null;        
+    team_id?: string | null;
     full_name?: string | null;
     phone?: string | null;
     department?: string | null;
