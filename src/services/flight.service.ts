@@ -8,8 +8,6 @@ export const getAllFlightsWithUsers = async () => {
 
     if (!bookings || bookings.length === 0) return [];
 
-    // 2. Get unique User IDs from userInfo.id (New Schema location)
-    // We filter to ensure we only get valid strings using type guard
     const userIds = [...new Set(
         bookings
             .map(b => b.userInfo?.id?.toString())
@@ -49,7 +47,6 @@ export const getAllFlightsWithUsers = async () => {
             bookingDate: booking.createdAt,
             status: booking.status,
             totalPrice: booking.totalPrice || 0,
-            // Access businessName from the matched user's profile
             businessName: matchingUser?.businessProfile?.businessName || "N/A",
             agentEmail: booking.userInfo?.email || "N/A",
             travellerName: booking.travellers?.[0] 

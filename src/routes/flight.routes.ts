@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getFlightReport, getSingleBooking } from "../controllers/flight.controller"; // Import new controller
+import { getFlightReport, getSingleBooking } from "../controllers/flight.controller"; 
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();

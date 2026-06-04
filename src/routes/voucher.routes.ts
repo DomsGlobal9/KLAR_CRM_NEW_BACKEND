@@ -21,4 +21,4 @@ router.post('/share-voucher/:quoteId', voucherController.shareVoucherPDF);
 // Get voucher by quote ID - expects: /voucher/:quoteId
 router.get('/:quoteId', voucherController.getVoucherByQuoteId);
 
-export default router;
+export default router;  
