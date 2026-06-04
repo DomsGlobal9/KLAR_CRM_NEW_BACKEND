@@ -4,18 +4,24 @@ import {
     getSingleTransactionDetails 
 } from "../services/wallet-transaction.service";
 
+
+
 export const getTransactionReport = async (req: Request, res: Response) => {
     try {
-        const data = await getAllTransactionsForUser();
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10; // Supports dynamic row size changes
+
+        const { transactions, pagination } = await getAllTransactionsForUser(page, limit);
+
         res.status(200).json({
             success: true,
-            count: data.length,
-            data: data,
+            pagination,
+            data: transactions
         });
     } catch (error: any) {
         res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message
         });
     }
 };

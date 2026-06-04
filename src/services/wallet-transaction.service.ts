@@ -2,30 +2,38 @@ import { Types } from "mongoose";
 import { getWalletTransactionModel } from "../models/wallet-transaction.model";
 import { getUserModel } from "../models/auth.models";
 
-// Static reference to Barsha's user ID as displayed in your database screenshots
 const BARSHA_USER_ID = "699d3fcb1264eb3701610b2a";
 
-export const getAllTransactionsForUser = async () => {
+export const getAllTransactionsForUser = async (page: number = 1, limit: number = 10) => {
     const TransactionModel = getWalletTransactionModel();
     const UserModel = getUserModel();
-
-    // Convert string ID into a Mongoose ObjectId to perform proper query matching
     const targetObjectId = new Types.ObjectId(BARSHA_USER_ID);
 
-    // 1. Fetch transactions belonging exclusively to Barsha
-    const transactions = await TransactionModel.find({ userId: targetObjectId })
-        .sort({ createdAt: -1 })
-        .lean();
+    // Calculate skipping parameter offsets
+    const skip = (page - 1) * limit;
 
-    if (!transactions || transactions.length === 0) return [];
+    // Execute queries in parallel to minimize cross-DB lookup latency
+    const [transactions, totalCount] = await Promise.all([
+        TransactionModel.find({ userId: targetObjectId })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        TransactionModel.countDocuments({ userId: targetObjectId })
+    ]);
 
-    // 2. Fetch Barsha's user profile details once for cross-referencing
+    if (!transactions || transactions.length === 0) {
+        return {
+            transactions: [],
+            pagination: { currentPage: page, totalPages: 0, totalCount: 0 }
+        };
+    }
+
     const user = await UserModel.findById(targetObjectId).lean();
     const businessName = user?.businessProfile?.businessName || "N/A";
     const agentEmail = user?.email || "N/A";
 
-    // 3. Map and simplify summary payload layout
-    return transactions.map((tx) => ({
+    const mappedTransactions = transactions.map((tx) => ({
         transactionId: tx._id,
         walletId: tx.walletId,
         date: tx.createdAt,
@@ -38,7 +46,21 @@ export const getAllTransactionsForUser = async () => {
         referenceId: tx.referenceId || "N/A",
         description: tx.description || ""
     }));
+
+    return {
+        transactions: mappedTransactions,
+        pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / limit),
+            totalCount
+        }
+    };
 };
+
+
+
+
+
 
 export const getSingleTransactionDetails = async (transactionId: string) => {
     const TransactionModel = getWalletTransactionModel();
@@ -73,3 +95,32 @@ export const getSingleTransactionDetails = async (transactionId: string) => {
         userDetails,
     };
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
