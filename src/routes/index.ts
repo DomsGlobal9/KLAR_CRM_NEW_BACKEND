@@ -24,6 +24,7 @@ import paymentRoutes from './paymentTracking.routes';
 import insuranceRoutes from "./insurance.routes"
 import cabsRoutes from "./cabs-routing.routes"
 import voucherRoutes from './voucher.routes';
+import walletTransactionRoutes from './wallet-transaction.routes';
 
 const router = Router();
 
@@ -57,4 +58,5 @@ router.use('/payment', paymentRoutes);
 router.use("/insurance", insuranceRoutes)
 router.use("/cabs", cabsRoutes)
 router.use('/voucher', voucherRoutes);
+router.use('/wallet-transactions', walletTransactionRoutes);
 export default router;
