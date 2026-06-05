@@ -9,7 +9,7 @@ import {
 export const getTransactionReport = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string, 10) || 1;
-        const limit = parseInt(req.query.limit as string, 10) || 10; // Supports dynamic row size changes
+        const limit = parseInt(req.query.limit as string, 10) || 10; 
 
         const { transactions, pagination } = await getAllTransactionsForUser(page, limit);
 
