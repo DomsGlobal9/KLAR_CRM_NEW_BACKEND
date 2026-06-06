@@ -1,14 +1,30 @@
 import { getHotelBookingModel } from "../models/hotel-bookings";
 import { getUserModel } from "../models/auth.models";
 
-export const getAllHotelsWithUsers = async () => {
+export const getAllHotelsWithUsers = async (page: number = 1, limit: number = 10) => {
     const HotelModel = getHotelBookingModel();
     const UserModel = getUserModel();
 
-    // 1. Fetch all hotel bookings
-    const bookings = await HotelModel.find().lean();
+    const skip = (page - 1) * limit;
+    const totalCount = await HotelModel.countDocuments();
 
-    // 2. Extract unique userIds and filter null/undefined values with type guard
+    // 1. Fetch hotel bookings with sorting, skip, and limit applied
+    const bookings = await HotelModel.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const totalPages = Math.ceil(totalCount / limit) || 1;
+
+    const pagination = {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        rowsPerPage: limit
+    };
+
+    // 2. Extract unique userIds and filter null/undefined values
     const userIds = [...new Set(
         bookings
             .map(b => b.agentId?.toString())
@@ -31,7 +47,7 @@ export const getAllHotelsWithUsers = async () => {
         return acc;
     }, {});
 
-    return bookings
+    const transformedBookings = bookings
         .filter(booking => booking.agentId && userMap[booking.agentId.toString()])
         .map(booking => {
             const user = userMap[booking.agentId!.toString()];
@@ -43,26 +59,28 @@ export const getAllHotelsWithUsers = async () => {
                 businessName: user?.businessProfile?.businessName || "N/A"
             };
         });
+
+    return {
+        bookings: transformedBookings,
+        pagination
+    };
 };
 
 export const getSingleHotelDetails = async (reservationId: string) => {
     const HotelModel = getHotelBookingModel();
     const UserModel = getUserModel();
 
-    // 1. Find the specific booking by reservationId
     const booking = await HotelModel.findOne({ reservationId }).lean();
 
     if (!booking) {
         throw new Error("Hotel booking not found");
     }
 
-    // 2. Fetch the associated user for business information (only if agentId exists)
     let user = null;
     if (booking.agentId) {
         user = await UserModel.findById(booking.agentId.toString()).lean();
     }
 
-    // 3. Return the full booking object merged with key user details
     return {
         ...booking,
         userDetails: user ? {
