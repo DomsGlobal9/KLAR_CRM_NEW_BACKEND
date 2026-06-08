@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 import { getWalletTransactionModel } from "../models/wallet-transaction.model";
 import { getUserModel } from "../models/auth.models";
 
-const BARSHA_USER_ID = "699d3fcb1264eb3701610b2a";
+const BARSHA_USER_ID = "6a1ed2fb290ce7d307b05784";
 
 export const getAllTransactionsForUser = async (page: number = 1, limit: number = 10) => {
     const TransactionModel = getWalletTransactionModel();
