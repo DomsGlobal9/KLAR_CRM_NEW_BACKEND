@@ -95,7 +95,7 @@ export const quoteService = {
             ...(frontendPayload.itinerary_details && { itinerary_details: frontendPayload.itinerary_details }),
 
             // IDs
-            itinerary_id: frontendPayload.itinerary_id || frontendPayload.lead_id || frontendPayload.lead?.id,
+            itinerary_id: frontendPayload.itinerary_id,
             lead_id: frontendPayload.lead_id || frontendPayload.lead?.id
         };
 

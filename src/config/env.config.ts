@@ -12,8 +12,6 @@ interface EnvConfig {
     PORT: number;
     NODE_ENV: 'development' | 'production' | 'test';
 
-    
-
     /**
      * SMTP
      */
@@ -22,6 +20,15 @@ interface EnvConfig {
     SMTP_SECURE: boolean;
     SMTP_USER: string;
     SMTP_PASS: string;
+
+    /**
+     * IMAP (Email Receiving)
+     */
+    IMAP_HOST: string;
+    IMAP_PORT: number;
+    IMAP_SECURE: boolean;
+    IMAP_USER: string;
+    IMAP_PASS: string;
 
     /**
      * Email Defaults
@@ -172,6 +179,13 @@ const validateRequiredFields = (): void => {
     validateRequired(process.env.SMTP_PASS, 'SMTP_PASS');
 
     /**
+     * IMAP validation
+     */
+    validateRequired(process.env.IMAP_HOST, 'IMAP_HOST');
+    validateRequired(process.env.IMAP_USER, 'IMAP_USER');
+    validateRequired(process.env.IMAP_PASS, 'IMAP_PASS');
+
+    /**
      * Supabase production validation (required for all environments)
      */
     validateRequired(process.env.SUPABASE_PRODUCTION_URL, 'SUPABASE_PRODUCTION_URL');
@@ -278,6 +292,15 @@ export const envConfig: EnvConfig = {
     SMTP_PASS: validateRequired(process.env.SMTP_PASS, 'SMTP_PASS'),
 
     /**
+     * IMAP
+     */
+    IMAP_HOST: validateRequired(process.env.IMAP_HOST, 'IMAP_HOST'),
+    IMAP_PORT: parseNumber(process.env.IMAP_PORT, 993),
+    IMAP_SECURE: parseBoolean(process.env.IMAP_SECURE, true),
+    IMAP_USER: validateRequired(process.env.IMAP_USER, 'IMAP_USER'),
+    IMAP_PASS: validateRequired(process.env.IMAP_PASS, 'IMAP_PASS'),
+
+    /**
      * Email Defaults
      */
     DEFAULT_FROM_EMAIL: validateRequired(process.env.DEFAULT_FROM_EMAIL, 'DEFAULT_FROM_EMAIL') || 'noreply@example.com',
@@ -356,6 +379,7 @@ export const validateConfig = (): void => {
      */
     const requiredStringFields = [
         'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS',
+        'IMAP_HOST', 'IMAP_USER', 'IMAP_PASS',
         'DEFAULT_FROM_EMAIL', 'DEFAULT_FROM_NAME',
         'SUPABASE_URL', 'SUPABASE_ANON_KEY'
     ];

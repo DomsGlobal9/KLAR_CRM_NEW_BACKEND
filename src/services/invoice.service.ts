@@ -15,6 +15,15 @@ export const invoiceService = {
         }
     },
 
+    async getPaidCustomers() {
+        try {
+            return await invoiceRepository.getPaidCustomers();
+        } catch (error: any) {
+            console.error('Error fetching paid customers:', error);
+            throw new Error(error.message || 'Failed to fetch paid customers');
+        }
+    },
+
     async getInvoiceById(id: string) {
         const invoice = await invoiceRepository.getById(id);
         if (!invoice) {
