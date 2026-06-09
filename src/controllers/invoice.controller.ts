@@ -38,14 +38,41 @@ export class InvoiceController {
                 throw new AppError('Quote number is required', 400, 'MISSING_QUOTE_NUMBER');
             }
 
+            // Check if quote has been updated after last invoice
+            const { data: quote } = await supabaseAdmin
+                .from('quotes')
+                .select('updated_at, created_at, total, final_amount')
+                .eq('quote_number', payload.quote_number)
+                .single();
+
+            if (!quote) {
+                throw new AppError('Quote not found', 404, 'QUOTE_NOT_FOUND');
+            }
+
             // Check for existing invoice
             const existingInvoice = await invoiceRepository.findByQuoteNumber(payload.quote_number);
+
+            // If invoice exists, check if quote was updated after invoice was created
+            let shouldCreateNewInvoice = false;
+            if (existingInvoice) {
+                const quoteUpdatedAt = new Date(quote.updated_at);
+                const invoiceCreatedAt = new Date(existingInvoice.created_at);
+
+                // If quote was updated after invoice was created, create new invoice
+                if (quoteUpdatedAt > invoiceCreatedAt) {
+                    shouldCreateNewInvoice = true;
+                    console.log(`[${requestId}] Quote updated after invoice, creating new invoice`);
+                }
+            }
 
             // Parse client information
             const clientInfo = this.parseClientInformation(payload);
 
-            // Calculate financial values
-            const financials = this.calculateFinancials(payload, existingInvoice);
+            // Calculate financial values using current quote totals
+            const financials = this.calculateFinancials({
+                ...payload,
+                total: payload.quote_total || payload.total || quote.total || quote.final_amount || 0
+            }, shouldCreateNewInvoice ? null : existingInvoice);
 
             // Validate business rules
             this.validateBusinessRules(payload, financials, existingInvoice);
@@ -54,8 +81,8 @@ export class InvoiceController {
             let statusCode: number;
             let action: 'created' | 'updated';
 
-            if (existingInvoice) {
-                // UPDATE existing invoice
+            if (existingInvoice && !shouldCreateNewInvoice) {
+                // UPDATE existing invoice (only if quote wasn't updated)
                 result = await this.updateExistingInvoice(
                     existingInvoice,
                     payload,
@@ -69,7 +96,7 @@ export class InvoiceController {
 
                 console.log(`[${requestId}] Invoice updated: ${existingInvoice.id}`);
             } else {
-                // CREATE new invoice
+                // CREATE new invoice (either first time or quote was edited)
                 result = await this.createNewInvoice(
                     payload,
                     clientInfo,
@@ -80,7 +107,7 @@ export class InvoiceController {
                 statusCode = 201;
                 action = 'created';
 
-                console.log(`[${requestId}] Invoice created: ${result.id}`);
+                console.log(`[${requestId}] Invoice ${action}: ${result.id}`);
             }
 
             // Handle sending invoice if requested
@@ -90,6 +117,13 @@ export class InvoiceController {
 
             // Prepare response
             const response = this.prepareResponse(result, financials, action, existingInvoice);
+
+            // Add note if new invoice was created due to quote edit
+            if (existingInvoice && shouldCreateNewInvoice) {
+                response.note = "New invoice created because the quote was edited after the previous invoice";
+                response.previous_invoice_id = existingInvoice.id;
+                response.previous_invoice_number = existingInvoice.invoice_number;
+            }
 
             return res.status(statusCode).json({
                 success: true,
@@ -463,7 +497,7 @@ export class InvoiceController {
             // 3. Upload to S3 Server
             const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
 
-            if(!publicUrl) {
+            if (!publicUrl) {
                 return res.status(500).json({
                     success: false,
                     message: "Failed to upload invoice to S3"
@@ -483,7 +517,7 @@ export class InvoiceController {
 
             // 5. Process delivery based on sendVia options
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
-            
+
 
             // 6. Return JSON with the link and delivery info
             return res.status(200).json({
@@ -514,7 +548,7 @@ export class InvoiceController {
     getPaidCustomers = async (req: Request, res: Response) => {
         try {
             const customers = await invoiceService.getPaidCustomers();
-            
+
             res.status(200).json({
                 success: true,
                 count: customers.length,
