@@ -15,30 +15,19 @@ export const leadService = {
    * Create a new lead with optional requirements
    */
   async createLead(payload: CreateLeadPayload) {
-
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
-
 
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
       console.log(`⚠️ Lead with email ${sanitizedData.email} already exists`);
-
     }
 
-    // const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
-
     const lead = await leadRepository.createLeadWithFullDetails(sanitizedData);
-
-    // return {
-    //   lead,
-    //   travelPlan: travelPlan || null
-    // };
     return lead;
   },
 
@@ -54,14 +43,9 @@ export const leadService = {
     return lead;
   },
 
-
   /**
    * Get all leads with requirements
    */
-  // async getAllLeads(filter: LeadFilter = {}): Promise<LeadWithRequirements[]> {
-  //   return await leadRepository.getAllLeadsWithRequirements(filter);
-  // },
-
   async getAllLeads(filter: LeadFilter = {}, currentUser?: { id: string; role: string }): Promise<any[]> {
     return await leadRepository.getLeadsList({
       ...filter,
@@ -75,12 +59,15 @@ export const leadService = {
   async updateLead(id: string, payload: any): Promise<boolean> {
     console.log("🔧 Service update received payload:", JSON.stringify(payload, null, 2));
 
-
     const existingLead = await leadRepository.getLeadById(id);
     if (!existingLead) {
       throw new Error('Lead not found');
     }
 
+    // 🛑 CRITICAL IMMUTABILITY CHECK: Block updates if already Closed Won
+    if (existingLead.stage === 'Closed Won') {
+      throw new Error('This lead has been marked as Closed Won and cannot be modified.');
+    }
 
     if (payload.email && payload.email !== existingLead.email) {
       const validation = ValidationUtils.validateEmail(payload.email);
@@ -88,13 +75,11 @@ export const leadService = {
         throw new Error('Invalid email format');
       }
 
-
       const existingWithNewEmail = await leadRepository.getLeadByEmail(payload.email);
       if (existingWithNewEmail && existingWithNewEmail.id !== id) {
         throw new Error('Email already in use by another lead');
       }
     }
-
 
     if (payload.phone && payload.phone !== existingLead.phone) {
       const validation = ValidationUtils.validatePhone(payload.phone);
@@ -114,15 +99,17 @@ export const leadService = {
    * Update only requirements for a lead
    */
   async updateLeadRequirements(leadId: string, payload: Partial<CreateLeadPayload>): Promise<LeadWithRequirements> {
-
     const existingLead = await leadRepository.getLeadById(leadId);
     if (!existingLead) {
       throw new Error('Lead not found');
     }
 
+    // 🛑 CRITICAL IMMUTABILITY CHECK: Block requirement updates if already Closed Won
+    if (existingLead.stage === 'Closed Won') {
+      throw new Error('This lead has been marked as Closed Won and its requirements cannot be modified.');
+    }
 
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
-
 
     const requirementFields: any = {};
     const requirementFieldKeys = [
@@ -139,9 +126,7 @@ export const leadService = {
       }
     });
 
-
     await leadRepository.upsertLeadRequirements(leadId, requirementFields);
-
 
     return await leadRepository.getLeadById(leadId) as LeadWithRequirements;
   },
@@ -169,26 +154,21 @@ export const leadService = {
    * Capture lead from web form
    */
   async captureWebLead(payload: CreateLeadPayload): Promise<LeadWithRequirements> {
-
     if (!payload.name || !payload.email || !payload.phone || !payload.type) {
       throw new Error('Name, email, phone, and type are required');
     }
-
 
     const validation = ValidationUtils.validateLeadPayload(payload);
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-
     const webLeadPayload = {
       ...payload,
       captured_from: 'web_form'
     } as CreateLeadPayload;
 
-
     const sanitizedData = ValidationUtils.sanitizeLeadData(webLeadPayload);
-
 
     return await leadRepository.createLeadWithRequirements(sanitizedData);
   },
@@ -196,21 +176,27 @@ export const leadService = {
   /**
    * Update lead stage
    */
-  async updateLeadStage(
-    id: string,
-    stageId: string
-  ): Promise<boolean> {
-
+  async updateLeadStage(id: string, stageId: string): Promise<boolean> {
     if (!stageId) {
       throw new Error('Valid stage id required');
     }
 
+    // Fetch target stage name
     const stageName = await stageRepository.getStageNameById(stageId);
-
     if (!stageName) {
       throw new Error('Stage name not found');
     }
 
+    // Fetch existing lead data to check current stage status
+    const existingLead = await leadRepository.getLeadById(id);
+    if (!existingLead) {
+      throw new Error('Lead not found');
+    }
+
+    // 🛑 CRITICAL IMMUTABILITY CHECK: If currently Closed Won, block any transitions out of it
+    if (existingLead.stage === 'Closed Won') {
+      throw new Error('This lead is marked as Closed Won. Stage alterations are locked.');
+    }
 
     return await leadRepository.updateLeadStageOnly(id, stageName);
   },
@@ -221,6 +207,11 @@ export const leadService = {
   async assignLead(id: string, assignedTo: string): Promise<boolean> {
     if (!assignedTo || typeof assignedTo !== 'string') {
       throw new Error('Valid user ID is required for assignment');
+    }
+
+    const existingLead = await leadRepository.getLeadById(id);
+    if (existingLead && existingLead.stage === 'Closed Won') {
+      throw new Error('Cannot reassign a lead that is Closed Won.');
     }
 
     const payload: UpdateLeadPayload = { assigned_to: assignedTo };
