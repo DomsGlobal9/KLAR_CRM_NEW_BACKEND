@@ -11,19 +11,8 @@ router.post('/capture', leadController.createQuickLead);
 
 /**
  * Protected routes - require authentication and specific roles
+ * Note: /auto-assign is placed ABOVE this to allow x-api-key bypass
  */
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
-
-router.post('/', leadController.createLead);
-router.get('/',  leadController.getAllLeads);
-router.get('/stats', leadController.getLeadStats);
-router.get('/search', leadController.searchLeads);
-router.get('/:id', leadController.getLeadById);
-router.put('/:id', leadController.updateLead);
-router.delete('/:id', leadController.deleteLead);
-router.patch('/:id/stage', leadController.updateLeadStage);
-router.post('/:id/assign', leadController.assignLead);
-// This allows n8n to bypass the login requirement if it provides the secret key
 router.post('/auto-assign', (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
     if (apiKey && apiKey === process.env.INTERNAL_API_KEY) {
@@ -35,5 +24,17 @@ router.post('/auto-assign', (req, res, next) => {
         requireRole('superadmin', 'admin', 'rm', 'tl')(req, res, next);
     });
 }, leadController.autoAssignLead);
+
+router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+
+router.post('/', leadController.createLead);
+router.get('/',  leadController.getAllLeads);
+router.get('/stats', leadController.getLeadStats);
+router.get('/search', leadController.searchLeads);
+router.get('/:id', leadController.getLeadById);
+router.put('/:id', leadController.updateLead);
+router.delete('/:id', leadController.deleteLead);
+router.patch('/:id/stage', leadController.updateLeadStage);
+router.post('/:id/assign', leadController.assignLead);
 
 export default router;
