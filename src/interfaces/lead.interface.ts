@@ -142,7 +142,7 @@ export interface CreateLeadPayload {
 }
 
 export interface UpdateLeadPayload {
-    
+
     // Primary Details
     name?: string;
     email?: string;
