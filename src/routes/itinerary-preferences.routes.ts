@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { itineraryPreferencesController } from '../controllers/itinerary-preferences.controller';
-import { authenticate, requireRole } from '../middleware';
+import { authenticate, requireRole, upload } from '../middleware';
 
 const router = Router();
 
@@ -39,5 +39,12 @@ router.get('/:itinerary_id/download-itinerary',  itineraryPreferencesController.
  * Uploads to S3 and returns the URL for sharing
  */
 router.post('/:itinerary_id/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
+
+
+router.post('/upload-pdf', upload.single('file'), itineraryPreferencesController.uploadPdfFile);
+router.post('/upload-image', upload.single('file'), itineraryPreferencesController.uploadImageFile);
+
+router.post('/upload-multiple', upload.array('files', 10), itineraryPreferencesController.uploadMultipleFiles);
+router.post('/save-file-urls', itineraryPreferencesController.saveUploadedFileUrls);
 
 export default router;

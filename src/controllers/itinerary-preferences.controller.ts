@@ -19,6 +19,8 @@ import { pdfDeliveryService } from '../services/pdfDelivery.service';
 import { DeliveryOptions, processPDFDelivery } from '../helpers/pdfDelivery.helper';
 import { sendErrorResponse, sendUploadResponse } from '../helpers/response.helper';
 import { itineraryPreferencesRepository } from '../repositories/itinerary-preferences.repository';
+import { fileUploadService } from '../services/file-upload.service';
+import { supabaseAdmin } from '../config';
 
 export const itineraryPreferencesController = {
 
@@ -58,6 +60,7 @@ export const itineraryPreferencesController = {
     async savePreferences(req: Request, res: Response) {
         try {
             const formData: IFrontendFormData = req.body;
+            const submissionType = formData.submissionType || 'form';
 
             if (!formData?.leadData?.id) {
                 return res.status(400).json({
@@ -66,6 +69,26 @@ export const itineraryPreferencesController = {
                 });
             }
 
+            // For file-only submission, skip detailed validation
+            if (submissionType === 'files-only') {
+                // Just check if files exist
+                if (!formData.uploadedFiles || Object.keys(formData.uploadedFiles).length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'At least one file is required for file-only itinerary creation'
+                    });
+                }
+
+                // Call service with file-only flag
+                const result = await itineraryPreferencesService.saveFileOnlyPreferences(formData);
+
+                return res.status(201).json({
+                    ...result,
+                    message: 'Itinerary created from uploaded files successfully'
+                });
+            }
+
+            // For form submission, proceed with normal validation
             const result = await itineraryPreferencesService.savePreferences(formData);
 
             if (!result.success) {
@@ -554,6 +577,185 @@ export const itineraryPreferencesController = {
             return sendErrorResponse(res, error);
         }
     },
+
+    async uploadPdfFile(req: Request, res: Response) {
+        try {
+            const file = req.file;
+            const { serviceType, leadId } = req.body;
+
+            if (!file) {
+                return res.status(400).json({ success: false, message: 'No file uploaded' });
+            }
+
+            if (file.mimetype !== 'application/pdf') {
+                return res.status(400).json({ success: false, message: 'Only PDF files are allowed' });
+            }
+
+            const result = await fileUploadService.uploadPdf(file, leadId, serviceType);
+
+            if (!result.success) {
+                return res.status(400).json(result);
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: { fileUrl: result.fileUrl, message: result.message }
+            });
+        } catch (error: any) {
+            console.error('Error in uploadPdfFile:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    },
+
+    async uploadImageFile(req: Request, res: Response) {
+        try {
+            const file = req.file;
+            const { serviceType, leadId } = req.body;
+
+            if (!file) {
+                return res.status(400).json({ success: false, message: 'No file uploaded' });
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.mimetype)) {
+                return res.status(400).json({ success: false, message: 'Only image files are allowed' });
+            }
+
+            const result = await fileUploadService.uploadImage(file, leadId, serviceType);
+
+            if (!result.success) {
+                return res.status(400).json(result);
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: { fileUrl: result.fileUrl, message: result.message }
+            });
+        } catch (error: any) {
+            console.error('Error in uploadImageFile:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    },
+
+    // Add this new method to the controller
+    async uploadMultipleFiles(req: Request, res: Response) {
+        try {
+            const files = req.files as Express.Multer.File[];
+            const { serviceType, leadId } = req.body;
+
+            if (!files || files.length === 0) {
+                return res.status(400).json({ success: false, message: 'No files uploaded' });
+            }
+
+            const uploadedUrls: string[] = [];
+            const errors: string[] = [];
+
+            // Upload files one by one and collect URLs
+            for (const file of files) {
+                try {
+                    let result;
+                    if (file.mimetype === 'application/pdf') {
+                        result = await fileUploadService.uploadPdf(file, leadId, serviceType);
+                    } else if (['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.mimetype)) {
+                        result = await fileUploadService.uploadImage(file, leadId, serviceType);
+                    } else {
+                        errors.push(`${file.originalname}: Unsupported file type`);
+                        continue;
+                    }
+
+                    if (result.success && result.fileUrl) {
+                        uploadedUrls.push(result.fileUrl);
+                    } else {
+                        errors.push(`${file.originalname}: ${result.error}`);
+                    }
+                } catch (error: any) {
+                    errors.push(`${file.originalname}: ${error.message}`);
+                }
+            }
+
+            return res.status(200).json({
+                success: uploadedUrls.length > 0,
+                data: {
+                    uploadedUrls,
+                    totalUploaded: uploadedUrls.length,
+                    totalFailed: errors.length,
+                    errors: errors.length > 0 ? errors : undefined
+                },
+                message: `${uploadedUrls.length} file(s) uploaded successfully`
+            });
+
+        } catch (error: any) {
+            console.error('Error in uploadMultipleFiles:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    },
+
+    /**
+ * Save uploaded file URLs to database
+ */
+async saveUploadedFileUrls(req: Request, res: Response) {
+  try {
+    const { fileUrls, serviceType, leadId } = req.body;
+
+    if (!fileUrls || fileUrls.length === 0) {
+      return res.status(400).json({ success: false, message: 'No file URLs provided' });
+    }
+
+    if (!leadId) {
+      return res.status(400).json({ success: false, message: 'Lead ID is required' });
+    }
+
+    // Get existing data
+    const { data: existingSummary, error: fetchError } = await supabaseAdmin
+      .from('user_itenary_preferences_summary')
+      .select('metadata')
+      .eq('lead_id', leadId)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw new Error(fetchError.message);
+    }
+
+    const currentMetadata = existingSummary?.metadata || {};
+    const existingAttachments = currentMetadata.attachments || [];
+
+    const updatedMetadata = {
+      ...currentMetadata,
+      attachments: [
+        ...existingAttachments,
+        {
+          id: `${leadId}_${Date.now()}`,
+          serviceType,
+          fileUrls,
+          totalFiles: fileUrls.length,
+          uploadedAt: new Date().toISOString()
+        }
+      ]
+    };
+
+    const { error: updateError } = await supabaseAdmin
+      .from('user_itenary_preferences_summary')
+      .update({ 
+        metadata: updatedMetadata,
+        updated_at: new Date().toISOString()
+      })
+      .eq('lead_id', leadId);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${fileUrls.length} file URL(s) saved successfully`,
+      data: { fileUrls, serviceType, leadId }
+    });
+
+  } catch (error: any) {
+    console.error('Error in saveUploadedFileUrls:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+},
 };
 
 

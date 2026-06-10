@@ -1924,8 +1924,8 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Save all service preferences to service_preferences table
-     */
+  * Save all service preferences to service_preferences table
+  */
     async saveAllServicePreferences(data: {
         leadId: string;
         servicePreferences: Array<{
@@ -1976,40 +1976,137 @@ export const itineraryPreferencesRepository = {
                 serviceCounts[serviceType]++;
             });
 
-            // Step 1: Create the user preferences summary first to get itinerary_id
-            const userPrefsSummary: any = {
-                lead_id: leadId,
-                flight_preferences_added: userPreferences.flightPreferencesAdded,
-                hotel_preferences_added: userPreferences.hotelPreferencesAdded,
-                visa_preferences_added: userPreferences.visaPreferencesAdded,
-                transfer_preferences_added: userPreferences.transferPreferencesAdded,
-                group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
-                tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
-                aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
-                event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
-                yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
-                last_updated: userPreferences.lastUpdated || new Date().toISOString(),
-                metadata: {
-                    ...userPreferences.metadata,
+            // Check if we should create a new version or update existing
+            // Check metadata for createNewVersion flag (default to false to maintain existing behavior)
+            const createNewVersion = userPreferences.metadata?.createNewVersion === true;
+
+            let userPrefsData: any;
+            let itineraryId: string = ''; // Initialize with empty string
+            let createNewVersionFallback = false;
+
+            if (!createNewVersion) {
+                // Try to find existing active itinerary for this lead
+                const { data: existingSummary, error: checkError } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .select('id, status, version_number')
+                    .eq('lead_id', leadId)
+                    .in('status', ['Itinerary_Created', 'Itinerary_send', 'Itinerary_Updated'])
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (existingSummary && !checkError) {
+                    // Update existing itinerary instead of creating new one
+                    itineraryId = existingSummary.id;
+
+                    // Get current version number
+                    const currentVersion = existingSummary.version_number || 1;
+
+                    // Update the existing summary
+                    const updateFields: any = {
+                        flight_preferences_added: userPreferences.flightPreferencesAdded,
+                        hotel_preferences_added: userPreferences.hotelPreferencesAdded,
+                        visa_preferences_added: userPreferences.visaPreferencesAdded,
+                        transfer_preferences_added: userPreferences.transferPreferencesAdded,
+                        group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
+                        tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
+                        aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
+                        event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
+                        yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
+                        last_updated: userPreferences.lastUpdated || new Date().toISOString(),
+                        metadata: {
+                            ...userPreferences.metadata,
+                            service_counts: serviceCounts,
+                            total_service_options: servicePreferences.length,
+                            previous_version: currentVersion,
+                            updated_at: new Date().toISOString()
+                        },
+                        services_added: servicesAdded,
+                        service_counts: serviceCounts,
+                        updated_at: new Date().toISOString(),
+                        status: 'Itinerary_Updated'
+                    };
+
+                    const { data: updatedData, error: updateError } = await supabaseAdmin
+                        .from('user_itenary_preferences_summary')
+                        .update(updateFields)
+                        .eq('id', itineraryId)
+                        .select()
+                        .single();
+
+                    if (updateError) {
+                        console.error('Error updating existing itinerary:', updateError);
+                        // If update fails, fall back to creating new
+                        createNewVersionFallback = true;
+                        userPrefsData = null; // Reset to trigger new creation
+                        itineraryId = ''; // Reset itineraryId
+                    } else {
+                        userPrefsData = updatedData;
+
+                        // Delete old preferences for this itinerary
+                        await Promise.all([
+                            supabaseAdmin.from('service_preferences').delete().eq('itinerary_id', itineraryId),
+                            supabaseAdmin.from('flight_preferences').delete().eq('itinerary_id', itineraryId),
+                            supabaseAdmin.from('hotel_preferences').delete().eq('itinerary_id', itineraryId)
+                        ]);
+                    }
+                }
+            }
+
+            // Create new itinerary if no existing found or update failed or createNewVersion flag is true
+            if (!userPrefsData || createNewVersion || createNewVersionFallback) {
+                // Get the latest version number for this lead
+                const { data: latestSummary } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .select('version_number')
+                    .eq('lead_id', leadId)
+                    .order('version_number', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                const newVersion = (latestSummary?.version_number || 0) + 1;
+
+                // Create new user preferences summary
+                const userPrefsSummary: any = {
+                    lead_id: leadId,
+                    flight_preferences_added: userPreferences.flightPreferencesAdded,
+                    hotel_preferences_added: userPreferences.hotelPreferencesAdded,
+                    visa_preferences_added: userPreferences.visaPreferencesAdded,
+                    transfer_preferences_added: userPreferences.transferPreferencesAdded,
+                    group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
+                    tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
+                    aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
+                    event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
+                    yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
+                    last_updated: userPreferences.lastUpdated || new Date().toISOString(),
+                    metadata: {
+                        ...userPreferences.metadata,
+                        service_counts: serviceCounts,
+                        total_service_options: servicePreferences.length,
+                        version: newVersion,
+                        created_at: new Date().toISOString()
+                    },
+                    services_added: servicesAdded,
                     service_counts: serviceCounts,
-                    total_service_options: servicePreferences.length
-                },
-                services_added: servicesAdded,
-                service_counts: serviceCounts,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                status: 'Itinerary_Created'
-            };
+                    version_number: newVersion,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    status: 'Itinerary_Created'
+                };
 
-            const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
-                .from('user_itenary_preferences_summary')
-                .insert(userPrefsSummary)
-                .select()
-                .single();
+                const { data: newData, error: userPrefsError } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .insert(userPrefsSummary)
+                    .select()
+                    .single();
 
-            if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
+                if (userPrefsError) {
+                    throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
+                }
 
-            const itineraryId = userPrefsData.id;
+                userPrefsData = newData;
+                itineraryId = userPrefsData.id;
+            }
 
             // Save to flight_preferences table
             const flightPreferencesData = servicePreferences
@@ -2049,6 +2146,7 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
+            // Save to hotel_preferences table
             const hotelPreferencesData = servicePreferences
                 .filter(sp => sp.service_type === 'HOTELS')
                 .map((sp, index) => ({
@@ -2078,7 +2176,7 @@ export const itineraryPreferencesRepository = {
                 const { data: insertedHotelData, error: hotelError } = await supabaseAdmin
                     .from('hotel_preferences')
                     .insert(hotelPreferencesData)
-                    .select();  // Add .select() to return inserted data
+                    .select();
 
                 if (hotelError) {
                     console.error('❌ Hotel insert error details:', {
@@ -2091,13 +2189,14 @@ export const itineraryPreferencesRepository = {
                     console.log('✅ Hotel preferences saved successfully:', insertedHotelData);
                 }
             }
-            // Step 2: Insert service preferences with the itinerary_id
+
+            // Insert service preferences with the itinerary_id
             let savedServicePreferences: any[] = [];
             if (servicePreferences.length > 0) {
                 const servicePrefsToInsert = servicePreferences.map((pref, index) => ({
                     ...pref,
                     lead_id: leadId,
-                    itinerary_id: itineraryId, // ✅ Now we have the itinerary_id
+                    itinerary_id: itineraryId,
                     preference_order: pref.preference_order || index + 1,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
@@ -2108,11 +2207,13 @@ export const itineraryPreferencesRepository = {
                     .insert(servicePrefsToInsert)
                     .select();
 
-                if (serviceError) throw new Error(`Failed to save service preferences: ${serviceError.message}`);
+                if (serviceError) {
+                    throw new Error(`Failed to save service preferences: ${serviceError.message}`);
+                }
                 savedServicePreferences = serviceData || [];
             }
 
-            // Step 3: Fetch lead details
+            // Fetch lead details
             let leadDetailsResult: ILeadDetails | undefined;
             try {
                 const { data: detailsData } = await supabaseAdmin
@@ -2169,4 +2270,109 @@ export const itineraryPreferencesRepository = {
 
         return data;
     },
+
+    /**
+ * Save file-only itinerary (minimal data, just files)
+ */
+
+    async saveFileOnlyItinerary(data: {
+        leadId: string;
+        uploadedFiles: Record<string, { name: string; url: string }[]>;
+        creationType: string;
+        createdAt: string;
+    }): Promise<any> {
+        try {
+            // Check if file-only itinerary already exists for this lead
+            const { data: existingSummary } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('id, metadata')
+                .eq('lead_id', data.leadId)
+                .eq('status', 'Itinerary_Created_With_Files')
+                .maybeSingle();
+
+            let result;
+
+            if (existingSummary) {
+                // Update existing file-only itinerary
+                const existingMetadata = existingSummary.metadata || {};
+                const existingAttachments = existingMetadata.attachment_urls || {};
+
+                // Merge new files with existing ones
+                const mergedAttachments = { ...existingAttachments };
+                for (const [serviceType, files] of Object.entries(data.uploadedFiles)) {
+                    if (!mergedAttachments[serviceType]) {
+                        mergedAttachments[serviceType] = [];
+                    }
+                    mergedAttachments[serviceType] = [...mergedAttachments[serviceType], ...files];
+                }
+
+                const { data: updatedData, error: updateError } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .update({
+                        metadata: {
+                            ...existingMetadata,
+                            attachment_urls: mergedAttachments,
+                            last_updated: data.createdAt,
+                            updated_at: data.createdAt
+                        },
+                        updated_at: data.createdAt,
+                        last_updated: data.createdAt
+                    })
+                    .eq('id', existingSummary.id)
+                    .select()
+                    .single();
+
+                if (updateError) throw updateError;
+                result = updatedData;
+            } else {
+                // Create new file-only itinerary
+                const userPrefsSummary = {
+                    lead_id: data.leadId,
+                    flight_preferences_added: false,
+                    hotel_preferences_added: false,
+                    visa_preferences_added: false,
+                    transfer_preferences_added: false,
+                    group_booking_preferences_added: false,
+                    tour_package_preferences_added: false,
+                    aircraft_charter_preferences_added: false,
+                    event_management_preferences_added: false,
+                    yacht_charter_preferences_added: false,
+                    last_updated: data.createdAt,
+                    metadata: {
+                        creation_type: data.creationType,
+                        has_attachments: true,
+                        attachment_urls: data.uploadedFiles,
+                        created_at: data.createdAt
+                    },
+                    services_added: {},
+                    service_counts: {},
+                    created_at: data.createdAt,
+                    updated_at: data.createdAt,
+                    status: 'Itinerary_Created_With_Files'
+                };
+
+                const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
+                    .from('user_itenary_preferences_summary')
+                    .insert(userPrefsSummary)
+                    .select()
+                    .single();
+
+                if (userPrefsError) {
+                    throw new Error(`Failed to save file-only itinerary: ${userPrefsError.message}`);
+                }
+                result = userPrefsData;
+            }
+
+            return {
+                itinerary_id: result.id,
+                lead_id: data.leadId,
+                creation_type: data.creationType,
+                files_uploaded: data.uploadedFiles,
+                created_at: data.createdAt
+            };
+        } catch (error) {
+            console.error('Error in saveFileOnlyItinerary:', error);
+            throw error;
+        }
+    }
 };
