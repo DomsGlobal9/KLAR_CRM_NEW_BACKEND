@@ -78,42 +78,50 @@ export const userItineraryFilesController = {
     },
 
     async getFileOnlyItineraryById(req: Request, res: Response) {
-    try {
-        const { itineraryId } = req.params;
-        const itineraryIdStr = Array.isArray(itineraryId) ? itineraryId[0] : itineraryId;
-        
-        if (!itineraryIdStr) {
-            return res.status(400).json({ success: false, message: 'Itinerary ID is required' });
+        try {
+            const { itineraryId } = req.params;
+            const itineraryIdStr = Array.isArray(itineraryId) ? itineraryId[0] : itineraryId;
+
+            if (!itineraryIdStr) {
+                return res.status(400).json({ success: false, message: 'Itinerary ID is required' });
+            }
+
+            // Fetch the file record by its ID
+            const { data: fileRecord, error: fileError } = await supabaseAdmin
+                .from('user_itinerary_files')
+                .select('*')
+                .eq('id', itineraryIdStr)
+                .eq('status', 'active')
+                .single();
+
+            if (fileError || !fileRecord) {
+                return res.status(404).json({ success: false, message: 'File itinerary not found', data: null });
+            }
+
+            // ✅ FIX: Fetch lead details - make sure this is working
+            const { data: leadData, error: leadError } = await supabaseAdmin
+                .from('leads')
+                .select('id, name, email, phone, status, source, source_medium, customer_category, sub_category')
+                .eq('id', fileRecord.lead_id)
+                .single();
+
+            if (leadError) {
+                console.error('Error fetching lead:', leadError);
+            }
+
+            // ✅ Return with lead_details
+            return res.status(200).json({
+                success: true,
+                data: {
+                    ...fileRecord,
+                    lead_details: leadData || null  // Make sure this is included
+                },
+                exists: true,
+                itineraryType: 'file-only'
+            });
+        } catch (error: any) {
+            console.error('Error in getFileOnlyItineraryById:', error);
+            return res.status(500).json({ success: false, message: error.message });
         }
-
-        // Fetch the file record by its ID
-        const { data: fileRecord, error: fileError } = await supabaseAdmin
-            .from('user_itinerary_files')
-            .select('*')
-            .eq('id', itineraryIdStr)
-            .eq('status', 'active')
-            .single();
-
-        if (fileError || !fileRecord) {
-            return res.status(404).json({ success: false, message: 'File itinerary not found', data: null });
-        }
-
-        // Fetch lead details
-        const { data: leadData } = await supabaseAdmin
-            .from('leads')
-            .select('id, name, email, phone, status, source, source_medium, customer_category, sub_category')
-            .eq('id', fileRecord.lead_id)
-            .single();
-
-        return res.status(200).json({
-            success: true,
-            data: { ...fileRecord, lead_details: leadData || null },
-            exists: true,
-            itineraryType: 'file-only'
-        });
-    } catch (error: any) {
-        console.error('Error in getFileOnlyItineraryById:', error);
-        return res.status(500).json({ success: false, message: error.message });
     }
-}
 };
