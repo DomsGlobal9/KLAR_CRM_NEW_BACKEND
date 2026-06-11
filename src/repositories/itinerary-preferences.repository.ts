@@ -2069,6 +2069,7 @@ export const itineraryPreferencesRepository = {
                 // Create new user preferences summary
                 const userPrefsSummary: any = {
                     lead_id: leadId,
+                    type: 'form',
                     flight_preferences_added: userPreferences.flightPreferencesAdded,
                     hotel_preferences_added: userPreferences.hotelPreferencesAdded,
                     visa_preferences_added: userPreferences.visaPreferencesAdded,
@@ -2270,109 +2271,4 @@ export const itineraryPreferencesRepository = {
 
         return data;
     },
-
-    /**
- * Save file-only itinerary (minimal data, just files)
- */
-
-    async saveFileOnlyItinerary(data: {
-        leadId: string;
-        uploadedFiles: Record<string, { name: string; url: string }[]>;
-        creationType: string;
-        createdAt: string;
-    }): Promise<any> {
-        try {
-            // Check if file-only itinerary already exists for this lead
-            const { data: existingSummary } = await supabaseAdmin
-                .from('user_itenary_preferences_summary')
-                .select('id, metadata')
-                .eq('lead_id', data.leadId)
-                .eq('status', 'Itinerary_Created_With_Files')
-                .maybeSingle();
-
-            let result;
-
-            if (existingSummary) {
-                // Update existing file-only itinerary
-                const existingMetadata = existingSummary.metadata || {};
-                const existingAttachments = existingMetadata.attachment_urls || {};
-
-                // Merge new files with existing ones
-                const mergedAttachments = { ...existingAttachments };
-                for (const [serviceType, files] of Object.entries(data.uploadedFiles)) {
-                    if (!mergedAttachments[serviceType]) {
-                        mergedAttachments[serviceType] = [];
-                    }
-                    mergedAttachments[serviceType] = [...mergedAttachments[serviceType], ...files];
-                }
-
-                const { data: updatedData, error: updateError } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .update({
-                        metadata: {
-                            ...existingMetadata,
-                            attachment_urls: mergedAttachments,
-                            last_updated: data.createdAt,
-                            updated_at: data.createdAt
-                        },
-                        updated_at: data.createdAt,
-                        last_updated: data.createdAt
-                    })
-                    .eq('id', existingSummary.id)
-                    .select()
-                    .single();
-
-                if (updateError) throw updateError;
-                result = updatedData;
-            } else {
-                // Create new file-only itinerary
-                const userPrefsSummary = {
-                    lead_id: data.leadId,
-                    flight_preferences_added: false,
-                    hotel_preferences_added: false,
-                    visa_preferences_added: false,
-                    transfer_preferences_added: false,
-                    group_booking_preferences_added: false,
-                    tour_package_preferences_added: false,
-                    aircraft_charter_preferences_added: false,
-                    event_management_preferences_added: false,
-                    yacht_charter_preferences_added: false,
-                    last_updated: data.createdAt,
-                    metadata: {
-                        creation_type: data.creationType,
-                        has_attachments: true,
-                        attachment_urls: data.uploadedFiles,
-                        created_at: data.createdAt
-                    },
-                    services_added: {},
-                    service_counts: {},
-                    created_at: data.createdAt,
-                    updated_at: data.createdAt,
-                    status: 'Itinerary_Created_With_Files'
-                };
-
-                const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .insert(userPrefsSummary)
-                    .select()
-                    .single();
-
-                if (userPrefsError) {
-                    throw new Error(`Failed to save file-only itinerary: ${userPrefsError.message}`);
-                }
-                result = userPrefsData;
-            }
-
-            return {
-                itinerary_id: result.id,
-                lead_id: data.leadId,
-                creation_type: data.creationType,
-                files_uploaded: data.uploadedFiles,
-                created_at: data.createdAt
-            };
-        } catch (error) {
-            console.error('Error in saveFileOnlyItinerary:', error);
-            throw error;
-        }
-    }
 };

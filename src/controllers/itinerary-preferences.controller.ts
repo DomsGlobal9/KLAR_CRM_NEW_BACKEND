@@ -21,6 +21,7 @@ import { sendErrorResponse, sendUploadResponse } from '../helpers/response.helpe
 import { itineraryPreferencesRepository } from '../repositories/itinerary-preferences.repository';
 import { fileUploadService } from '../services/file-upload.service';
 import { supabaseAdmin } from '../config';
+import { userItineraryFilesService } from '../services/user-itinerary-files.service';
 
 export const itineraryPreferencesController = {
 
@@ -66,25 +67,6 @@ export const itineraryPreferencesController = {
                 return res.status(400).json({
                     success: false,
                     message: 'Lead ID is required'
-                });
-            }
-
-            // For file-only submission, skip detailed validation
-            if (submissionType === 'files-only') {
-                // Just check if files exist
-                if (!formData.uploadedFiles || Object.keys(formData.uploadedFiles).length === 0) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'At least one file is required for file-only itinerary creation'
-                    });
-                }
-
-                // Call service with file-only flag
-                const result = await itineraryPreferencesService.saveFileOnlyPreferences(formData);
-
-                return res.status(201).json({
-                    ...result,
-                    message: 'Itinerary created from uploaded files successfully'
                 });
             }
 
@@ -693,69 +675,221 @@ export const itineraryPreferencesController = {
     /**
  * Save uploaded file URLs to database
  */
-async saveUploadedFileUrls(req: Request, res: Response) {
-  try {
-    const { fileUrls, serviceType, leadId } = req.body;
+    async saveUploadedFileUrls(req: Request, res: Response) {
+        try {
+            const { fileUrls, serviceType, leadId } = req.body;
 
-    if (!fileUrls || fileUrls.length === 0) {
-      return res.status(400).json({ success: false, message: 'No file URLs provided' });
-    }
+            if (!fileUrls || fileUrls.length === 0) {
+                return res.status(400).json({ success: false, message: 'No file URLs provided' });
+            }
 
-    if (!leadId) {
-      return res.status(400).json({ success: false, message: 'Lead ID is required' });
-    }
+            if (!leadId) {
+                return res.status(400).json({ success: false, message: 'Lead ID is required' });
+            }
 
-    // Get existing data
-    const { data: existingSummary, error: fetchError } = await supabaseAdmin
-      .from('user_itenary_preferences_summary')
-      .select('metadata')
-      .eq('lead_id', leadId)
-      .single();
+            // Get existing data
+            const { data: existingSummary, error: fetchError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('metadata')
+                .eq('lead_id', leadId)
+                .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      throw new Error(fetchError.message);
-    }
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                throw new Error(fetchError.message);
+            }
 
-    const currentMetadata = existingSummary?.metadata || {};
-    const existingAttachments = currentMetadata.attachments || [];
+            const currentMetadata = existingSummary?.metadata || {};
+            const existingAttachments = currentMetadata.attachments || [];
 
-    const updatedMetadata = {
-      ...currentMetadata,
-      attachments: [
-        ...existingAttachments,
-        {
-          id: `${leadId}_${Date.now()}`,
-          serviceType,
-          fileUrls,
-          totalFiles: fileUrls.length,
-          uploadedAt: new Date().toISOString()
+            const updatedMetadata = {
+                ...currentMetadata,
+                attachments: [
+                    ...existingAttachments,
+                    {
+                        id: `${leadId}_${Date.now()}`,
+                        serviceType,
+                        fileUrls,
+                        totalFiles: fileUrls.length,
+                        uploadedAt: new Date().toISOString()
+                    }
+                ]
+            };
+
+            const { error: updateError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .update({
+                    metadata: updatedMetadata,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('lead_id', leadId);
+
+            if (updateError) {
+                throw new Error(updateError.message);
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: `${fileUrls.length} file URL(s) saved successfully`,
+                data: { fileUrls, serviceType, leadId }
+            });
+
+        } catch (error: any) {
+            console.error('Error in saveUploadedFileUrls:', error);
+            return res.status(500).json({ success: false, error: error.message });
         }
-      ]
-    };
+    },
 
-    const { error: updateError } = await supabaseAdmin
-      .from('user_itenary_preferences_summary')
-      .update({ 
-        metadata: updatedMetadata,
-        updated_at: new Date().toISOString()
-      })
-      .eq('lead_id', leadId);
+    /**
+     * Create file-only itinerary (separate from form-based)
+     */
+    async createFileOnlyItinerary(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+            const { files, metadata } = req.body;
+            const userId = (req as AuthRequest).user?.id;
 
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
+            // FIX: Convert to string explicitly
+            const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
 
-    return res.status(200).json({
-      success: true,
-      message: `${fileUrls.length} file URL(s) saved successfully`,
-      data: { fileUrls, serviceType, leadId }
-    });
+            if (!leadIdStr) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lead ID is required'
+                });
+            }
 
-  } catch (error: any) {
-    console.error('Error in saveUploadedFileUrls:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-},
+            if (!files || Object.keys(files).length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Files are required'
+                });
+            }
+
+            const result = await userItineraryFilesService.saveFileItinerary({
+                leadId: leadIdStr,  // Use the string version
+                files,
+                metadata,
+                userId
+            });
+
+            if (!result.success) {
+                return res.status(400).json(result);
+            }
+
+            return res.status(201).json({
+                ...result,
+                itineraryType: 'file-only'
+            });
+
+        } catch (error) {
+            console.error('Error in createFileOnlyItinerary:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Get file-only itinerary for a lead
+     */
+    async getFileOnlyItinerary(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            // FIX: Convert to string explicitly
+            const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+            if (!leadIdStr) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lead ID is required'
+                });
+            }
+
+            const result = await userItineraryFilesService.getFileItinerary(leadIdStr);
+
+            return res.status(200).json({
+                ...result,
+                itineraryType: 'file-only'
+            });
+
+        } catch (error) {
+            console.error('Error in getFileOnlyItinerary:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Check if lead has file-only itinerary
+     */
+    async checkFileOnlyItinerary(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            // FIX: Convert to string explicitly
+            const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+            if (!leadIdStr) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lead ID is required'
+                });
+            }
+
+            const exists = await userItineraryFilesService.hasFileItinerary(leadIdStr);
+
+            return res.status(200).json({
+                success: true,
+                exists,
+                itineraryType: exists ? 'file-only' : null
+            });
+
+        } catch (error) {
+            console.error('Error in checkFileOnlyItinerary:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Delete file-only itinerary
+     */
+    async deleteFileOnlyItinerary(req: Request, res: Response) {
+        try {
+            const { leadId } = req.params;
+
+            // FIX: Convert to string explicitly
+            const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+            if (!leadIdStr) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lead ID is required'
+                });
+            }
+
+            const result = await userItineraryFilesService.deleteFileItinerary(leadIdStr);
+
+            if (!result.success) {
+                return res.status(400).json(result);
+            }
+
+            return res.status(200).json(result);
+
+        } catch (error) {
+            console.error('Error in deleteFileOnlyItinerary:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
 };
 
 
