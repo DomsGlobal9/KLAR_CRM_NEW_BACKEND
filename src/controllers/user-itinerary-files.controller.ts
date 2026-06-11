@@ -98,23 +98,23 @@ export const userItineraryFilesController = {
                 return res.status(404).json({ success: false, message: 'File itinerary not found', data: null });
             }
 
-            // ✅ FIX: Fetch lead details - make sure this is working
+            // ✅ CHANGE THIS PART - Use maybeSingle() instead of single()
             const { data: leadData, error: leadError } = await supabaseAdmin
                 .from('leads')
-                .select('id, name, email, phone, status, source, source_medium, customer_category, sub_category')
+                .select('*')  // Select ALL fields, not just a few
                 .eq('id', fileRecord.lead_id)
-                .single();
+                .maybeSingle();  // Use maybeSingle() instead of single()
 
             if (leadError) {
                 console.error('Error fetching lead:', leadError);
             }
 
-            // ✅ Return with lead_details
+            // ✅ Return with lead_details (even if null)
             return res.status(200).json({
                 success: true,
                 data: {
                     ...fileRecord,
-                    lead_details: leadData || null  // Make sure this is included
+                    lead_details: leadData || null
                 },
                 exists: true,
                 itineraryType: 'file-only'
