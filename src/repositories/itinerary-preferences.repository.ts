@@ -63,61 +63,54 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Get all preferences for a lead
-     */
+ * Get all preferences for a specific itinerary
+ */
     async getByItineraryId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
         try {
-
+            // First, verify the itinerary exists and get basic info
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('lead_id')
+                .select('*')
                 .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
-                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+                throw new Error(`Failed to fetch itinerary: ${itineraryError?.message || 'No data found'}`);
             }
 
             const clientID = itineraryData.lead_id;
 
+            // Fetch ONLY the preferences for this specific itinerary_id
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
-                userPreferencesResult,
                 servicePreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
-
-                supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('*')
-                    .eq('lead_id', clientID)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle(),
 
                 supabaseAdmin
                     .from('service_preferences')
                     .select('*')
-                    .eq('lead_id', clientID),
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
+                    .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('leads')
@@ -127,7 +120,7 @@ export const itineraryPreferencesRepository = {
             ]);
 
             if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
-                throw new Error(`Failed to fetch service preferences: ${servicePreferencesResult.error.message}`);
+                console.error('Error fetching service preferences:', servicePreferencesResult.error);
             }
 
             let leadDetails: ILeadDetails | undefined;
@@ -140,7 +133,7 @@ export const itineraryPreferencesRepository = {
                 hotel_preferences: hotelPreferencesResult.data ?? [],
                 visa_preferences: visaPreferencesResult.data ?? [],
                 service_preferences: servicePreferencesResult.data ?? [],
-                user_preferences_summary: userPreferencesResult.data ?? null,
+                user_preferences_summary: itineraryData,
                 lead_details: leadDetails
             };
         } catch (error) {
@@ -1976,138 +1969,59 @@ export const itineraryPreferencesRepository = {
                 serviceCounts[serviceType]++;
             });
 
-            // Check if we should create a new version or update existing
-            // Check metadata for createNewVersion flag (default to false to maintain existing behavior)
-            const createNewVersion = userPreferences.metadata?.createNewVersion === true;
+            // Get the latest version number for this lead
+            const { data: latestSummary } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('version_number')
+                .eq('lead_id', leadId)
+                .order('version_number', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            let userPrefsData: any;
-            let itineraryId: string = ''; // Initialize with empty string
-            let createNewVersionFallback = false;
+            const newVersion = (latestSummary?.version_number || 0) + 1;
 
-            if (!createNewVersion) {
-                // Try to find existing active itinerary for this lead
-                const { data: existingSummary, error: checkError } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('id, status, version_number')
-                    .eq('lead_id', leadId)
-                    .in('status', ['Itinerary_Created', 'Itinerary_send', 'Itinerary_Updated'])
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (existingSummary && !checkError) {
-                    // Update existing itinerary instead of creating new one
-                    itineraryId = existingSummary.id;
-
-                    // Get current version number
-                    const currentVersion = existingSummary.version_number || 1;
-
-                    // Update the existing summary
-                    const updateFields: any = {
-                        flight_preferences_added: userPreferences.flightPreferencesAdded,
-                        hotel_preferences_added: userPreferences.hotelPreferencesAdded,
-                        visa_preferences_added: userPreferences.visaPreferencesAdded,
-                        transfer_preferences_added: userPreferences.transferPreferencesAdded,
-                        group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
-                        tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
-                        aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
-                        event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
-                        yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
-                        last_updated: userPreferences.lastUpdated || new Date().toISOString(),
-                        metadata: {
-                            ...userPreferences.metadata,
-                            service_counts: serviceCounts,
-                            total_service_options: servicePreferences.length,
-                            previous_version: currentVersion,
-                            updated_at: new Date().toISOString()
-                        },
-                        services_added: servicesAdded,
-                        service_counts: serviceCounts,
-                        updated_at: new Date().toISOString(),
-                        status: 'Itinerary_Updated'
-                    };
-
-                    const { data: updatedData, error: updateError } = await supabaseAdmin
-                        .from('user_itenary_preferences_summary')
-                        .update(updateFields)
-                        .eq('id', itineraryId)
-                        .select()
-                        .single();
-
-                    if (updateError) {
-                        console.error('Error updating existing itinerary:', updateError);
-                        // If update fails, fall back to creating new
-                        createNewVersionFallback = true;
-                        userPrefsData = null; // Reset to trigger new creation
-                        itineraryId = ''; // Reset itineraryId
-                    } else {
-                        userPrefsData = updatedData;
-
-                        // Delete old preferences for this itinerary
-                        await Promise.all([
-                            supabaseAdmin.from('service_preferences').delete().eq('itinerary_id', itineraryId),
-                            supabaseAdmin.from('flight_preferences').delete().eq('itinerary_id', itineraryId),
-                            supabaseAdmin.from('hotel_preferences').delete().eq('itinerary_id', itineraryId)
-                        ]);
-                    }
-                }
-            }
-
-            // Create new itinerary if no existing found or update failed or createNewVersion flag is true
-            if (!userPrefsData || createNewVersion || createNewVersionFallback) {
-                // Get the latest version number for this lead
-                const { data: latestSummary } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('version_number')
-                    .eq('lead_id', leadId)
-                    .order('version_number', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                const newVersion = (latestSummary?.version_number || 0) + 1;
-
-                // Create new user preferences summary
-                const userPrefsSummary: any = {
-                    lead_id: leadId,
-                    type: 'form',
-                    flight_preferences_added: userPreferences.flightPreferencesAdded,
-                    hotel_preferences_added: userPreferences.hotelPreferencesAdded,
-                    visa_preferences_added: userPreferences.visaPreferencesAdded,
-                    transfer_preferences_added: userPreferences.transferPreferencesAdded,
-                    group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
-                    tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
-                    aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
-                    event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
-                    yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
-                    last_updated: userPreferences.lastUpdated || new Date().toISOString(),
-                    metadata: {
-                        ...userPreferences.metadata,
-                        service_counts: serviceCounts,
-                        total_service_options: servicePreferences.length,
-                        version: newVersion,
-                        created_at: new Date().toISOString()
-                    },
-                    services_added: servicesAdded,
+            // Create new user preferences summary (always create new version)
+            const userPrefsSummary: any = {
+                lead_id: leadId,
+                type: 'form',
+                flight_preferences_added: userPreferences.flightPreferencesAdded,
+                hotel_preferences_added: userPreferences.hotelPreferencesAdded,
+                visa_preferences_added: userPreferences.visaPreferencesAdded,
+                transfer_preferences_added: userPreferences.transferPreferencesAdded,
+                group_booking_preferences_added: userPreferences.groupBookingPreferencesAdded,
+                tour_package_preferences_added: userPreferences.tourPackagePreferencesAdded,
+                aircraft_charter_preferences_added: userPreferences.aircraftCharterPreferencesAdded,
+                event_management_preferences_added: userPreferences.eventManagementPreferencesAdded,
+                yacht_charter_preferences_added: userPreferences.yachtCharterPreferencesAdded,
+                last_updated: userPreferences.lastUpdated || new Date().toISOString(),
+                metadata: {
+                    ...userPreferences.metadata,
                     service_counts: serviceCounts,
-                    version_number: newVersion,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    status: 'Itinerary_Created'
-                };
+                    total_service_options: servicePreferences.length,
+                    version: newVersion,
+                    previous_version: latestSummary?.version_number || null,
+                    created_at: new Date().toISOString()
+                },
+                services_added: servicesAdded,
+                service_counts: serviceCounts,
+                version_number: newVersion,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                status: 'Itinerary_Created'
+            };
 
-                const { data: newData, error: userPrefsError } = await supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .insert(userPrefsSummary)
-                    .select()
-                    .single();
+            const { data: newData, error: userPrefsError } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .insert(userPrefsSummary)
+                .select()
+                .single();
 
-                if (userPrefsError) {
-                    throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
-                }
-
-                userPrefsData = newData;
-                itineraryId = userPrefsData.id;
+            if (userPrefsError) {
+                throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
             }
+
+            const userPrefsData = newData;
+            const itineraryId = userPrefsData.id;
 
             // Save to flight_preferences table
             const flightPreferencesData = servicePreferences
