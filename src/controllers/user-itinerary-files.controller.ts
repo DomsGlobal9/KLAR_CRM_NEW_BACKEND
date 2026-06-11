@@ -98,23 +98,46 @@ export const userItineraryFilesController = {
                 return res.status(404).json({ success: false, message: 'File itinerary not found', data: null });
             }
 
-            // ✅ CHANGE THIS PART - Use maybeSingle() instead of single()
+            // IMPORTANT: Extract files from metadata.attachment_urls
+            const uploadedFiles = fileRecord.metadata?.attachment_urls || fileRecord.files || {};
+
+            // Normalize files to ensure they are always arrays
+            if (uploadedFiles && typeof uploadedFiles === 'object') {
+                const normalizedFiles: any = {};
+                Object.keys(uploadedFiles).forEach(key => {
+                    const fileValue = uploadedFiles[key];
+                    if (Array.isArray(fileValue)) {
+                        normalizedFiles[key] = fileValue;
+                    } else if (fileValue && typeof fileValue === 'object') {
+                        normalizedFiles[key] = [fileValue];
+                    } else {
+                        normalizedFiles[key] = [];
+                    }
+                });
+
+                // Store back in normalized form
+                if (fileRecord.metadata) {
+                    fileRecord.metadata.attachment_urls = normalizedFiles;
+                }
+            }
+
             const { data: leadData, error: leadError } = await supabaseAdmin
                 .from('leads')
-                .select('*')  // Select ALL fields, not just a few
+                .select('*')
                 .eq('id', fileRecord.lead_id)
-                .maybeSingle();  // Use maybeSingle() instead of single()
+                .maybeSingle();
 
             if (leadError) {
                 console.error('Error fetching lead:', leadError);
             }
 
-            // ✅ Return with lead_details (even if null)
+            // Return the data with files in the format frontend expects
             return res.status(200).json({
                 success: true,
                 data: {
                     ...fileRecord,
-                    lead_details: leadData || null
+                    lead_details: leadData || null,
+                    uploaded_files: fileRecord.metadata?.attachment_urls || fileRecord.files || {} // Frontend looks for this
                 },
                 exists: true,
                 itineraryType: 'file-only'
