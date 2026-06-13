@@ -32,63 +32,69 @@ export const userItineraryFilesService = {
             }
 
             // Get existing record
-            const existingRecord = await userItineraryFilesRepository.getByLeadId(data.leadId);
+            // const existingRecord = await userItineraryFilesRepository.getByLeadId(data.leadId);
 
-            let finalMetadata: any = {};
-            let finalFilesForDB = validFiles; // Keep files for the files column if needed
+            const finalMetadata = {
+                ...data.metadata,
+                attachment_urls: validFiles,
+                total_files: Object.values(validFiles).flat().length,
+                created_at: new Date().toISOString()
+            };
 
-            if (existingRecord.success && existingRecord.data) {
-                // Get existing metadata
-                const existingMetadata = existingRecord.data.metadata || {};
-                
-                // Get existing attachment_urls from metadata
-                const existingAttachments = existingMetadata.attachment_urls || {};
-                
-                // MERGE attachment_urls (this is what frontend expects)
-                const mergedAttachments = { ...existingAttachments };
-                
-                for (const [serviceType, files] of Object.entries(validFiles)) {
-                    if (mergedAttachments[serviceType]) {
-                        // Service exists - add new files, avoid duplicates
-                        const existingUrls = new Set(mergedAttachments[serviceType].map((f: any) => f.url));
-                        const newFiles = files.filter(f => !existingUrls.has(f.url));
-                        mergedAttachments[serviceType] = [...mergedAttachments[serviceType], ...newFiles];
-                    } else {
-                        // New service - add it
-                        mergedAttachments[serviceType] = files;
-                    }
-                }
-                
-                // Merge metadata
-                finalMetadata = {
-                    ...existingMetadata,
-                    ...data.metadata,
-                    attachment_urls: mergedAttachments,
-                    total_files: Object.values(mergedAttachments).flat().length,
-                    updated_at: new Date().toISOString()
-                };
-                
-                // Also merge files column for backward compatibility
-                const existingFiles = existingRecord.data.files || {};
-                finalFilesForDB = { ...existingFiles };
-                for (const [serviceType, files] of Object.entries(validFiles)) {
-                    if (finalFilesForDB[serviceType]) {
-                        const existingUrls = new Set(finalFilesForDB[serviceType].map((f: any) => f.url));
-                        const newFiles = files.filter(f => !existingUrls.has(f.url));
-                        finalFilesForDB[serviceType] = [...finalFilesForDB[serviceType], ...newFiles];
-                    } else {
-                        finalFilesForDB[serviceType] = files;
-                    }
-                }
-            } else {
-                // No existing record - create new metadata with attachment_urls
-                finalMetadata = {
-                    ...data.metadata,
-                    attachment_urls: validFiles,
-                    total_files: Object.values(validFiles).flat().length,
-                    created_at: new Date().toISOString()
-                };
-            }
+            const finalFilesForDB = validFiles;
+
+            // if (existingRecord.success && existingRecord.data) {
+            //     // Get existing metadata
+            //     const existingMetadata = existingRecord.data.metadata || {};
+
+            //     // Get existing attachment_urls from metadata
+            //     const existingAttachments = existingMetadata.attachment_urls || {};
+
+            //     // MERGE attachment_urls (this is what frontend expects)
+            //     const mergedAttachments = { ...existingAttachments };
+
+            //     for (const [serviceType, files] of Object.entries(validFiles)) {
+            //         if (mergedAttachments[serviceType]) {
+            //             // Service exists - add new files, avoid duplicates
+            //             const existingUrls = new Set(mergedAttachments[serviceType].map((f: any) => f.url));
+            //             const newFiles = files.filter(f => !existingUrls.has(f.url));
+            //             mergedAttachments[serviceType] = [...mergedAttachments[serviceType], ...newFiles];
+            //         } else {
+            //             // New service - add it
+            //             mergedAttachments[serviceType] = files;
+            //         }
+            //     }
+
+            //     // Merge metadata
+            //     finalMetadata = {
+            //         ...existingMetadata,
+            //         ...data.metadata,
+            //         attachment_urls: mergedAttachments,
+            //         total_files: Object.values(mergedAttachments).flat().length,
+            //         updated_at: new Date().toISOString()
+            //     };
+
+            //     // Also merge files column for backward compatibility
+            //     const existingFiles = existingRecord.data.files || {};
+            //     finalFilesForDB = { ...existingFiles };
+            //     for (const [serviceType, files] of Object.entries(validFiles)) {
+            //         if (finalFilesForDB[serviceType]) {
+            //             const existingUrls = new Set(finalFilesForDB[serviceType].map((f: any) => f.url));
+            //             const newFiles = files.filter(f => !existingUrls.has(f.url));
+            //             finalFilesForDB[serviceType] = [...finalFilesForDB[serviceType], ...newFiles];
+            //         } else {
+            //             finalFilesForDB[serviceType] = files;
+            //         }
+            //     }
+            // } else {
+            //     // No existing record - create new metadata with attachment_urls
+            //     finalMetadata = {
+            //         ...data.metadata,
+            //         attachment_urls: validFiles,
+            //         total_files: Object.values(validFiles).flat().length,
+            //         created_at: new Date().toISOString()
+            //     };
+            // }
 
             // Save to file-only table (store in BOTH files column and metadata.attachment_urls)
             const result = await userItineraryFilesRepository.saveOrUpdate({
@@ -121,7 +127,7 @@ export const userItineraryFilesService = {
 
     async getFileItinerary(leadId: string): Promise<{ success: boolean; data?: any; exists: boolean; message?: string }> {
         const result = await userItineraryFilesRepository.getByLeadId(leadId);
-        
+
         // Transform data to include attachment_urls from metadata
         if (result.success && result.data) {
             // Ensure attachment_urls is always present in the response
@@ -133,7 +139,7 @@ export const userItineraryFilesService = {
                 };
             }
         }
-        
+
         return {
             success: result.success,
             data: result.data,

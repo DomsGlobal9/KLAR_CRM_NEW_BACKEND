@@ -38,25 +38,57 @@ export const userItineraryFilesController = {
             leadsData?.forEach(lead => leadsMap.set(lead.id, lead));
 
             // Transform data
-            const transformedData = filesData.map(item => ({
-                itinerary_id: item.id,
-                type: 'file',
-                lead_details: {
-                    name: leadsMap.get(item.lead_id)?.name || 'N/A',
-                    email: leadsMap.get(item.lead_id)?.email || 'N/A',
-                    phone: leadsMap.get(item.lead_id)?.phone || 'N/A',
-                    status: leadsMap.get(item.lead_id)?.status || 'N/A',
-                },
-                summary: {
-                    status: 'File Only',
-                    flight_preferences_added: false,
-                    hotel_preferences_added: false,
-                    visa_preferences_added: false,
-                    last_updated: item.updated_at || item.created_at,
-                },
-                services: [],
-                created_at: item.created_at,
-            }));
+            const transformedData = filesData.map(item => {
+                // Get uploaded files from metadata.attachment_urls or files column
+                const uploadedFiles = item.metadata?.attachment_urls || item.files || {};
+
+                // Build services array from file keys
+                const servicesArray = Object.keys(uploadedFiles).map(serviceType => {
+                    // Convert service type to display name
+                    let displayName = '';
+                    switch (serviceType) {
+                        case 'FLIGHTS': displayName = 'Flights'; break;
+                        case 'HOTELS': displayName = 'Hotels'; break;
+                        case 'VISA_SERVICES': displayName = 'Visa'; break;
+                        case 'TRANSFERS': displayName = 'Transfers'; break;
+                        case 'GROUP_BOOKINGS': displayName = 'Group Bookings'; break;
+                        case 'TOUR_PACKAGES': displayName = 'Tour Packages'; break;
+                        case 'CHARTER_SERVICES': displayName = 'Aircraft Charter'; break;
+                        case 'EVENT_MANAGEMENT': displayName = 'Event Management'; break;
+                        case 'YACHT_CHARTER': displayName = 'Yacht Charter'; break;
+                        default: displayName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1).toLowerCase();
+                    }
+
+                    return {
+                        service_id: serviceType,
+                        service_name: displayName,
+                        service_type: serviceType,
+                        service_code: serviceType.toLowerCase(),
+                        is_primary: true,
+                        file_count: uploadedFiles[serviceType]?.length || 0
+                    };
+                });
+
+                return {
+                    itinerary_id: item.id,
+                    type: 'file',
+                    lead_details: {
+                        name: leadsMap.get(item.lead_id)?.name || 'N/A',
+                        email: leadsMap.get(item.lead_id)?.email || 'N/A',
+                        phone: leadsMap.get(item.lead_id)?.phone || 'N/A',
+                        status: leadsMap.get(item.lead_id)?.status || 'N/A',
+                    },
+                    summary: {
+                        status: 'File Only',
+                        flight_preferences_added: false,
+                        hotel_preferences_added: false,
+                        visa_preferences_added: false,
+                        last_updated: item.updated_at || item.created_at,
+                    },
+                    services: servicesArray,  // ← ADD THIS LINE
+                    created_at: item.created_at,
+                };
+            });
 
             return res.status(200).json({
                 success: true,

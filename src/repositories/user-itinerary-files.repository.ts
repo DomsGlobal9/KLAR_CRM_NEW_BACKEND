@@ -9,49 +9,9 @@ export const userItineraryFilesRepository = {
         userId?: string;
     }): Promise<{ success: boolean; data?: any; error?: string }> {
         try {
-            // Check if active record exists
-            const { data: existing, error: findError } = await supabaseAdmin
-                .from('user_itinerary_files')
-                .select('*')
-                .eq('lead_id', data.leadId)
-                .eq('status', 'active')
-                .maybeSingle();
 
             const now = new Date().toISOString();
             const totalFiles = Object.values(data.files).flat().length;
-
-            if (existing) {
-                // Merge existing files with new ones
-                const mergedFiles = { ...existing.files };
-                for (const [serviceType, files] of Object.entries(data.files)) {
-                    if (!mergedFiles[serviceType]) {
-                        mergedFiles[serviceType] = [];
-                    }
-                    mergedFiles[serviceType] = [...mergedFiles[serviceType], ...files];
-                }
-
-                const { data: updated, error: updateError } = await supabaseAdmin
-                    .from('user_itinerary_files')
-                    .update({
-                        files: mergedFiles,
-                        metadata: {
-                            ...existing.metadata,
-                            ...data.metadata,
-                            total_files: Object.values(mergedFiles).flat().length,
-                            updated_at: now
-                        },
-                        updated_at: now,
-                        updated_by: data.userId
-                    })
-                    .eq('id', existing.id)
-                    .select()
-                    .single();
-
-                if (updateError) throw updateError;
-                return { success: true, data: updated };
-            }
-
-            // Create new record
             const { data: inserted, error: insertError } = await supabaseAdmin
                 .from('user_itinerary_files')
                 .insert({
