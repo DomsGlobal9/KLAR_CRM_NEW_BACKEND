@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { travelerService } from '../services/traveler.service';
-import { CreateTravelerPayload, UpdateTravelerPayload  } from '../models/traveler.model';
+import { CreateTravelerPayload, UpdateTravelerPayload } from '../models/traveler.model';
 
 export const travelerController = {
 
@@ -65,7 +65,7 @@ export const travelerController = {
             // Fix: Ensure id is a string
             const { id } = req.params;
             const travelerId = Array.isArray(id) ? id[0] : id;
-            
+
             if (!travelerId) {
                 return res.status(400).json({
                     success: false,
@@ -96,7 +96,7 @@ export const travelerController = {
             // Fix: Ensure id is a string
             const { id } = req.params;
             const travelerId = Array.isArray(id) ? id[0] : id;
-            
+
             if (!travelerId) {
                 return res.status(400).json({
                     success: false,
@@ -129,7 +129,7 @@ export const travelerController = {
             // Fix: Ensure id is a string
             const { id } = req.params;
             const travelerId = Array.isArray(id) ? id[0] : id;
-            
+
             if (!travelerId) {
                 return res.status(400).json({
                     success: false,
@@ -175,6 +175,36 @@ export const travelerController = {
             });
         } catch (error: any) {
             console.error("❌ Search travelers error:", error);
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    },
+
+    /**
+ * Filter and sort travelers with POST body
+ */
+    async filterAndSortTravelers(req: Request, res: Response) {
+        try {
+            const { filters, sort, pagination } = req.body;
+
+            const result = await travelerService.filterAndSortTravelers(filters, sort, pagination);
+
+            res.json({
+                success: true,
+                data: result.travelers,
+                pagination: {
+                    total: result.total,
+                    page: result.page,
+                    totalPages: result.totalPages,
+                    limit: pagination?.limit || 10
+                },
+                filters: filters || {},
+                sort: sort || { field: 'created_at', order: 'desc' }
+            });
+        } catch (error: any) {
+            console.error("❌ Filter and sort travelers error:", error);
             res.status(400).json({
                 success: false,
                 error: error.message

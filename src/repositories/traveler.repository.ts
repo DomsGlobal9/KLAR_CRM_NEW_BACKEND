@@ -1,7 +1,9 @@
 import { supabaseAdmin } from '../config';
-import { ITraveler,CreateTravelerPayload,
+import {
+    ITraveler, CreateTravelerPayload,
     UpdateTravelerPayload,
-    TravelerFilter } from '../models/traveler.model';
+    TravelerFilter
+} from '../models/traveler.model';
 
 export const travelerRepository = {
 
@@ -188,6 +190,137 @@ export const travelerRepository = {
         }
 
         return data.map((row: any) => this.mapDatabaseToInterface(row));
+    },
+
+    /**
+ * Advanced filter and sort travelers
+ */
+    async filterAndSortTravelers(filters: any, sort: any, pagination: any): Promise<{ travelers: ITraveler[]; total: number; page: number; totalPages: number }> {
+        let query = supabaseAdmin
+            .from('travelers')
+            .select('*', { count: 'exact' });
+
+        // Apply filters
+        if (filters) {
+            // Title filter (single or multiple)
+            if (filters.title) {
+                if (Array.isArray(filters.title)) {
+                    query = query.in('title', filters.title);
+                } else {
+                    query = query.eq('title', filters.title);
+                }
+            }
+
+            // Traveler name (partial match)
+            if (filters.travelerName) {
+                query = query.ilike('traveler_name', `%${filters.travelerName}%`);
+            }
+
+            // Traveler email (partial match)
+            if (filters.travelerEmail) {
+                query = query.ilike('traveler_email', `%${filters.travelerEmail}%`);
+            }
+
+            // Traveler phone (partial match)
+            if (filters.travelerPhone) {
+                query = query.ilike('traveler_phone', `%${filters.travelerPhone}%`);
+            }
+
+            // Date of birth range
+            if (filters.dateOfBirthFrom) {
+                query = query.gte('date_of_birth', filters.dateOfBirthFrom);
+            }
+            if (filters.dateOfBirthTo) {
+                query = query.lte('date_of_birth', filters.dateOfBirthTo);
+            }
+
+            // Created date range
+            if (filters.createdFrom) {
+                query = query.gte('created_at', filters.createdFrom);
+            }
+            if (filters.createdTo) {
+                query = query.lte('created_at', filters.createdTo);
+            }
+
+            // Has passport filter
+            if (filters.hasPassport === true) {
+                query = query.not('passport', 'is', null);
+            } else if (filters.hasPassport === false) {
+                query = query.is('passport', null);
+            }
+
+            // Has GST filter
+            if (filters.hasGST === true) {
+                query = query.not('gst', 'is', null);
+            } else if (filters.hasGST === false) {
+                query = query.is('gst', null);
+            }
+
+            // Nationality filter (JSON field)
+            if (filters.nationality) {
+                query = query.eq('passport->>nationality', filters.nationality);
+            }
+        }
+
+        // Apply sorting
+        if (sort && sort.field) {
+            let sortField = sort.field;
+
+            // Map interface field to database column
+            switch (sortField) {
+                case 'travelerName':
+                    sortField = 'traveler_name';
+                    break;
+                case 'travelerEmail':
+                    sortField = 'traveler_email';
+                    break;
+                case 'travelerPhone':
+                    sortField = 'traveler_phone';
+                    break;
+                case 'dateOfBirth':
+                    sortField = 'date_of_birth';
+                    break;
+                case 'created_at':
+                    sortField = 'created_at';
+                    break;
+                case 'updated_at':
+                    sortField = 'updated_at';
+                    break;
+                default:
+                    sortField = sort.field;
+            }
+
+            query = query.order(sortField, { ascending: sort.order === 'asc' });
+        } else {
+            // Default sort by created_at desc
+            query = query.order('created_at', { ascending: false });
+        }
+
+        // Apply pagination
+        const page = pagination?.page || 1;
+        const limit = pagination?.limit || 10;
+        const start = (page - 1) * limit;
+        const end = start + limit - 1;
+
+        query = query.range(start, end);
+
+        // Execute query
+        const { data, error, count } = await query;
+
+        if (error) {
+            throw new Error(`Failed to filter and sort travelers: ${error.message}`);
+        }
+
+        const travelers = data.map((row: any) => this.mapDatabaseToInterface(row));
+        const total = count || 0;
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            travelers,
+            total,
+            page,
+            totalPages
+        };
     },
 
     /**

@@ -1,10 +1,11 @@
 import { travelerRepository } from '../repositories/traveler.repository';
-import { ITraveler,
+import {
+    ITraveler,
     CreateTravelerPayload,
     UpdateTravelerPayload,
     TravelerFilter,
     Title
- } from '../models/traveler.model';
+} from '../models/traveler.model';
 
 // Validation utilities
 const validateEmail = (email: string): boolean => {
@@ -23,12 +24,12 @@ const validateTitle = (title: string): boolean => {
 
 const validatePassport = (passport: any): string[] => {
     const errors: string[] = [];
-    
+
     if (passport && passport.passportNumber) {
         if (!passport.nationality) errors.push('Nationality is required when passport number is provided');
         if (!passport.issueDate) errors.push('Issue date is required when passport number is provided');
         if (!passport.expiryDate) errors.push('Expiry date is required when passport number is provided');
-        
+
         if (passport.issueDate && passport.expiryDate) {
             const issueDate = new Date(passport.issueDate);
             const expiryDate = new Date(passport.expiryDate);
@@ -37,28 +38,28 @@ const validatePassport = (passport: any): string[] => {
             }
         }
     }
-    
+
     return errors;
 };
 
 const validateGST = (gst: any): string[] => {
     const errors: string[] = [];
-    
+
     if (gst && gst.gstNumber) {
         if (!gst.registeredName) errors.push('Registered name is required when GST number is provided');
         if (!gst.email) errors.push('Email is required when GST number is provided');
         if (!gst.mobile) errors.push('Mobile is required when GST number is provided');
         if (!gst.address) errors.push('Address is required when GST number is provided');
-        
+
         if (gst.email && !validateEmail(gst.email)) {
             errors.push('Invalid GST email format');
         }
-        
+
         if (gst.mobile && !validatePhone(gst.mobile)) {
             errors.push('Invalid GST mobile number format');
         }
     }
-    
+
     return errors;
 };
 
@@ -108,11 +109,11 @@ export const travelerService = {
         if (!ec.contactName || !ec.email || !ec.phoneNumber) {
             throw new Error('Emergency contact must include contactName, email, and phoneNumber');
         }
-        
+
         if (!validateEmail(ec.email)) {
             throw new Error('Invalid emergency contact email format');
         }
-        
+
         if (!validatePhone(ec.phoneNumber)) {
             throw new Error('Invalid emergency contact phone number format');
         }
@@ -149,11 +150,11 @@ export const travelerService = {
      */
     async getTravelerById(id: string): Promise<ITraveler> {
         const traveler = await travelerRepository.getTravelerById(id);
-        
+
         if (!traveler) {
             throw new Error('Traveler not found');
         }
-        
+
         return traveler;
     },
 
@@ -179,7 +180,7 @@ export const travelerService = {
             if (!validateEmail(payload.travelerEmail)) {
                 throw new Error('Invalid email format');
             }
-            
+
             const travelerWithEmail = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
             if (travelerWithEmail && travelerWithEmail.id !== id) {
                 throw new Error('Email already in use by another traveler');
@@ -219,7 +220,7 @@ export const travelerService = {
         if (!existingTraveler) {
             throw new Error('Traveler not found');
         }
-        
+
         return await travelerRepository.deleteTraveler(id);
     },
 
@@ -230,7 +231,15 @@ export const travelerService = {
         if (!query || query.trim().length === 0) {
             throw new Error('Search query is required');
         }
-        
+
         return await travelerRepository.searchTravelers(query);
+    },
+
+    /**
+ * Advanced filter and sort travelers
+ */
+    async filterAndSortTravelers(filters: any, sort: any, pagination: any): Promise<{ travelers: ITraveler[]; total: number; page: number; totalPages: number }> {
+        const travelers = await travelerRepository.filterAndSortTravelers(filters, sort, pagination);
+        return travelers;
     }
 };

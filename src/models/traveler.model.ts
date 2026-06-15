@@ -80,3 +80,27 @@ export interface TravelerFilter {
     limit?: number;
     offset?: number;
 }
+
+export interface AdvancedTravelerFilter {
+    filters?: {
+        title?: string | string[];
+        travelerName?: string;
+        travelerEmail?: string;
+        travelerPhone?: string;
+        dateOfBirthFrom?: string;
+        dateOfBirthTo?: string;
+        createdFrom?: string;
+        createdTo?: string;
+        hasPassport?: boolean;
+        hasGST?: boolean;
+        nationality?: string;
+    };
+    sort?: {
+        field: 'title' | 'travelerName' | 'travelerEmail' | 'dateOfBirth' | 'created_at' | 'updated_at';
+        order: 'asc' | 'desc';
+    };
+    pagination?: {
+        page: number;
+        limit: number;
+    };
+}

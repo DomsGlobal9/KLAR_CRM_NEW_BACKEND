@@ -21,4 +21,6 @@ router.put('/:id', travelerController.updateTraveler);
 // Delete traveler by ID
 router.delete('/:id', travelerController.deleteTraveler);
 
+router.post('/filter', travelerController.filterAndSortTravelers);
+
 export default router;
