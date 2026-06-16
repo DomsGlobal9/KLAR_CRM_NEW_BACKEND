@@ -14,7 +14,7 @@ const validateEmail = (email: string): boolean => {
 };
 
 const validatePhone = (phone: string): boolean => {
-    const phoneRegex = /^[+]?[\d\s-]{10,}$/;
+    const phoneRegex = /^\+[1-9][0-9]{0,2}[0-9]{4,14}$/;
     return phoneRegex.test(phone);
 };
 
@@ -95,7 +95,7 @@ export const travelerService = {
 
         // Validate phone
         if (!validatePhone(payload.travelerPhone)) {
-            throw new Error('Invalid phone number format');
+            throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
         }
 
         // Validate date of birth
@@ -136,6 +136,12 @@ export const travelerService = {
             throw new Error('Traveler with this email already exists');
         }
 
+        // Check if traveler already exists by phone
+        const existingTravelerByPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
+        if (existingTravelerByPhone) {
+            throw new Error('Traveler with this phone number already exists');
+        }
+
         // Create traveler
         const traveler = await travelerRepository.createTraveler({
             ...payload,
@@ -166,8 +172,8 @@ export const travelerService = {
     },
 
     /**
-     * Update traveler
-     */
+ * Update traveler
+ */
     async updateTraveler(id: string, payload: UpdateTravelerPayload): Promise<boolean> {
         // Check if traveler exists
         const existingTraveler = await travelerRepository.getTravelerById(id);
@@ -188,8 +194,16 @@ export const travelerService = {
         }
 
         // Validate phone if being updated
-        if (payload.travelerPhone && !validatePhone(payload.travelerPhone)) {
-            throw new Error('Invalid phone number format');
+        if (payload.travelerPhone) {
+            if (!validatePhone(payload.travelerPhone)) {
+                throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
+            }
+
+            // Check if phone number is already used by another traveler
+            const travelerWithPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
+            if (travelerWithPhone && travelerWithPhone.id !== id) {
+                throw new Error('Phone number already in use by another traveler');
+            }
         }
 
         // Validate passport if being updated

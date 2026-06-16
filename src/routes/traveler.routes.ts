@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { travelerController } from '../controllers/traveler.controller';
+import { authenticate, requireRole } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -16,10 +17,10 @@ router.get('/search', travelerController.searchTravelers);
 router.get('/:id', travelerController.getTravelerById);
 
 // Update traveler by ID
-router.put('/:id', travelerController.updateTraveler);
+router.patch('/:id', travelerController.updateTraveler);
 
 // Delete traveler by ID
-router.delete('/:id', travelerController.deleteTraveler);
+router.delete('/:id', authenticate, requireRole('superadmin', 'admin'), travelerController.deleteTraveler);
 
 router.post('/filter', travelerController.filterAndSortTravelers);
 

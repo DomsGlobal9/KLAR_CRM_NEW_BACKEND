@@ -42,6 +42,23 @@ export const travelerRepository = {
     },
 
     /**
+ * Get traveler by phone number
+ */
+    async getTravelerByPhone(phone: string): Promise<ITraveler | null> {
+        const { data, error } = await supabaseAdmin
+            .from('travelers')
+            .select('*')
+            .eq('traveler_phone', phone)
+            .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+            throw new Error(`Failed to fetch traveler by phone: ${error.message}`);
+        }
+
+        return data ? this.mapDatabaseToInterface(data) : null;
+    },
+
+    /**
      * Create a new traveler
      */
     async createTraveler(payload: CreateTravelerPayload): Promise<ITraveler> {
