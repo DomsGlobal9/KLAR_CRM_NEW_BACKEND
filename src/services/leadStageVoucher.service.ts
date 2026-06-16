@@ -20,7 +20,24 @@ export const leadStageVoucherService = {
   /**
    * Retrieve all vouchers
    */
-  async getAllVouchers() {
-    return await leadStageVoucherRepository.getAllVouchers();
+  async getAllVouchers(page: number, limit: number) {
+    return await leadStageVoucherRepository.getAllVouchers(page, limit);
+  },
+
+
+  /**
+   * Business logic routing handler to fetch a single voucher record
+   */
+  async getVoucherById(id: string) {
+    if (!id) {
+      throw new Error('Validation failed: Voucher ID parameter is strictly required.');
+    }
+    
+    const voucher = await leadStageVoucherRepository.getVoucherById(id);
+    if (!voucher) {
+      throw new Error(`Data anomaly: No voucher found matching ID: ${id}`);
+    }
+
+    return voucher;
   }
 };

@@ -30,17 +30,49 @@ export const leadStageVoucherController = {
    */
   async getAllVouchers(req: Request, res: Response) {
     try {
-      const vouchers = await leadStageVoucherService.getAllVouchers();
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const result = await leadStageVoucherService.getAllVouchers(page, limit);
       
       res.status(200).json({
         success: true,
-        data: vouchers
+        data: result.vouchers,
+        pagination: {
+          page,
+          limit,
+          total_pages: result.totalPages,
+          total_count: result.totalCount
+        }
       });
     } catch (error: any) {
-      console.error("❌ Lead Stage Voucher retrieval failure:", error);
+      console.error("❌ Lead Stage Voucher paginated retrieval failure:", error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to retrieve vouchers list'
+      });
+    }
+  },
+
+
+
+  /**
+   * Fetch a single voucher setup requirement profile by ID
+   */
+  async getVoucherById(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const voucher = await leadStageVoucherService.getVoucherById(id);
+
+      res.status(200).json({
+        success: true,
+        data: voucher
+      });
+    } catch (error: any) {
+      console.error("❌ Lead Stage Voucher single record fetch failure:", error);
+      res.status(404).json({
+        success: false,
+        error: error.message || 'The requested voucher layout profile could not be found'
       });
     }
   }

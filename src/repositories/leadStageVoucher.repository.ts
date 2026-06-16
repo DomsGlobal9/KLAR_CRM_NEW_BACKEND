@@ -31,17 +31,46 @@ export const leadStageVoucherRepository = {
   /**
    * Fetch all lead stage vouchers sorted by creation date
    */
-  async getAllVouchers() {
+  async getAllVouchers(page: number = 1, limit: number = 10) {
+    const offset = (page - 1) * limit;
+    const toRange = offset + limit - 1;
+
+    // Fetch records with an exact row-counter wrapper flag enabled
+    const { data, error, count } = await supabaseAdmin
+      .from('lead_stage_vouchers')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, toRange);
+
+    if (error) {
+      console.error("❌ Supabase fetch records pagination failure:", error);
+      throw new Error(`Failed to retrieve vouchers: ${error.message}`);
+    }
+
+    return {
+      vouchers: data || [],
+      totalCount: count || 0,
+      totalPages: Math.ceil((count || 0) / limit)
+    };
+  },
+
+  
+
+  /**
+   * Fetch a single lead stage voucher record by its primary database ID
+   */
+  async getVoucherById(id: string) {
     const { data, error } = await supabaseAdmin
       .from('lead_stage_vouchers')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('id', id)
+      .maybeSingle(); // Prevents throwing an error if 0 records match
 
     if (error) {
-      console.error("❌ Supabase fetch all vouchers error:", error);
-      throw new Error(`Failed to retrieve lead vouchers: ${error.message}`);
+      console.error(`❌ Supabase getVoucherById error [ID: ${id}]:`, error);
+      throw new Error(`Failed to retrieve voucher record: ${error.message}`);
     }
 
-    return data || [];
+    return data;
   }
 };
