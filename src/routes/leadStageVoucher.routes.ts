@@ -15,4 +15,8 @@ router.post('/:id/share-voucher', authenticate, leadStageVoucherController.share
 // NEW PREVIEW ROUTE: GET /api/lead-stage-vouchers/:id/preview
 router.get('/:id/preview', authenticate, leadStageVoucherController.previewVoucherPDF);
 
+
+// Map the download controller action method
+router.get('/:id/download', leadStageVoucherController.downloadVoucherPDF);
+
 export default router;

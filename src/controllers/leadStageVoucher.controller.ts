@@ -178,5 +178,39 @@ async previewVoucherPDF(req: Request, res: Response) {
         error: error.message || 'An internal error occurred during voucher delivery optimization loops.'
       });
     }
+  }, 
+  
+
+  /**
+ * Generates and forces the browser to download the voucher PDF as an attachment
+ */
+async downloadVoucherPDF(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+
+    // 1. Fetch live metadata from database
+    const voucherData = await leadStageVoucherService.getVoucherById(id);
+    if (!voucherData) {
+      return res.status(404).json({ success: false, message: "Voucher dataset not found" });
+    }
+
+    // 2. Compile HTML layouts and pass to Puppeteer to get the binary buffer
+    const html = await leadStageVoucherPdfService.generateHTML(voucherData);
+    const buffer = await leadStageVoucherPdfService.generateBuffer(html);
+
+    // 3. Set content type to PDF and use "attachment" to force download
+    const cleanClientName = voucherData.lead_name?.replace(/\s+/g, '_').toLowerCase() || 'client';
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="voucher_${id}_${cleanClientName}.pdf"`);
+    
+    return res.send(buffer);
+  } catch (error: any) {
+    console.error("❌ Voucher PDF Download loop failure:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate downloadable PDF file.'
+    });
   }
+}
 };
