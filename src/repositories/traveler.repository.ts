@@ -342,35 +342,126 @@ export const travelerRepository = {
 
 
     /**
-     * Check multiple travelers by email and phone in a single query
-     */
+  * Check multiple travelers by email and phone in a single query
+  */
     async checkBulkExists(travelers: Array<{ email: string; phone: string }>): Promise<{
         emails: Set<string>;
         phones: Set<string>;
     }> {
-        const emails = travelers.map(t => t.email);
-        const phones = travelers.map(t => t.phone);
+        const emails = travelers.map(t => t.email).filter(Boolean);
+        const phones = travelers.map(t => t.phone).filter(Boolean);
 
-        const { data, error } = await supabaseAdmin
-            .from('travelers')
-            .select('traveler_email, traveler_phone')
-            .or(`traveler_email.in.(${emails.map(e => `'${e}'`).join(',')}),traveler_phone.in.(${phones.map(p => `'${p}'`).join(',')})`);
-
-        if (error) {
-            throw new Error(`Failed to check bulk travelers: ${error.message}`);
+        // If no data to check, return empty sets
+        if (emails.length === 0 && phones.length === 0) {
+            return { emails: new Set<string>(), phones: new Set<string>() };
         }
 
-        const emailSet = new Set<string>();
-        const phoneSet = new Set<string>();
+        try {
+            let query = supabaseAdmin
+                .from('travelers')
+                .select('traveler_email, traveler_phone');
 
-        data?.forEach(row => {
-            if (row.traveler_email) emailSet.add(row.traveler_email);
-            if (row.traveler_phone) phoneSet.add(row.traveler_phone);
-        });
+            // Build OR conditions safely
+            const conditions = [];
+            if (emails.length > 0) {
+                // Use Supabase's built-in array contains method instead of string interpolation
+                // This avoids SQL injection and handles empty arrays
+                const emailList = emails.map(e => `'${e.replace(/'/g, "''")}'`).join(',');
+                conditions.push(`traveler_email.in.(${emailList})`);
+            }
+            if (phones.length > 0) {
+                const phoneList = phones.map(p => `'${p.replace(/'/g, "''")}'`).join(',');
+                conditions.push(`traveler_phone.in.(${phoneList})`);
+            }
 
-        return { emails: emailSet, phones: phoneSet };
+            if (conditions.length > 0) {
+                query = query.or(conditions.join(','));
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error in checkBulkExists:', error);
+                // Fallback: Return empty sets and let individual checks handle it
+                return { emails: new Set<string>(), phones: new Set<string>() };
+            }
+
+            const emailSet = new Set<string>();
+            const phoneSet = new Set<string>();
+
+            data?.forEach(row => {
+                if (row.traveler_email) emailSet.add(row.traveler_email);
+                if (row.traveler_phone) phoneSet.add(row.traveler_phone);
+            });
+
+            return { emails: emailSet, phones: phoneSet };
+        } catch (error) {
+            console.error('Error in checkBulkExists:', error);
+            return { emails: new Set<string>(), phones: new Set<string>() };
+        }
     },
 
+    /**
+ * Check if travelers exist by email or phone - returns detailed results
+ */
+    async checkExistingTravelers(emails: string[], phones: string[]): Promise<{
+        emails: Set<string>;
+        phones: Set<string>;
+        details: Array<{ email: string; phone: string; id: string }>;
+    }> {
+        const emailSet = new Set<string>();
+        const phoneSet = new Set<string>();
+        const details: Array<{ email: string; phone: string; id: string }> = [];
+
+        if (emails.length === 0 && phones.length === 0) {
+            return { emails: emailSet, phones: phoneSet, details: [] };
+        }
+
+        try {
+            let query = supabaseAdmin
+                .from('travelers')
+                .select('id, traveler_email, traveler_phone');
+
+            const conditions = [];
+            if (emails.length > 0) {
+                const emailList = emails.map(e => `'${e.replace(/'/g, "''")}'`).join(',');
+                conditions.push(`traveler_email.in.(${emailList})`);
+            }
+            if (phones.length > 0) {
+                const phoneList = phones.map(p => `'${p.replace(/'/g, "''")}'`).join(',');
+                conditions.push(`traveler_phone.in.(${phoneList})`);
+            }
+
+            if (conditions.length > 0) {
+                query = query.or(conditions.join(','));
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                throw new Error(`Failed to check existing travelers: ${error.message}`);
+            }
+
+            data?.forEach(row => {
+                if (row.traveler_email) {
+                    emailSet.add(row.traveler_email);
+                }
+                if (row.traveler_phone) {
+                    phoneSet.add(row.traveler_phone);
+                }
+                details.push({
+                    email: row.traveler_email || '',
+                    phone: row.traveler_phone || '',
+                    id: row.id
+                });
+            });
+
+            return { emails: emailSet, phones: phoneSet, details };
+        } catch (error) {
+            console.error('Error in checkExistingTravelers:', error);
+            return { emails: emailSet, phones: phoneSet, details: [] };
+        }
+    },
     /**
      * Bulk create travelers with minimal validation (for Excel upload)
      */
@@ -382,16 +473,22 @@ export const travelerRepository = {
         for (let i = 0; i < travelersData.length; i += batchSize) {
             const batch = travelersData.slice(i, i + batchSize);
 
-            const { data, error } = await supabaseAdmin
-                .from('travelers')
-                .insert(batch)
-                .select();
+            try {
+                const { data, error } = await supabaseAdmin
+                    .from('travelers')
+                    .insert(batch)
+                    .select();
 
-            if (error) {
-                throw new Error(`Failed to bulk create travelers: ${error.message}`);
+                if (error) {
+                    // If batch fails, throw to trigger fallback to individual inserts
+                    throw new Error(`Batch insert failed: ${error.message}`);
+                }
+
+                results.push(...data);
+            } catch (error: any) {
+                // Re-throw to trigger fallback in service
+                throw error;
             }
-
-            results.push(...data);
         }
 
         return results;

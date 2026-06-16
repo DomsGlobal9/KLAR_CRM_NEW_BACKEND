@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { travelerService } from '../services/traveler.service';
 import { CreateTravelerPayload, UpdateTravelerPayload } from '../models/traveler.model';
+import { travelerRepository } from '../repositories/traveler.repository';
 
 export const travelerController = {
 
@@ -214,11 +215,13 @@ export const travelerController = {
 
 
     /**
-     * Bulk create travelers from Excel upload
-     */
+  * Bulk create travelers from Excel upload
+  */
     async bulkCreateTravelers(req: Request, res: Response) {
         try {
             const { travelers } = req.body;
+
+            console.log(`📊 Received bulk upload request with ${travelers?.length || 0} travelers`);
 
             if (!travelers || !Array.isArray(travelers) || travelers.length === 0) {
                 return res.status(400).json({
@@ -235,7 +238,17 @@ export const travelerController = {
                 });
             }
 
+            // Log sample of data for debugging
+            const sample = travelers.slice(0, 3).map(t => ({
+                email: t.travelerEmail,
+                phone: t.travelerPhone,
+                name: t.travelerName
+            }));
+            console.log('📝 Sample records:', sample);
+
             const result = await travelerService.bulkCreateTravelers(travelers);
+
+            console.log(`✅ Bulk upload complete: ${result.created} created, ${result.skipped} skipped, ${result.errors.length} errors`);
 
             res.json({
                 success: true,
@@ -246,7 +259,7 @@ export const travelerController = {
             console.error("❌ Bulk create travelers error:", error);
             res.status(400).json({
                 success: false,
-                error: error.message
+                error: error.message || 'Failed to process bulk upload'
             });
         }
     }
