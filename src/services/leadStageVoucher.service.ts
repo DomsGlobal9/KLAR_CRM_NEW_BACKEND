@@ -38,6 +38,8 @@ export const leadStageVoucherService = {
       throw new Error(`Data anomaly: No voucher found matching ID: ${id}`);
     }
 
-    return voucher;
-  }
+    // return voucher;
+     return await leadStageVoucherRepository.getVoucherById(id);
+  },
+
 };
