@@ -22,5 +22,26 @@ export const leadStageVoucherController = {
                 error: error.message || 'An explicit data storage error occurred'
             });
         }
+    },
+
+
+    /**
+   * Fetch all vouchers recorded inside Supabase
+   */
+  async getAllVouchers(req: Request, res: Response) {
+    try {
+      const vouchers = await leadStageVoucherService.getAllVouchers();
+      
+      res.status(200).json({
+        success: true,
+        data: vouchers
+      });
+    } catch (error: any) {
+      console.error("❌ Lead Stage Voucher retrieval failure:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to retrieve vouchers list'
+      });
     }
+  }
 };

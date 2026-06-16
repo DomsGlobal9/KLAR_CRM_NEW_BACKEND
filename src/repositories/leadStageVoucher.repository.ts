@@ -25,5 +25,23 @@ export const leadStageVoucherRepository = {
     }
 
     return data;
+  },
+
+
+  /**
+   * Fetch all lead stage vouchers sorted by creation date
+   */
+  async getAllVouchers() {
+    const { data, error } = await supabaseAdmin
+      .from('lead_stage_vouchers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("❌ Supabase fetch all vouchers error:", error);
+      throw new Error(`Failed to retrieve lead vouchers: ${error.message}`);
+    }
+
+    return data || [];
   }
 };

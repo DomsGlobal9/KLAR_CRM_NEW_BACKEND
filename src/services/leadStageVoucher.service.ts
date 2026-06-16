@@ -15,5 +15,12 @@ export const leadStageVoucherService = {
     }
 
     return await leadStageVoucherRepository.createVoucherRecord(payload);
+  }, 
+
+  /**
+   * Retrieve all vouchers
+   */
+  async getAllVouchers() {
+    return await leadStageVoucherRepository.getAllVouchers();
   }
 };

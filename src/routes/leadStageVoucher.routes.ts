@@ -6,5 +6,6 @@ const router = Router();
 
 // Endpoint paths: POST /api/lead-stage-vouchers/submit
 router.post('/submit', authenticate, leadStageVoucherController.submitVoucherDetails);
+router.get('/', authenticate, leadStageVoucherController.getAllVouchers);
 
 export default router;
