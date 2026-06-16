@@ -255,5 +255,122 @@ export const travelerService = {
     async filterAndSortTravelers(filters: any, sort: any, pagination: any): Promise<{ travelers: ITraveler[]; total: number; page: number; totalPages: number }> {
         const travelers = await travelerRepository.filterAndSortTravelers(filters, sort, pagination);
         return travelers;
+    },
+
+    // Add to travelerService object
+
+    /**
+     * Bulk create travelers with duplicate checking
+     */
+    async bulkCreateTravelers(travelersData: any[]): Promise<{
+        created: number;
+        skipped: number;
+        errors: Array<{ row: number; reason: string }>;
+        skippedUsers: Array<{ email: string; phone: string; reason: string }>;
+    }> {
+        const results = {
+            created: 0,
+            skipped: 0,
+            errors: [] as Array<{ row: number; reason: string }>,
+            skippedUsers: [] as Array<{ email: string; phone: string; reason: string }>
+        };
+
+        // First, check all duplicates in one query
+        const travelerList = travelersData.map(t => ({
+            email: t.travelerEmail,
+            phone: t.travelerPhone
+        }));
+
+        const { emails: existingEmails, phones: existingPhones } =
+            await travelerRepository.checkBulkExists(travelerList);
+
+        // Prepare data for insertion
+        const toCreate: any[] = [];
+
+        travelersData.forEach((row, index) => {
+            const rowNum = index + 2; // +2 because Excel rows start at 1 and we have header row
+
+            // Validate required fields
+            if (!row.title || !row.travelerName || !row.travelerEmail ||
+                !row.travelerPhone || !row.dateOfBirth ||
+                !row.emergencyContactName || !row.emergencyContactEmail ||
+                !row.emergencyContactPhone) {
+                results.errors.push({
+                    row: rowNum,
+                    reason: 'Missing required fields'
+                });
+                return;
+            }
+
+            // Check for duplicates
+            let duplicateReason = '';
+            if (existingEmails.has(row.travelerEmail)) {
+                duplicateReason = 'Email already exists';
+            } else if (existingPhones.has(row.travelerPhone)) {
+                duplicateReason = 'Phone number already exists';
+            }
+
+            if (duplicateReason) {
+                results.skipped++;
+                results.skippedUsers.push({
+                    email: row.travelerEmail,
+                    phone: row.travelerPhone,
+                    reason: duplicateReason
+                });
+                return;
+            }
+
+            // Format data for insertion
+            const insertData = {
+                title: row.title,
+                traveler_name: row.travelerName,
+                traveler_email: row.travelerEmail,
+                traveler_phone: row.travelerPhone,
+                date_of_birth: new Date(row.dateOfBirth),
+                passport: row.passportNumber ? {
+                    passportNumber: row.passportNumber,
+                    nationality: row.nationality || '',
+                    issueDate: row.passportIssueDate ? new Date(row.passportIssueDate) : null,
+                    expiryDate: row.passportExpiryDate ? new Date(row.passportExpiryDate) : null
+                } : null,
+                gst: row.gstNumber ? {
+                    gstNumber: row.gstNumber,
+                    registeredName: row.registeredName || '',
+                    email: row.gstEmail || '',
+                    mobile: row.gstMobile || '',
+                    address: row.gstAddress || ''
+                } : null,
+                emergency_contact: {
+                    contactName: row.emergencyContactName,
+                    email: row.emergencyContactEmail,
+                    phoneNumber: row.emergencyContactPhone
+                },
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+
+            toCreate.push(insertData);
+
+            existingEmails.add(row.travelerEmail);
+            existingPhones.add(row.travelerPhone);
+        });
+
+        // Bulk insert all valid travelers
+        if (toCreate.length > 0) {
+            try {
+                await travelerRepository.bulkCreateTravelers(toCreate);
+                results.created = toCreate.length;
+            } catch (error: any) {
+                // If bulk insert fails, we need to report which ones failed
+                results.errors.push({
+                    row: 0,
+                    reason: `Bulk insert failed: ${error.message}`
+                });
+                // Roll back the created count
+                results.created = 0;
+            }
+        }
+
+        return results;
     }
 };

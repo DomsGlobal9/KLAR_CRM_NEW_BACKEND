@@ -210,5 +210,44 @@ export const travelerController = {
                 error: error.message
             });
         }
+    },
+
+
+    /**
+     * Bulk create travelers from Excel upload
+     */
+    async bulkCreateTravelers(req: Request, res: Response) {
+        try {
+            const { travelers } = req.body;
+
+            if (!travelers || !Array.isArray(travelers) || travelers.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No traveler data provided'
+                });
+            }
+
+            // Validate file size (max 1000 rows)
+            if (travelers.length > 1000) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Maximum 1000 rows allowed per upload'
+                });
+            }
+
+            const result = await travelerService.bulkCreateTravelers(travelers);
+
+            res.json({
+                success: true,
+                data: result,
+                message: `Upload complete: ${result.created} created, ${result.skipped} skipped, ${result.errors.length} errors`
+            });
+        } catch (error: any) {
+            console.error("❌ Bulk create travelers error:", error);
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
     }
 };

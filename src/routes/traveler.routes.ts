@@ -24,4 +24,6 @@ router.delete('/:id', authenticate, requireRole('superadmin', 'admin'), traveler
 
 router.post('/filter', travelerController.filterAndSortTravelers);
 
+router.post('/bulk', travelerController.bulkCreateTravelers);
+
 export default router;

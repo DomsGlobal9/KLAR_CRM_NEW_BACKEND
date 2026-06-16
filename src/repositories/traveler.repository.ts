@@ -340,6 +340,63 @@ export const travelerRepository = {
         };
     },
 
+
+    /**
+     * Check multiple travelers by email and phone in a single query
+     */
+    async checkBulkExists(travelers: Array<{ email: string; phone: string }>): Promise<{
+        emails: Set<string>;
+        phones: Set<string>;
+    }> {
+        const emails = travelers.map(t => t.email);
+        const phones = travelers.map(t => t.phone);
+
+        const { data, error } = await supabaseAdmin
+            .from('travelers')
+            .select('traveler_email, traveler_phone')
+            .or(`traveler_email.in.(${emails.map(e => `'${e}'`).join(',')}),traveler_phone.in.(${phones.map(p => `'${p}'`).join(',')})`);
+
+        if (error) {
+            throw new Error(`Failed to check bulk travelers: ${error.message}`);
+        }
+
+        const emailSet = new Set<string>();
+        const phoneSet = new Set<string>();
+
+        data?.forEach(row => {
+            if (row.traveler_email) emailSet.add(row.traveler_email);
+            if (row.traveler_phone) phoneSet.add(row.traveler_phone);
+        });
+
+        return { emails: emailSet, phones: phoneSet };
+    },
+
+    /**
+     * Bulk create travelers with minimal validation (for Excel upload)
+     */
+    async bulkCreateTravelers(travelersData: any[]): Promise<any[]> {
+        const results = [];
+
+        // Process in batches to avoid timeouts
+        const batchSize = 50;
+        for (let i = 0; i < travelersData.length; i += batchSize) {
+            const batch = travelersData.slice(i, i + batchSize);
+
+            const { data, error } = await supabaseAdmin
+                .from('travelers')
+                .insert(batch)
+                .select();
+
+            if (error) {
+                throw new Error(`Failed to bulk create travelers: ${error.message}`);
+            }
+
+            results.push(...data);
+        }
+
+        return results;
+    },
+
     /**
      * Map database row to interface
      */
