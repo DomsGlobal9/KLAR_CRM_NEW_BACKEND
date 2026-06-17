@@ -26,6 +26,7 @@ import cabsRoutes from "./cabs-routing.routes"
 import voucherRoutes from './voucher.routes';
 import walletTransactionRoutes from './wallet-transaction.routes';
 import leadStageVoucherRoutes from './leadStageVoucher.routes';
+import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 
 const router = Router();
 
@@ -61,4 +62,5 @@ router.use("/cabs", cabsRoutes)
 router.use('/voucher', voucherRoutes);
 router.use('/wallet-transactions', walletTransactionRoutes);
 router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
+router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
 export default router;
