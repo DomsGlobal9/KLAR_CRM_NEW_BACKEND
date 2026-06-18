@@ -1,198 +1,848 @@
 import puppeteer from 'puppeteer';
 import handlebars from 'handlebars';
 
+const formatINR = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'decimal',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+};
+
+function numberToINRWords(amount: number): string {
+    const units = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    function convert(n: number): string {
+        if (n < 10) return units[n];
+        if (n < 20) return teens[n - 10];
+        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + units[n % 10] : '');
+        if (n < 1000) return units[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' and ' + convert(n % 100) : '');
+        if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 !== 0 ? ' ' + convert(n % 1000) : '');
+        if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 !== 0 ? ' ' + convert(n % 100000) : '');
+        return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 !== 0 ? ' ' + convert(n % 10000000) : '');
+    }
+
+    const result = convert(Math.round(amount));
+    return result ? result + ' Only' : 'Zero Only';
+}
+
 export const leadStageInvoicePdfService = {
-  /**
-   * Compiles dynamic Handlebars template syntax into raw memory PDF buffers using Puppeteer
-   */
-  async generatePDFBuffer(invoice: any): Promise<Buffer> {
-    const htmlContent = await this.compileInvoiceHTML(invoice);
-    
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage', 
-        '--disable-gpu',
-        '--disable-accelerated-2d-canvas'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    // Using type assertion to handle the networkidle0 constraint cleanly
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }
-    });
-
-    await browser.close();
-    return Buffer.from(pdfBuffer);
-  },
-
-  /**
-   * Houses the complete tax invoice structure markup matching Klar Travels specifications
-   */
-  async compileInvoiceHTML(invoice: any): Promise<string> {
-    // Register utility helpers within the local compiler instance space safely
-    if (!handlebars.helpers.eq) {
-      handlebars.registerHelper('eq', (a: any, b: any) => a === b);
-    }
-    if (!handlebars.helpers.formatDate) {
-      handlebars.registerHelper('formatDate', (dateStr: string) => {
-        if (!dateStr) return 'N/A';
-        return new Date(dateStr).toLocaleDateString('en-IN', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
+    async generatePDFBuffer(invoice: any): Promise<Buffer> {
+        const htmlContent = await this.compileInvoiceHTML(invoice);
+        
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox', 
+                '--disable-dev-shm-usage', 
+                '--disable-gpu',
+                '--disable-accelerated-2d-canvas'
+            ]
         });
-      });
-    }
+        
+        const page = await browser.newPage();
+        await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
+        
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }
+        });
 
-    const templateHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Arial', sans-serif; background-color: #fff; color: #333; padding: 10px; font-size: 10pt; }
-            .container { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; }
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border-bottom: 2px solid #0284c7; }
-            .header-table td { padding-bottom: 15px; vertical-align: top; }
-            .logo-text { font-size: 24pt; font-weight: bold; color: #0284c7; }
-            .company-details { text-align: right; font-size: 9pt; color: #555; line-height: 1.4; }
-            .doc-title { text-align: center; color: #0284c7; font-size: 20pt; margin: 15px 0; font-weight: bold; letter-spacing: 1px; }
-            .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            .meta-table td { border: 1px solid #e2e8f0; padding: 10px; width: 50%; vertical-align: top; }
-            .section-title { background: #f1f5f9; padding: 6px 10px; font-weight: bold; color: #1e293b; margin-bottom: 10px; border-left: 4px solid #0284c7; text-transform: uppercase; }
-            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .item-table th { background: #0284c7; color: white; padding: 8px 10px; font-weight: bold; text-align: left; font-size: 9pt; }
-            .item-table td { border: 1px solid #e2e8f0; padding: 10px; vertical-align: top; }
-            .text-right { text-align: right; }
-            .bold { font-weight: bold; }
-            .totals-box { width: 40%; float: right; margin-bottom: 20px; }
-            .totals-table { width: 100%; border-collapse: collapse; }
-            .totals-table td { padding: 6px 10px; border: 1px solid #e2e8f0; }
-            .terms-box { width: 55%; float: left; font-size: 8pt; color: #555; line-height: 1.4; white-space: pre-line; border: 1px solid #e2e8f0; padding: 10px; border-radius: 4px; }
-            .footer-note { clear: both; text-align: center; font-size: 8pt; color: #94a3b8; padding-top: 30px; }
-            .badge { display: inline-block; padding: 2px 8px; font-size: 8pt; font-weight: bold; border-radius: 4px; text-transform: uppercase; }
-            .badge-paid { background: #dcfce7; color: #15803d; }
-            .badge-partial { background: #ffedd5; color: #c2410c; }
-            .badge-sent { background: #dbeafe; color: #1d4ed8; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <table class="header-table">
-                <tr>
-                    <td>
-                        <div class="logo-text">KLAR TRAVELS</div>
-                        <div style="font-size:9pt; color:#64748b; margin-top:2px;">Explore The Horizon</div>
-                    </td>
-                    <td class="company-details">
-                        <div style="font-weight:bold; color:#0284c7; font-size:11pt; margin-bottom:2px;">KLAR TRAVELS PRIVATE LIMITED</div>
-                        #8-3-949/4 & 5, MADHU'S HOUSE, PANJAGUTTA<br>
-                        HYDERABAD, TELANGANA - 500073<br>
-                        Mob: +918099359377 | Email: operations@klartravels.com<br>
-                        <strong>GSTIN: 36BGCPS2420P1Z4</strong>
-                    </td>
-                </tr>
-            </table>
+        await browser.close();
+        return Buffer.from(pdfBuffer);
+    },
 
-            <div class="doc-title">TAX INVOICE</div>
+    async compileInvoiceHTML(invoice: any): Promise<string> {
+        // Register helpers
+        if (!handlebars.helpers['uppercase']) {
+            handlebars.registerHelper('uppercase', (str) => {
+                return typeof str === 'string' ? str.toUpperCase() : '';
+            });
+        }
+        
+        if (!handlebars.helpers.eq) {
+            handlebars.registerHelper('eq', (a: any, b: any) => a === b);
+        }
+        
+        if (!handlebars.helpers.formatDate) {
+            handlebars.registerHelper('formatDate', (dateStr: string) => {
+                if (!dateStr) return 'N/A';
+                return new Date(dateStr).toLocaleDateString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            });
+        }
 
-            <table class="meta-table">
-                <tr>
-                    <td>
-                        <strong style="color:#0284c7;">BILLED TO:</strong><br>
-                        <span class="bold" style="font-size:11pt;">{{lead_name}}</span><br>
-                        {{#if lead_email}}Email: {{lead_email}}<br>{{/if}}
-                        {{#if lead_phone}}Phone: {{lead_phone}}<br>{{/if}}
-                        <div style="margin-top:5px; white-space: pre-wrap;"><strong>Address:</strong><br>{{billing_address}}</div>
-                        {{#if gst_number}}<div style="margin-top:4px;"><strong>Client GSTIN:</strong> {{gst_number}}</div>{{/if}}
-                    </td>
-                    <td>
-                        <strong style="color:#0284c7;">INVOICE DETAILS:</strong><br>
-                        <table style="width:100%; margin-top:5px;" class="totals-table">
-                            <tr><td>Invoice No:</td><td class="bold">{{invoice_number}}</td></tr>
-                            <tr><td>Invoice Date:</td><td>{{formatDate invoice_date}}</td></tr>
-                            <tr><td>Payment Method:</td><td>{{payment_method}}</td></tr>
-                            <tr><td>Currency:</td><td class="bold">{{currency}}</td></tr>
-                            <tr><td>Status:</td><td><span class="badge badge-{{status}}">{{status}}</span></td></tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
+        // Process service configurations from the service_configurations array
+        let processedServices = [];
+        let totalAmount = 0;
 
-            <div class="section-header">💼 ACCOMMODATIONS & SERVICE LINE ITEMS</div>
-            <table class="item-table">
-                <thead>
-                    <tr>
-                        <th style="width: 30%;">Service Component</th>
-                        <th style="width: 50%;">Configuration Mapping Context Details</th>
-                        <th style="width: 20%;" class="text-right">Total Cost</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each service_configurations}}
-                    <tr>
-                        <td class="bold" style="color:#0369a1;">{{serviceName}}</td>
-                        <td>
-                            <div style="font-size:8.5pt; color:#475569;">
-                                Configured At: {{formatDate configuredAt}}
+        if (invoice.service_configurations && Array.isArray(invoice.service_configurations)) {
+            invoice.service_configurations.forEach((service: any) => {
+                const configs = service.configurations || {};
+                
+                // Format configurations for display
+                const formattedConfigs: any = {};
+                let price = 0;
+                
+                // Extract price if available
+                if (configs.price) {
+                    price = parseFloat(configs.price);
+                } else if (configs.charterBudget) {
+                    price = parseFloat(configs.charterBudget);
+                }
+                
+                // Format all configuration keys for display
+                Object.keys(configs).forEach(key => {
+                    // Skip price as we'll show it separately in the total column
+                    if (key === 'price' || key === 'charterBudget') {
+                        formattedConfigs['Price'] = `₹${formatINR(price)}`;
+                        return;
+                    }
+                    
+                    // Format the key for display (capitalize, add spaces)
+                    const displayKey = key
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, (str) => str.toUpperCase());
+                    
+                    let value = configs[key];
+                    
+                    // Format specific fields
+                    if (key === 'pickupTime' || key === 'charterDate') {
+                        value = new Date(value).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                        });
+                    }
+                    
+                    formattedConfigs[displayKey] = value || 'N/A';
+                });
+                
+                // Ensure Price is included
+                if (!formattedConfigs['Price']) {
+                    formattedConfigs['Price'] = `₹${formatINR(price)}`;
+                }
+                
+                processedServices.push({
+                    serviceName: service.serviceName || 'Service',
+                    configuredAt: service.configuredAt || new Date().toISOString(),
+                    configurations: formattedConfigs
+                });
+                
+                totalAmount += price;
+            });
+        }
+
+        const paidAmount = invoice.paid_amount || 0;
+        const restAmount = totalAmount - paidAmount;
+
+        // Determine status
+        let status = invoice.status || 'sent';
+        let statusColor = '#e67e22';
+        let statusBg = '#fdf2e9';
+        if (status === 'paid') {
+            statusColor = '#27ae60';
+            statusBg = '#e8f8f5';
+        } else if (status === 'due' || status === 'unpaid') {
+            statusColor = '#c0392b';
+            statusBg = '#fdedad';
+        }
+
+        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
+
+        // Complete HTML template
+        const templateHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                /* Reset and base styles */
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body { 
+                    font-family: 'Segoe UI', 'Trebuchet MS', Arial, sans-serif; 
+                    background-color: #f0f2f5;
+                    margin: 0;
+                    padding: 30px 0;
+                    line-height: 1.6; 
+                }
+                
+                /* Main container with center alignment */
+                .invoice-container {
+                    max-width: 1000px;
+                    width: 100%;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                }
+                
+                /* Inner content wrapper */
+                .invoice-content {
+                    padding: 40px 45px;
+                    background: #fff;
+                }
+                
+                /* Header Table */
+                .header-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border-spacing: 0;
+                    margin-bottom: 30px;
+                    border-bottom: 3px solid #d32f2f;
+                }
+                
+                .header-table td {
+                    padding-bottom: 25px;
+                    vertical-align: top;
+                }
+                
+                .logo-container {
+                    text-align: left;
+                }
+                
+                .logo-container img {
+                    max-height: 80px;
+                    width: auto;
+                    display: block;
+                }
+                
+                .company-info {
+                    text-align: right;
+                }
+                
+                .company-name {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #4b0082;
+                    margin-bottom: 12px;
+                    letter-spacing: 1px;
+                }
+                
+                .company-address {
+                    color: #555;
+                    font-size: 10pt;
+                    line-height: 1.5;
+                    margin-bottom: 8px;
+                }
+                
+                .company-gst {
+                    font-weight: 600;
+                    color: #4b0082;
+                    font-size: 10pt;
+                    margin-top: 5px;
+                }
+                
+                /* Invoice Meta Container - Fixed Alignment */
+                .invoice-meta-container {
+                    display: table;
+                    width: 100%;
+                    margin-bottom: 35px;
+                    background: #fafafa;
+                    border-radius: 10px;
+                    border: 1px solid #e8e8e8;
+                }
+                
+                .meta-row {
+                    display: table-row;
+                }
+                
+                .meta-column-left, .meta-column-right {
+                    display: table-cell;
+                    padding: 18px 22px;
+                    vertical-align: top;
+                    width: 50%;
+                }
+                
+                .meta-column-left {
+                    border-right: 1px solid #e8e8e8;
+                }
+                
+                .meta-column-left div, .meta-column-right div {
+                    margin-bottom: 8px;
+                    line-height: 1.8;
+                }
+                
+                .meta-column-left strong, .meta-column-right strong {
+                    color: #4b0082;
+                    min-width: 140px;
+                    display: inline-block;
+                    font-weight: 700;
+                }
+                
+                .meta-column-right {
+                    text-align: left;
+                }
+                
+                .meta-column-right .status-wrapper {
+                    display: flex;
+                    align-items: center;
+                    margin-top: 8px;
+                }
+                
+                .meta-column-right .status-wrapper strong {
+                    min-width: 60px;
+                }
+                
+                /* Status badge */
+                .status-badge {
+                    background-color: ${statusBg};
+                    color: ${statusColor};
+                    padding: 5px 15px;
+                    border-radius: 25px;
+                    border: 1px solid ${statusColor};
+                    font-size: 10pt;
+                    font-weight: 800;
+                    letter-spacing: 0.5px;
+                    margin-left: 12px;
+                    display: inline-block;
+                }
+
+                /* Section Containers */
+                .section-container { 
+                    border: 1px solid #e8e8e8; 
+                    border-radius: 12px; 
+                    padding: 22px 25px; 
+                    margin-bottom: 28px; 
+                    background-color: #fbfbfb;
+                }
+                
+                .section-header { 
+                    color: #4b0082; 
+                    font-weight: bold; 
+                    font-size: 13pt; 
+                    margin-bottom: 18px; 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 10px; 
+                    border-bottom: 2px solid #4b0082; 
+                    padding-bottom: 10px; 
+                }
+                
+                .section-header span {
+                    font-size: 16pt;
+                }
+                
+                /* Service Configurations Container */
+                .config-container {
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-top: 10px;
+                    border-left: 4px solid #4b0082;
+                }
+                
+                .config-row {
+                    display: flex;
+                    padding: 6px 0;
+                    border-bottom: 1px solid #e8e8e8;
+                }
+                
+                .config-row:last-child {
+                    border-bottom: none;
+                }
+                
+                .config-key {
+                    font-weight: 600;
+                    color: #4b0082;
+                    min-width: 150px;
+                    font-size: 9.5pt;
+                }
+                
+                .config-value {
+                    color: #333;
+                    font-size: 9.5pt;
+                }
+                
+                /* Grid Container for Payment */
+                .grid-container { 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr; 
+                    gap: 20px; 
+                }
+                
+                .info-row {
+                    display: flex;
+                    align-items: baseline;
+                    flex-wrap: wrap;
+                    margin-bottom: 14px;
+                    padding: 4px 0;
+                }
+                
+                .label { 
+                    color: #666; 
+                    font-size: 10.5pt; 
+                    font-weight: 600; 
+                    min-width: 120px;
+                    display: inline-block;
+                }
+                
+                .value { 
+                    font-weight: 500; 
+                    font-size: 10.5pt; 
+                    color: #222;
+                    flex: 1;
+                }
+                
+                /* Payment Container */
+                .payment-container { 
+                    border: 1px solid #ffe0b2; 
+                    border-radius: 12px; 
+                    padding: 22px 25px; 
+                    margin-bottom: 28px; 
+                    background: linear-gradient(135deg, #fffaf2 0%, #fff5e6 100%);
+                }
+                
+                .payment-header { 
+                    color: #e65100; 
+                    font-weight: bold; 
+                    font-size: 13pt; 
+                    margin-bottom: 18px; 
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    border-bottom: 2px solid #ffd19a; 
+                    padding-bottom: 10px; 
+                }
+                
+                .payment-header span {
+                    font-size: 16pt;
+                }
+                
+                .paid-amount { 
+                    color: #2e7d32; 
+                    font-weight: bold; 
+                    font-size: 11pt;
+                }
+                
+                .rest-amount { 
+                    color: #c0392b; 
+                    font-weight: bold; 
+                    font-size: 11pt;
+                }
+                
+                .grand-total { 
+                    color: #e65100; 
+                    font-size: 18pt; 
+                    font-weight: bold; 
+                }
+
+                /* Table Layout */
+                .invoice-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 28px 0; 
+                    border-radius: 10px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                }
+                
+                .invoice-table th { 
+                    background: linear-gradient(135deg, #4b0082 0%, #6a1b9a 100%);
+                    color: white; 
+                    padding: 15px 14px; 
+                    text-align: left; 
+                    font-size: 11pt; 
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                }
+                
+                .invoice-table td { 
+                    border-bottom: 1px solid #e8e8e8; 
+                    padding: 14px; 
+                    vertical-align: middle; 
+                    font-size: 10.5pt; 
+                    background-color: #fff;
+                }
+                
+                .invoice-table tr:last-child td {
+                    border-bottom: none;
+                }
+                
+                .text-right { 
+                    text-align: right; 
+                }
+
+                /* Terms Layout */
+                .footer-terms { 
+                    border: 1px solid #e8e8e8; 
+                    border-radius: 12px; 
+                    padding: 20px 25px; 
+                    background: #fef9f9; 
+                    font-size: 9.5pt; 
+                    white-space: pre-line; 
+                    line-height: 1.7; 
+                    color: #444; 
+                    margin-top: 28px;
+                }
+                
+                .footer-terms strong {
+                    color: #d32f2f;
+                    font-size: 10.5pt;
+                }
+                
+                .signature-notice { 
+                    text-align: center; 
+                    color: #d32f2f; 
+                    font-weight: bold; 
+                    margin-top: 35px; 
+                    font-style: italic; 
+                    font-size: 10pt; 
+                    padding-top: 18px;
+                    border-top: 1px solid #eee;
+                }
+                
+                /* Amount in words section */
+                .amount-words {
+                    background: linear-gradient(135deg, #f0f4ff 0%, #e8edf5 100%);
+                    border-radius: 10px;
+                    padding: 14px 20px; 
+                    margin: 22px 0;
+                    font-size: 10.5pt;
+                    border-left: 5px solid #4b0082;
+                }
+                
+                /* Service specific styling */
+                .service-tag {
+                    display: inline-block;
+                    background: #4b0082;
+                    color: white;
+                    padding: 2px 10px;
+                    border-radius: 12px;
+                    font-size: 8pt;
+                    font-weight: 600;
+                    margin-right: 8px;
+                }
+                
+                .service-item {
+                    margin-bottom: 20px; 
+                    border: 1px solid #e8e8e8; 
+                    border-radius: 8px; 
+                    padding: 15px; 
+                    background: white;
+                }
+                
+                .service-header {
+                    display: flex; 
+                    align-items: center; 
+                    margin-bottom: 12px;
+                }
+                
+                .service-configured {
+                    font-size: 9pt; 
+                    color: #888; 
+                    margin-left: 10px;
+                }
+                
+                /* Responsive adjustments */
+                @media only screen and (max-width: 600px) {
+                    .invoice-content {
+                        padding: 20px;
+                    }
+                    
+                    .header-table td {
+                        display: block !important;
+                        width: 100% !important;
+                        text-align: center !important;
+                        padding-bottom: 15px !important;
+                    }
+                    
+                    .company-info {
+                        text-align: center !important;
+                    }
+                    
+                    .logo-container {
+                        text-align: center !important;
+                    }
+                    
+                    .logo-container img {
+                        margin: 0 auto !important;
+                    }
+                    
+                    .meta-column-left, .meta-column-right {
+                        display: block !important;
+                        width: 100% !important;
+                        border-right: none !important;
+                        padding: 15px !important;
+                    }
+                    
+                    .meta-column-left {
+                        border-bottom: 1px solid #e8e8e8;
+                    }
+                    
+                    .meta-column-right {
+                        text-align: left !important;
+                    }
+                    
+                    .grid-container {
+                        grid-template-columns: 1fr;
+                        gap: 10px;
+                    }
+                    
+                    .info-row {
+                        flex-direction: column;
+                    }
+                    
+                    .label {
+                        margin-bottom: 5px;
+                        min-width: auto;
+                    }
+                    
+                    .invoice-table th,
+                    .invoice-table td {
+                        padding: 10px 8px;
+                    }
+                    
+                    .invoice-table {
+                        display: block;
+                        overflow-x: auto;
+                    }
+                    
+                    .company-name {
+                        font-size: 22px;
+                    }
+                    
+                    .config-row {
+                        flex-direction: column;
+                        padding: 8px 0;
+                    }
+                    
+                    .config-key {
+                        min-width: auto;
+                    }
+                    
+                    .meta-column-right .status-wrapper {
+                        flex-wrap: wrap;
+                    }
+                }
+                
+                /* Print styles for PDF */
+                @media print {
+                    body {
+                        background: white;
+                        padding: 0;
+                        margin: 0;
+                    }
+                    
+                    .invoice-container {
+                        max-width: 100%;
+                        margin: 0;
+                        box-shadow: none;
+                    }
+                    
+                    .invoice-content {
+                        padding: 25px;
+                    }
+                    
+                    .section-container,
+                    .payment-container,
+                    .footer-terms {
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    
+                    .invoice-meta-container {
+                        background: #fafafa;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="invoice-container">
+                <div class="invoice-content">
+                    
+                    <table class="header-table">
+                        <tr>
+                            <td class="logo-container" style="width: 50%;">
+                                <img src="${logoUrl}" alt="KLAR TRAVELS" />
+                            </td>
+                            <td class="company-info" style="width: 50%;">
+                                <div class="company-name">KLAR TRAVELS</div>
+                                <div class="company-address">
+                                    H.No 8-3-949/4 & 5, Ameerpet, Hyderabad - 500073
+                                </div>
+                                <div class="company-gst">
+                                    <strong>GSTIN:</strong> 36BGCPS2420P1Z4
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="invoice-meta-container">
+                        <div class="meta-row">
+                            <div class="meta-column-left">
+                                <div><strong>Invoice Number:</strong> {{invoice_number}}</div>
+                                <div><strong>Lead Reference:</strong> {{lead_reference}}</div>
+                                <div><strong>Generated Date:</strong> {{generated_date}}</div>
+                                <div><strong>Billing Address:</strong> {{billing_address}}</div>
                             </div>
-                            <div style="margin-top:5px; font-family:monospace; font-size:8.5pt; background:#f8fafc; padding:6px; border-radius:4px;">
+                            <div class="meta-column-right">
+                                <div><strong>Client:</strong> {{lead_name}}</div>
+                                <div><strong>Email:</strong> {{lead_email}}</div>
+                                <div><strong>Phone:</strong> {{lead_phone}}</div>
+                                <div class="status-wrapper">
+                                    <strong>Status:</strong>
+                                    <span class="status-badge">{{uppercase status}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-container">
+                        <div class="section-header">
+                            <span>✈️</span> Service Specifications
+                        </div>
+                        
+                        {{#each processedServices}}
+                        <div class="service-item">
+                            <div class="service-header">
+                                <span class="service-tag">{{uppercase serviceName}}</span>
+                                <span class="service-configured">Configured: {{formatDate configuredAt}}</span>
+                            </div>
+                            <div class="config-container">
                                 {{#each configurations}}
-                                <span style="text-transform: capitalize; font-weight:bold; color:#64748b;">{{@key}}:</span> {{this}}<br>
+                                <div class="config-row">
+                                    <span class="config-key">{{@key}}:</span>
+                                    <span class="config-value">{{this}}</span>
+                                </div>
                                 {{/each}}
                             </div>
-                        </td>
-                        <td class="text-right bold" style="vertical-align: middle;">{{../currency}} {{this.configurations.price}}</td>
-                    </tr>
-                    {{/each}}
-                </tbody>
-            </table>
+                        </div>
+                        {{/each}}
+                    </div>
 
-            <div class="terms-box">
-                <strong>Terms & Conditions:</strong><br>
-                {{terms_conditions}}
-                {{#if notes}}
-                <div style="margin-top:8px; border-top:1px dashed #cbd5e1; padding-top:4px;">
-                    <strong>Notes:</strong> {{notes}}
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Service Component</th>
+                                <th class="text-right" style="width: 25%;">Total (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each processedServices}}
+                            <tr>
+                                <td style="font-weight: 500;">{{serviceName}}</td>
+                                <td class="text-right" style="font-weight: 600;">{{configurations.Price}}</td>
+                            </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+
+                    <div class="payment-container">
+                        <div class="payment-header">
+                            <span>💳</span> Financial Breakdown
+                        </div>
+                        <div class="grid-container">
+                            <div>
+                                <div class="info-row">
+                                    <span class="label">Currency:</span>
+                                    <span class="value" style="text-transform: uppercase;">{{currency}}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Payment Type:</span>
+                                    <span class="value" style="text-transform: capitalize;">{{payment_type}}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Payment Method:</span>
+                                    <span class="value" style="text-transform: uppercase;">{{payment_method}}</span>
+                                </div>
+                                {{#if gst_number}}
+                                <div class="info-row">
+                                    <span class="label">GST Number:</span>
+                                    <span class="value">{{gst_number}}</span>
+                                </div>
+                                {{/if}}
+                            </div>
+                            <div>
+                                <div class="info-row">
+                                    <span class="label" style="font-size: 12pt; font-weight: bold;">Total Amount:</span>
+                                    <span class="grand-total">₹{{total_formatted}}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Paid Amount:</span>
+                                    <span class="paid-amount">₹{{paid_amount_formatted}}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Balance Due:</span>
+                                    <span class="rest-amount">₹{{rest_amount_formatted}}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Paid Percentage:</span>
+                                    <span class="value">{{paid_percentage}}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="amount-words">
+                        <strong>Amount in Words:</strong> 
+                        <span style="color: #4b0082; font-weight: 600; margin-left: 10px;">{{total_words}}</span>
+                    </div>
+
+                    <div class="footer-terms">
+                        <strong style="color: #d32f2f; font-size: 10.5pt; display: block; margin-bottom: 12px;">📜 Terms & Conditions:</strong>
+                        {{{terms_conditions}}}
+                        {{#if notes}}
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8e8e8;">
+                            <strong>Notes:</strong> {{notes}}
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div class="signature-notice">
+                        ⚡ This is a system-generated requirements confirmation document.
+                        <br><small style="color:#888; font-weight: normal; font-size: 8.5pt; margin-top: 8px; display: inline-block;">✨ Thank you for coordinating with KLAR Travels. ✨</small>
+                    </div>
                 </div>
-                {{/if}}
             </div>
+        </body>
+        </html>
+        `;
 
-            <div class="totals-box">
-                <table class="totals-table">
-                    <tr>
-                        <td>Gross Subtotal:</td>
-                        <td class="text-right">{{currency}} {{total_amount}}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#16a34a;" class="bold">Amount Paid:</td>
-                        <td class="text-right bold" style="color:#16a34a;">{{currency}} {{paid_amount}}</td>
-                    </tr>
-                    <tr style="background:#fef2f2;">
-                        <td style="color:#dc2626;" class="bold">Balance Outstanding:</td>
-                        <td class="text-right bold" style="color:#dc2626;">{{currency}} {{rest_amount}}</td>
-                    </tr>
-                </table>
-            </div>
+        const template = handlebars.compile(templateHtml);
+        
+        // Prepare data for template
+        const templateData = {
+            ...invoice,
+            processedServices,
+            invoice_number: invoice.invoice_number || 'N/A',
+            lead_reference: invoice.lead_id || 'N/A',
+            lead_name: invoice.lead_name || 'N/A',
+            lead_email: invoice.lead_email || 'N/A',
+            lead_phone: invoice.lead_phone || 'N/A',
+            billing_address: invoice.billing_address || 'N/A',
+            gst_number: invoice.gst_number || '',
+            generated_date: invoice.invoice_date ? 
+                new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 
+                new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            total_formatted: formatINR(totalAmount),
+            paid_amount_formatted: formatINR(paidAmount),
+            rest_amount_formatted: formatINR(restAmount),
+            total_words: numberToINRWords(totalAmount),
+            currency: invoice.currency || 'INR',
+            payment_type: invoice.payment_type || 'full',
+            payment_method: invoice.payment_method || 'online',
+            paid_percentage: invoice.paid_percentage || 0,
+            terms_conditions: invoice.terms_conditions || `1. All services are subject to availability and confirmation.\n2. Cancellation charges may apply as per company policy.\n3. Rates are subject to change without prior notice.\n4. Payment must be cleared before service delivery.\n5. Any disputes are subject to Hyderabad jurisdiction.`,
+            notes: invoice.notes || ''
+        };
 
-            <div class="footer-note">
-                <p>This is a system auto-generated computer document profile track. Signature representation is not required.</p>
-                <p style="margin-top:3px;">© 2026 KLAR TRAVELS. All Rights Reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-
-    return handlebars.compile(templateHtml)(invoice);
-  }
+        return template(templateData);
+    }
 };
+
+export default leadStageInvoicePdfService;

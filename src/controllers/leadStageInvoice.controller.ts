@@ -83,7 +83,7 @@ export const leadStageInvoiceController = {
         error: error.message || 'An error occurred during transaction matrix lookups.'
       });
     }
-  },
+  },    
 
 
   /**
