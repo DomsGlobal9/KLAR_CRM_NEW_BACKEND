@@ -56,6 +56,35 @@ export const leadStageInvoiceController = {
     }
   },
 
+  async getInvoiceById(req: Request, res: Response) {
+    try {
+      const { invoice_id } = req.params;
+
+      if (!invoice_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invoice ID parameter is required'
+        });
+      }
+
+      const invoice = await leadStageInvoiceService.getInvoiceRecordById(invoice_id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Lead stage invoice record retrieved successfully',
+        data: invoice
+      });
+    } catch (error: any) {
+      console.error("❌ Single invoice lookup fault layer exception:", error);
+      
+      const status = error.message.includes('not found') ? 404 : 500;
+      return res.status(status).json({
+        success: false,
+        error: error.message || 'An error occurred during transaction matrix lookups.'
+      });
+    }
+  },
+
 
   /**
    * Compiles dynamic template syntax directly into binary data arrays streamed to client

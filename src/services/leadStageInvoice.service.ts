@@ -57,6 +57,20 @@ export const leadStageInvoiceService = {
 
 
   /**
+   * Get Single Invoice
+   */
+  async getInvoiceRecordById(invoiceId: string) {
+    const invoice = await leadStageInvoiceRepository.getInvoiceById(invoiceId);
+    
+    if (!invoice) {
+      throw new Error(`Lead stage invoice with identifier code ${invoiceId} not found.`);
+    }
+
+    return invoice;
+  },                  
+
+
+  /**
    * Interfaces with separate document-pdf helper to output print-ready streams
    */
   async generateInvoicePDFBuffer(invoiceId: string): Promise<{ buffer: Buffer; invoiceNumber: string }> {

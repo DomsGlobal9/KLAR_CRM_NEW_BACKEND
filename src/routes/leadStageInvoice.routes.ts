@@ -13,6 +13,9 @@ router.post('/submit', authenticate, leadStageInvoiceController.generateInvoiceF
 // Core Retrieval Pipeline - Place this above any dynamic dynamic /:invoice_id routes
 router.get('/', authenticate, leadStageInvoiceController.getAllInvoices);
 
+// Fetch a single lead stage invoice details by ID
+router.get('/:invoice_id', authenticate, leadStageInvoiceController.getInvoiceById);
+
 // Dynamic Document Rendering & Media Generation
 router.get('/:invoice_id/download-pdf', authenticate, leadStageInvoiceController.downloadInvoicePDF);
 
