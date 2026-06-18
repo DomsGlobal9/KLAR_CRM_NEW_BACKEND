@@ -6,6 +6,7 @@ export const leadStageVoucherPdfService = {
    * Compiles data context values down into cleanly-styled responsive HTML layouts
    */
   async generateHTML(voucherData: any): Promise<string> {
+    console.log("9 leadStageVoucherPdf.service.ts", voucherData)
     if (!voucherData) {
       throw new Error("Template engine context structure cannot be blank.");
     }
