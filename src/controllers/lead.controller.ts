@@ -89,7 +89,7 @@ export const leadController = {
                 ...utmParams
             };
 
-            const lead = await leadService.captureWebLead(leadPayload);
+            const lead = await leadService.captureWebLead(leadPayload as any);
 
             res.status(201).json({
                 success: true,
