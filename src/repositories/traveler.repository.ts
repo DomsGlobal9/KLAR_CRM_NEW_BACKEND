@@ -7,10 +7,8 @@ import {
 
 export const travelerRepository = {
 
-    /**
-     * Check if traveler exists by email
-     */
     async isTravelerExists(email: string): Promise<boolean> {
+        if (!email) return false;
         const { data, error } = await supabaseAdmin
             .from('travelers')
             .select('id')
@@ -24,10 +22,8 @@ export const travelerRepository = {
         return !!data;
     },
 
-    /**
-     * Get traveler by email
-     */
     async getTravelerByEmail(email: string): Promise<ITraveler | null> {
+        if (!email) return null;
         const { data, error } = await supabaseAdmin
             .from('travelers')
             .select('*')
@@ -41,10 +37,8 @@ export const travelerRepository = {
         return data as ITraveler || null;
     },
 
-    /**
- * Get traveler by phone number
- */
     async getTravelerByPhone(phone: string): Promise<ITraveler | null> {
+        if (!phone) return null;
         const { data, error } = await supabaseAdmin
             .from('travelers')
             .select('*')
@@ -58,22 +52,21 @@ export const travelerRepository = {
         return data ? this.mapDatabaseToInterface(data) : null;
     },
 
-    /**
-     * Create a new traveler
-     */
     async createTraveler(payload: CreateTravelerPayload): Promise<ITraveler> {
+        const insertData: any = {};
+
+        if (payload.title) insertData.title = payload.title;
+        if (payload.travelerName) insertData.traveler_name = payload.travelerName;
+        if (payload.travelerPhone) insertData.traveler_phone = payload.travelerPhone;
+        if (payload.travelerEmail) insertData.traveler_email = payload.travelerEmail;
+        if (payload.dateOfBirth) insertData.date_of_birth = payload.dateOfBirth;
+        if (payload.passport) insertData.passport = payload.passport;
+        if (payload.gst) insertData.gst = payload.gst;
+        if (payload.emergencyContact) insertData.emergency_contact = payload.emergencyContact;
+
         const { data, error } = await supabaseAdmin
             .from('travelers')
-            .insert({
-                title: payload.title,
-                traveler_name: payload.travelerName,
-                traveler_phone: payload.travelerPhone,
-                traveler_email: payload.travelerEmail,
-                date_of_birth: payload.dateOfBirth,
-                passport: payload.passport || null,
-                gst: payload.gst || null,
-                emergency_contact: payload.emergencyContact
-            })
+            .insert(insertData)
             .select()
             .single();
 
@@ -85,9 +78,6 @@ export const travelerRepository = {
         return this.mapDatabaseToInterface(data);
     },
 
-    /**
-     * Get traveler by ID
-     */
     async getTravelerById(id: string): Promise<ITraveler | null> {
         const { data, error } = await supabaseAdmin
             .from('travelers')
@@ -102,9 +92,6 @@ export const travelerRepository = {
         return data ? this.mapDatabaseToInterface(data) : null;
     },
 
-    /**
-     * Get all travelers with filtering
-     */
     async getAllTravelers(filter: TravelerFilter = {}): Promise<ITraveler[]> {
         let query = supabaseAdmin
             .from('travelers')
@@ -146,9 +133,6 @@ export const travelerRepository = {
         return data.map((row: any) => this.mapDatabaseToInterface(row));
     },
 
-    /**
-     * Update traveler
-     */
     async updateTraveler(id: string, payload: UpdateTravelerPayload): Promise<boolean> {
         const updateData: any = {};
 
@@ -175,9 +159,6 @@ export const travelerRepository = {
         return true;
     },
 
-    /**
-     * Delete traveler
-     */
     async deleteTraveler(id: string): Promise<boolean> {
         const { error } = await supabaseAdmin
             .from('travelers')
@@ -191,9 +172,6 @@ export const travelerRepository = {
         return true;
     },
 
-    /**
-     * Search travelers
-     */
     async searchTravelers(query: string): Promise<ITraveler[]> {
         const { data, error } = await supabaseAdmin
             .from('travelers')
@@ -209,17 +187,12 @@ export const travelerRepository = {
         return data.map((row: any) => this.mapDatabaseToInterface(row));
     },
 
-    /**
- * Advanced filter and sort travelers
- */
     async filterAndSortTravelers(filters: any, sort: any, pagination: any): Promise<{ travelers: ITraveler[]; total: number; page: number; totalPages: number }> {
         let query = supabaseAdmin
             .from('travelers')
             .select('*', { count: 'exact' });
 
-        // Apply filters
         if (filters) {
-            // Title filter (single or multiple)
             if (filters.title) {
                 if (Array.isArray(filters.title)) {
                     query = query.in('title', filters.title);
@@ -228,22 +201,18 @@ export const travelerRepository = {
                 }
             }
 
-            // Traveler name (partial match)
             if (filters.travelerName) {
                 query = query.ilike('traveler_name', `%${filters.travelerName}%`);
             }
 
-            // Traveler email (partial match)
             if (filters.travelerEmail) {
                 query = query.ilike('traveler_email', `%${filters.travelerEmail}%`);
             }
 
-            // Traveler phone (partial match)
             if (filters.travelerPhone) {
                 query = query.ilike('traveler_phone', `%${filters.travelerPhone}%`);
             }
 
-            // Date of birth range
             if (filters.dateOfBirthFrom) {
                 query = query.gte('date_of_birth', filters.dateOfBirthFrom);
             }
@@ -251,7 +220,6 @@ export const travelerRepository = {
                 query = query.lte('date_of_birth', filters.dateOfBirthTo);
             }
 
-            // Created date range
             if (filters.createdFrom) {
                 query = query.gte('created_at', filters.createdFrom);
             }
@@ -259,31 +227,26 @@ export const travelerRepository = {
                 query = query.lte('created_at', filters.createdTo);
             }
 
-            // Has passport filter
             if (filters.hasPassport === true) {
                 query = query.not('passport', 'is', null);
             } else if (filters.hasPassport === false) {
                 query = query.is('passport', null);
             }
 
-            // Has GST filter
             if (filters.hasGST === true) {
                 query = query.not('gst', 'is', null);
             } else if (filters.hasGST === false) {
                 query = query.is('gst', null);
             }
 
-            // Nationality filter (JSON field)
             if (filters.nationality) {
                 query = query.eq('passport->>nationality', filters.nationality);
             }
         }
 
-        // Apply sorting
         if (sort && sort.field) {
             let sortField = sort.field;
 
-            // Map interface field to database column
             switch (sortField) {
                 case 'travelerName':
                     sortField = 'traveler_name';
@@ -309,11 +272,9 @@ export const travelerRepository = {
 
             query = query.order(sortField, { ascending: sort.order === 'asc' });
         } else {
-            // Default sort by created_at desc
             query = query.order('created_at', { ascending: false });
         }
 
-        // Apply pagination
         const page = pagination?.page || 1;
         const limit = pagination?.limit || 10;
         const start = (page - 1) * limit;
@@ -321,7 +282,6 @@ export const travelerRepository = {
 
         query = query.range(start, end);
 
-        // Execute query
         const { data, error, count } = await query;
 
         if (error) {
@@ -340,10 +300,6 @@ export const travelerRepository = {
         };
     },
 
-
-    /**
-  * Check multiple travelers by email and phone in a single query
-  */
     async checkBulkExists(travelers: Array<{ email: string; phone: string }>): Promise<{
         emails: Set<string>;
         phones: Set<string>;
@@ -351,7 +307,6 @@ export const travelerRepository = {
         const emails = travelers.map(t => t.email).filter(Boolean);
         const phones = travelers.map(t => t.phone).filter(Boolean);
 
-        // If no data to check, return empty sets
         if (emails.length === 0 && phones.length === 0) {
             return { emails: new Set<string>(), phones: new Set<string>() };
         }
@@ -361,11 +316,8 @@ export const travelerRepository = {
                 .from('travelers')
                 .select('traveler_email, traveler_phone');
 
-            // Build OR conditions safely
             const conditions = [];
             if (emails.length > 0) {
-                // Use Supabase's built-in array contains method instead of string interpolation
-                // This avoids SQL injection and handles empty arrays
                 const emailList = emails.map(e => `'${e.replace(/'/g, "''")}'`).join(',');
                 conditions.push(`traveler_email.in.(${emailList})`);
             }
@@ -382,7 +334,6 @@ export const travelerRepository = {
 
             if (error) {
                 console.error('Error in checkBulkExists:', error);
-                // Fallback: Return empty sets and let individual checks handle it
                 return { emails: new Set<string>(), phones: new Set<string>() };
             }
 
@@ -401,9 +352,6 @@ export const travelerRepository = {
         }
     },
 
-    /**
- * Check if travelers exist by email or phone - returns detailed results
- */
     async checkExistingTravelers(emails: string[], phones: string[]): Promise<{
         emails: Set<string>;
         phones: Set<string>;
@@ -462,13 +410,10 @@ export const travelerRepository = {
             return { emails: emailSet, phones: phoneSet, details: [] };
         }
     },
-    /**
-     * Bulk create travelers with minimal validation (for Excel upload)
-     */
+
     async bulkCreateTravelers(travelersData: any[]): Promise<any[]> {
         const results = [];
 
-        // Process in batches to avoid timeouts
         const batchSize = 50;
         for (let i = 0; i < travelersData.length; i += batchSize) {
             const batch = travelersData.slice(i, i + batchSize);
@@ -480,13 +425,11 @@ export const travelerRepository = {
                     .select();
 
                 if (error) {
-                    // If batch fails, throw to trigger fallback to individual inserts
                     throw new Error(`Batch insert failed: ${error.message}`);
                 }
 
                 results.push(...data);
             } catch (error: any) {
-                // Re-throw to trigger fallback in service
                 throw error;
             }
         }
@@ -494,9 +437,6 @@ export const travelerRepository = {
         return results;
     },
 
-    /**
-     * Map database row to interface
-     */
     mapDatabaseToInterface(data: any): ITraveler {
         return {
             id: data.id,

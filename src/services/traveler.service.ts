@@ -8,25 +8,34 @@ import {
 } from '../models/traveler.model';
 import { supabaseAdmin } from '../config';
 
-// Validation utilities
 const validateEmail = (email: string): boolean => {
+    if (!email) return true;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 };
 
 const validatePhone = (phone: string): boolean => {
+    if (!phone) return true;
     const phoneRegex = /^\+[1-9][0-9]{0,2}[0-9]{4,14}$/;
     return phoneRegex.test(phone);
 };
 
 const validateTitle = (title: string): boolean => {
+    if (!title) return true;
     return Object.values(Title).includes(title as Title);
+};
+
+const validateDateOfBirth = (dob: Date): boolean => {
+    if (!dob) return true;
+    const date = new Date(dob);
+    return !isNaN(date.getTime()) && date < new Date();
 };
 
 const validatePassport = (passport: any): string[] => {
     const errors: string[] = [];
+    if (!passport) return errors;
 
-    if (passport && passport.passportNumber) {
+    if (passport.passportNumber) {
         if (!passport.nationality) errors.push('Nationality is required when passport number is provided');
         if (!passport.issueDate) errors.push('Issue date is required when passport number is provided');
         if (!passport.expiryDate) errors.push('Expiry date is required when passport number is provided');
@@ -45,8 +54,9 @@ const validatePassport = (passport: any): string[] => {
 
 const validateGST = (gst: any): string[] => {
     const errors: string[] = [];
+    if (!gst) return errors;
 
-    if (gst && gst.gstNumber) {
+    if (gst.gstNumber) {
         if (!gst.registeredName) errors.push('Registered name is required when GST number is provided');
         if (!gst.email) errors.push('Email is required when GST number is provided');
         if (!gst.mobile) errors.push('Mobile is required when GST number is provided');
@@ -64,97 +74,85 @@ const validateGST = (gst: any): string[] => {
     return errors;
 };
 
+const validateEmergencyContact = (emergencyContact: any): string[] => {
+    const errors: string[] = [];
+    if (!emergencyContact) return errors;
+
+    if (emergencyContact.contactName || emergencyContact.email || emergencyContact.phoneNumber) {
+        if (!emergencyContact.contactName) errors.push('Emergency contact name is required');
+        if (!emergencyContact.email) errors.push('Emergency contact email is required');
+        if (!emergencyContact.phoneNumber) errors.push('Emergency contact phone is required');
+
+        if (emergencyContact.email && !validateEmail(emergencyContact.email)) {
+            errors.push('Invalid emergency contact email format');
+        }
+
+        if (emergencyContact.phoneNumber && !validatePhone(emergencyContact.phoneNumber)) {
+            errors.push('Invalid emergency contact phone number format');
+        }
+    }
+
+    return errors;
+};
+
 export const travelerService = {
 
-    /**
-     * Create a new traveler
-     */
     async createTraveler(payload: CreateTravelerPayload): Promise<ITraveler> {
         const errors: string[] = [];
 
-        // Validate required fields
-        if (!payload.title) errors.push('Title is required');
-        if (!payload.travelerName) errors.push('Traveler name is required');
-        if (!payload.travelerPhone) errors.push('Traveler phone is required');
-        if (!payload.travelerEmail) errors.push('Traveler email is required');
-        if (!payload.dateOfBirth) errors.push('Date of birth is required');
-        if (!payload.emergencyContact) errors.push('Emergency contact is required');
+        if (payload.title && !validateTitle(payload.title)) {
+            errors.push(`Invalid title. Must be one of: ${Object.values(Title).join(', ')}`);
+        }
+
+        if (payload.travelerEmail && !validateEmail(payload.travelerEmail)) {
+            errors.push('Invalid email format');
+        }
+
+        if (payload.travelerPhone && !validatePhone(payload.travelerPhone)) {
+            errors.push('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
+        }
+
+        if (payload.dateOfBirth && !validateDateOfBirth(payload.dateOfBirth)) {
+            errors.push('Invalid date of birth. Must be a valid past date');
+        }
+
+        const passportErrors = validatePassport(payload.passport);
+        if (passportErrors.length > 0) {
+            errors.push(`Passport validation failed: ${passportErrors.join(', ')}`);
+        }
+
+        const gstErrors = validateGST(payload.gst);
+        if (gstErrors.length > 0) {
+            errors.push(`GST validation failed: ${gstErrors.join(', ')}`);
+        }
+
+        const ecErrors = validateEmergencyContact(payload.emergencyContact);
+        if (ecErrors.length > 0) {
+            errors.push(`Emergency contact validation failed: ${ecErrors.join(', ')}`);
+        }
 
         if (errors.length > 0) {
             throw new Error(`Validation failed: ${errors.join(', ')}`);
         }
 
-        // Validate title
-        if (!validateTitle(payload.title)) {
-            throw new Error(`Invalid title. Must be one of: ${Object.values(Title).join(', ')}`);
+        if (payload.travelerEmail) {
+            const existingTraveler = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
+            if (existingTraveler) {
+                throw new Error('Traveler with this email already exists');
+            }
         }
 
-        // Validate email
-        if (!validateEmail(payload.travelerEmail)) {
-            throw new Error('Invalid email format');
+        if (payload.travelerPhone) {
+            const existingTravelerByPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
+            if (existingTravelerByPhone) {
+                throw new Error('Traveler with this phone number already exists');
+            }
         }
 
-        // Validate phone
-        if (!validatePhone(payload.travelerPhone)) {
-            throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
-        }
-
-        // Validate date of birth
-        const dob = new Date(payload.dateOfBirth);
-        if (isNaN(dob.getTime()) || dob >= new Date()) {
-            throw new Error('Invalid date of birth. Must be a valid past date');
-        }
-
-        // Validate emergency contact
-        const ec = payload.emergencyContact;
-        if (!ec.contactName || !ec.email || !ec.phoneNumber) {
-            throw new Error('Emergency contact must include contactName, email, and phoneNumber');
-        }
-
-        if (!validateEmail(ec.email)) {
-            throw new Error('Invalid emergency contact email format');
-        }
-
-        if (!validatePhone(ec.phoneNumber)) {
-            throw new Error('Invalid emergency contact phone number format');
-        }
-
-        // Validate passport
-        const passportErrors = validatePassport(payload.passport);
-        if (passportErrors.length > 0) {
-            throw new Error(`Passport validation failed: ${passportErrors.join(', ')}`);
-        }
-
-        // Validate GST
-        const gstErrors = validateGST(payload.gst);
-        if (gstErrors.length > 0) {
-            throw new Error(`GST validation failed: ${gstErrors.join(', ')}`);
-        }
-
-        // Check if traveler already exists
-        const existingTraveler = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
-        if (existingTraveler) {
-            throw new Error('Traveler with this email already exists');
-        }
-
-        // Check if traveler already exists by phone
-        const existingTravelerByPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
-        if (existingTravelerByPhone) {
-            throw new Error('Traveler with this phone number already exists');
-        }
-
-        // Create traveler
-        const traveler = await travelerRepository.createTraveler({
-            ...payload,
-            dateOfBirth: dob
-        });
-
+        const traveler = await travelerRepository.createTraveler(payload);
         return traveler;
     },
 
-    /**
-     * Get traveler by ID
-     */
     async getTravelerById(id: string): Promise<ITraveler> {
         const traveler = await travelerRepository.getTravelerById(id);
 
@@ -165,24 +163,16 @@ export const travelerService = {
         return traveler;
     },
 
-    /**
-     * Get all travelers with filtering
-     */
     async getAllTravelers(filter: TravelerFilter = {}): Promise<ITraveler[]> {
         return await travelerRepository.getAllTravelers(filter);
     },
 
-    /**
- * Update traveler
- */
     async updateTraveler(id: string, payload: UpdateTravelerPayload): Promise<boolean> {
-        // Check if traveler exists
         const existingTraveler = await travelerRepository.getTravelerById(id);
         if (!existingTraveler) {
             throw new Error('Traveler not found');
         }
 
-        // Validate email if being updated
         if (payload.travelerEmail) {
             if (!validateEmail(payload.travelerEmail)) {
                 throw new Error('Invalid email format');
@@ -194,20 +184,17 @@ export const travelerService = {
             }
         }
 
-        // Validate phone if being updated
         if (payload.travelerPhone) {
             if (!validatePhone(payload.travelerPhone)) {
                 throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
             }
 
-            // Check if phone number is already used by another traveler
             const travelerWithPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
             if (travelerWithPhone && travelerWithPhone.id !== id) {
                 throw new Error('Phone number already in use by another traveler');
             }
         }
 
-        // Validate passport if being updated
         if (payload.passport) {
             const passportErrors = validatePassport(payload.passport);
             if (passportErrors.length > 0) {
@@ -215,7 +202,6 @@ export const travelerService = {
             }
         }
 
-        // Validate GST if being updated
         if (payload.gst) {
             const gstErrors = validateGST(payload.gst);
             if (gstErrors.length > 0) {
@@ -223,13 +209,16 @@ export const travelerService = {
             }
         }
 
-        // Update traveler
+        if (payload.emergencyContact) {
+            const ecErrors = validateEmergencyContact(payload.emergencyContact);
+            if (ecErrors.length > 0) {
+                throw new Error(`Emergency contact validation failed: ${ecErrors.join(', ')}`);
+            }
+        }
+
         return await travelerRepository.updateTraveler(id, payload);
     },
 
-    /**
-     * Delete traveler
-     */
     async deleteTraveler(id: string): Promise<boolean> {
         const existingTraveler = await travelerRepository.getTravelerById(id);
         if (!existingTraveler) {
@@ -239,9 +228,6 @@ export const travelerService = {
         return await travelerRepository.deleteTraveler(id);
     },
 
-    /**
-     * Search travelers
-     */
     async searchTravelers(query: string): Promise<ITraveler[]> {
         if (!query || query.trim().length === 0) {
             throw new Error('Search query is required');
@@ -250,17 +236,11 @@ export const travelerService = {
         return await travelerRepository.searchTravelers(query);
     },
 
-    /**
- * Advanced filter and sort travelers
- */
     async filterAndSortTravelers(filters: any, sort: any, pagination: any): Promise<{ travelers: ITraveler[]; total: number; page: number; totalPages: number }> {
         const travelers = await travelerRepository.filterAndSortTravelers(filters, sort, pagination);
         return travelers;
     },
 
-    /**
-  * Bulk create travelers with duplicate checking
-  */
     async bulkCreateTravelers(travelersData: any[]): Promise<{
         created: number;
         skipped: number;
@@ -274,195 +254,110 @@ export const travelerService = {
             skippedUsers: [] as Array<{ email: string; phone: string; reason: string }>
         };
 
-        // Extract all emails and phones from the incoming data
-        const emailsToCheck = travelersData
-            .map(t => t.travelerEmail)
-            .filter(Boolean);
-        const phonesToCheck = travelersData
-            .map(t => t.travelerPhone)
-            .filter(Boolean);
+        const formatPhone = (phone: any): string => {
+            if (!phone) return '';
+            const phoneStr = String(phone);
+            let cleaned = phoneStr.replace(/[^0-9+]/g, '');
+            if (!cleaned.startsWith('+')) {
+                cleaned = cleaned.replace(/^0+/, '');
+                cleaned = `+91${cleaned}`;
+            }
+            return cleaned;
+        };
 
-        console.log(`🔍 Checking ${emailsToCheck.length} emails and ${phonesToCheck.length} phones for duplicates`);
+        const toCreate: any[] = [];
 
-        // CRITICAL: Use the repository's checkBulkExists method
-        try {
-            // Pass the full travelers array to check both email and phone
-            const travelerList = travelersData.map(t => ({
-                email: t.travelerEmail,
-                phone: t.travelerPhone
-            })).filter(t => t.email || t.phone);
+        travelersData.forEach((row, index) => {
+            const rowNum = index + 2;
 
-            const { emails: existingEmails, phones: existingPhones } =
-                await travelerRepository.checkBulkExists(travelerList);
+            try {
+                const insertData: any = {
+                    created_at: new Date(),
+                    updated_at: new Date()
+                };
 
-            console.log(`📊 Found ${existingEmails.size} existing emails and ${existingPhones.size} existing phones`);
+                if (row.title) insertData.title = row.title;
+                if (row.travelerName) insertData.traveler_name = row.travelerName;
+                if (row.travelerEmail) insertData.traveler_email = row.travelerEmail;
+                if (row.travelerPhone) insertData.traveler_phone = formatPhone(row.travelerPhone);
+                if (row.dateOfBirth) insertData.date_of_birth = new Date(row.dateOfBirth);
 
-            // Format phone function
-            const formatPhone = (phone: string): string => {
-                let cleaned = phone.replace(/[^0-9+]/g, '');
-                if (!cleaned.startsWith('+')) {
-                    cleaned = cleaned.replace(/^0+/, '');
-                    cleaned = `+91${cleaned}`;
-                }
-                return cleaned;
-            };
-
-            // Prepare data for insertion
-            const toCreate: any[] = [];
-
-            travelersData.forEach((row, index) => {
-                const rowNum = index + 2;
-
-                try {
-                    // Validate required fields
-                    if (!row.title || !row.travelerName || !row.travelerEmail ||
-                        !row.travelerPhone || !row.dateOfBirth ||
-                        !row.emergencyContactName || !row.emergencyContactEmail ||
-                        !row.emergencyContactPhone) {
-                        results.errors.push({
-                            row: rowNum,
-                            reason: 'Missing required fields'
-                        });
-                        return;
-                    }
-
-                    // Validate email format
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(row.travelerEmail)) {
-                        results.errors.push({
-                            row: rowNum,
-                            reason: `Invalid email format: ${row.travelerEmail}`
-                        });
-                        return;
-                    }
-
-                    // Check for duplicates
-                    let duplicateReason = '';
-                    if (existingEmails.has(row.travelerEmail)) {
-                        duplicateReason = `Email "${row.travelerEmail}" already exists in system`;
-                    } else if (existingPhones.has(row.travelerPhone)) {
-                        duplicateReason = `Phone "${row.travelerPhone}" already exists in system`;
-                    }
-
-                    if (duplicateReason) {
-                        results.skipped++;
-                        results.skippedUsers.push({
-                            email: row.travelerEmail,
-                            phone: row.travelerPhone,
-                            reason: duplicateReason
-                        });
-                        return;
-                    }
-
-                    // Format data for insertion
-                    const insertData = {
-                        title: row.title,
-                        traveler_name: row.travelerName,
-                        traveler_email: row.travelerEmail,
-                        traveler_phone: formatPhone(row.travelerPhone),
-                        date_of_birth: new Date(row.dateOfBirth),
-                        passport: row.passportNumber ? {
-                            passportNumber: row.passportNumber,
-                            nationality: row.nationality || '',
-                            issueDate: row.passportIssueDate ? new Date(row.passportIssueDate) : null,
-                            expiryDate: row.passportExpiryDate ? new Date(row.passportExpiryDate) : null
-                        } : null,
-                        gst: row.gstNumber ? {
-                            gstNumber: row.gstNumber,
-                            registeredName: row.registeredName || '',
-                            email: row.gstEmail || '',
-                            mobile: row.gstMobile ? formatPhone(row.gstMobile) : '',
-                            address: row.gstAddress || ''
-                        } : null,
-                        emergency_contact: {
-                            contactName: row.emergencyContactName,
-                            email: row.emergencyContactEmail,
-                            phoneNumber: formatPhone(row.emergencyContactPhone)
-                        },
-                        created_at: new Date(),
-                        updated_at: new Date()
+                if (row.passportNumber) {
+                    insertData.passport = {
+                        passportNumber: row.passportNumber,
+                        nationality: row.nationality || '',
+                        issueDate: row.passportIssueDate ? new Date(row.passportIssueDate) : null,
+                        expiryDate: row.passportExpiryDate ? new Date(row.passportExpiryDate) : null
                     };
-
-                    toCreate.push(insertData);
-
-                    // Add to existing sets to avoid duplicates within the SAME file
-                    existingEmails.add(row.travelerEmail);
-                    existingPhones.add(row.travelerPhone);
-
-                } catch (error: any) {
-                    results.errors.push({
-                        row: rowNum,
-                        reason: `Error processing row: ${error.message || 'Unknown error'}`
-                    });
                 }
-            });
 
-            // If there are travelers to create
-            if (toCreate.length > 0) {
-                console.log(`📝 Attempting to create ${toCreate.length} travelers...`);
+                if (row.gstNumber) {
+                    insertData.gst = {
+                        gstNumber: row.gstNumber,
+                        registeredName: row.registeredName || '',
+                        email: row.gstEmail || '',
+                        mobile: row.gstMobile ? formatPhone(row.gstMobile) : '',
+                        address: row.gstAddress || ''
+                    };
+                }
 
-                // Try bulk insert first
-                try {
-                    await travelerRepository.bulkCreateTravelers(toCreate);
-                    results.created = toCreate.length;
-                    console.log(`✅ Successfully created ${toCreate.length} travelers via bulk insert`);
-                } catch (bulkError: any) {
-                    console.error('❌ Bulk insert failed, falling back to individual inserts:', bulkError.message);
+                if (row.emergencyContactName || row.emergencyContactEmail || row.emergencyContactPhone) {
+                    insertData.emergency_contact = {
+                        contactName: row.emergencyContactName || '',
+                        email: row.emergencyContactEmail || '',
+                        phoneNumber: row.emergencyContactPhone ? formatPhone(row.emergencyContactPhone) : ''
+                    };
+                }
 
-                    // Fallback: Insert one by one
-                    let createdCount = 0;
-                    let skippedCount = 0;
-                    let errorCount = 0;
+                toCreate.push(insertData);
 
-                    for (let i = 0; i < toCreate.length; i++) {
-                        try {
-                            const { data, error } = await supabaseAdmin
-                                .from('travelers')
-                                .insert(toCreate[i])
-                                .select();
+            } catch (error: any) {
+                results.errors.push({
+                    row: rowNum,
+                    reason: `Error processing row: ${error.message || 'Unknown error'}`
+                });
+            }
+        });
 
-                            if (error) {
-                                if (error.code === '23505') { 
-                                    skippedCount++;
-                                    results.skipped++;
-                                    const field = error.details?.includes('traveler_email') ? 'Email' : 'Phone';
-                                    results.skippedUsers.push({
-                                        email: toCreate[i].traveler_email,
-                                        phone: toCreate[i].traveler_phone,
-                                        reason: `${field} already exists`
-                                    });
-                                } else {
-                                    errorCount++;
-                                    results.errors.push({
-                                        row: i + 2,
-                                        reason: `Insert failed: ${error.message}`
-                                    });
-                                }
-                            } else {
-                                createdCount++;
-                            }
-                        } catch (insertError: any) {
-                            errorCount++;
+        if (toCreate.length > 0) {
+            console.log(`📝 Attempting to create ${toCreate.length} travelers...`);
+
+            try {
+                await travelerRepository.bulkCreateTravelers(toCreate);
+                results.created = toCreate.length;
+                console.log(`✅ Successfully created ${toCreate.length} travelers via bulk insert`);
+            } catch (bulkError: any) {
+                console.error('❌ Bulk insert failed, falling back to individual inserts:', bulkError.message);
+
+                let createdCount = 0;
+
+                for (let i = 0; i < toCreate.length; i++) {
+                    try {
+                        const { data, error } = await supabaseAdmin
+                            .from('travelers')
+                            .insert(toCreate[i])
+                            .select();
+
+                        if (error) {
                             results.errors.push({
                                 row: i + 2,
-                                reason: `Insert failed: ${insertError.message}`
+                                reason: `Insert failed: ${error.message}`
                             });
+                        } else {
+                            createdCount++;
                         }
+                    } catch (insertError: any) {
+                        results.errors.push({
+                            row: i + 2,
+                            reason: `Insert failed: ${insertError.message}`
+                        });
                     }
-
-                    results.created = createdCount;
                 }
+
+                results.created = createdCount;
             }
-
-            
-            return results;
-
-        } catch (error: any) {
-            results.errors.push({
-                row: 0,
-                reason: `Bulk upload failed: ${error.message}`
-            });
-            return results;
         }
+
+        return results;
     }
 };
