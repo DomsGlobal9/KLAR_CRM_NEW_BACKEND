@@ -48,7 +48,7 @@ router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
-router.use("/set-reminder", setReminder)
+router.use("/set-reminder", setReminder);
 
 
 router.use("/flights", flight)
