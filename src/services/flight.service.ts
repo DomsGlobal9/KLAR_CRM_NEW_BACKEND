@@ -1,30 +1,49 @@
-import { getBookingModel } from "../models/flight-bookings.model"; 
+import { getBookingModel } from "../models/flight-bookings.model";
 import { getUserModel } from "../models/auth.models";
 
-export const getAllFlightsWithUsers = async () => {
-    // 1. Fetch all flight bookings using the new Model
+export const getAllFlightsWithUsers = async (page: number = 1, limit: number = 10) => {
     const BookingModel = getBookingModel();
-    const bookings = await BookingModel.find().lean();
 
-    if (!bookings || bookings.length === 0) return [];
+    const skip = (page - 1) * limit;
+    const totalCount = await BookingModel.countDocuments();
 
-    // 2. Get unique User IDs from userInfo.id (New Schema location)
-    // We filter to ensure we only get valid strings using type guard
+    const bookings = await BookingModel.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const totalPages = Math.ceil(totalCount / limit) || 1;
+    const paginationMetadata = {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        rowsPerPage: limit
+    };
+
+    if (!bookings || bookings.length === 0) {
+        return { bookings: [], pagination: paginationMetadata };
+    }
+
+    // Filter out guest users and invalid IDs
     const userIds = [...new Set(
         bookings
             .map(b => b.userInfo?.id?.toString())
-            .filter((id): id is string => Boolean(id))
+            .filter((id): id is string => {
+                // Skip guest_user and other non-ObjectId strings
+                if (!id) return false;
+                // Check if it's a valid ObjectId format (24 hex characters)
+                return /^[0-9a-fA-F]{24}$/.test(id);
+            })
     )];
 
-    // 3. Fetch matching users from the Auth database (only if we have userIds)
     let users: any[] = [];
     const UserModel = getUserModel();
-    
+
     if (userIds.length > 0) {
         users = await UserModel.find({ _id: { $in: userIds } }).lean();
     }
 
-    // 4. Map users for quick lookup
     const userMap = users.reduce((acc: any, user: any) => {
         if (user?._id) {
             acc[user._id.toString()] = user;
@@ -32,64 +51,87 @@ export const getAllFlightsWithUsers = async () => {
         return acc;
     }, {});
 
-    // 5. Merge and Transform
-    return bookings.map(booking => {
+    const transformedBookings = bookings.map(booking => {
         const userId = booking.userInfo?.id?.toString();
-        console.log(`Checking match for Booking ${booking.bookingId}: ID from Booking (${typeof userId}) ${userId} vs Map Match: ${!!userMap[userId!]}`);
+        const isValidObjectId = userId && /^[0-9a-fA-F]{24}$/.test(userId);
+        const matchingUser = isValidObjectId && userId ? userMap[userId] : null;
 
-        const matchingUser = userId ? userMap[userId] : null;
-
-        // Extract the first travellerId if it exists, as requested
-        const firstTravellerId = booking.travellers && booking.travellers.length > 0 
-            ? booking.travellers[0].travellerId 
-            : "N/A";
+        // Check if it's a guest user by looking at the ID value
+        const isGuestUser = userId === 'guest_user' || booking.userInfo?.type === 'guest';
 
         return {
             bookingId: booking.bookingId,
             bookingDate: booking.createdAt,
             status: booking.status,
             totalPrice: booking.totalPrice || 0,
-            // Access businessName from the matched user's profile
-            businessName: matchingUser?.businessProfile?.businessName || "N/A",
+            businessName: matchingUser?.businessProfile?.businessName ||
+                (isGuestUser ? "Guest User" : "N/A"),
             agentEmail: booking.userInfo?.email || "N/A",
-            travellerName: booking.travellers?.[0] 
-                ? `${booking.travellers[0].firstName} ${booking.travellers[0].lastName}` 
+            travellerName: booking.travellers?.[0]
+                ? `${booking.travellers[0].firstName} ${booking.travellers[0].lastName}`
                 : "N/A"
         };
     });
-};
 
+    return {
+        bookings: transformedBookings,
+        pagination: paginationMetadata
+    };
+};
 
 export const getSingleFlightDetails = async (bookingId: string) => {
     const BookingModel = getBookingModel();
     const UserModel = getUserModel();
 
-    // 1. Find the specific booking by bookingId (from the flight-service DB)
     const booking = await BookingModel.findOne({ bookingId }).lean();
 
     if (!booking) {
         throw new Error("Booking not found");
     }
 
-    
     const userId = booking.userInfo?.id?.toString();
-    
+    const isValidObjectId = userId && /^[0-9a-fA-F]{24}$/.test(userId);
+    const isGuestUser = userId === 'guest_user' || booking.userInfo?.type === 'guest';
+
     let userDetails = null;
-    if (userId) {
-        const user = await UserModel.findById(userId).lean();
-        if (user) {
-            userDetails = {
-                businessName: user.businessProfile?.businessName || "N/A",
-                email: user.email,
-                mobile: user.mobile,
-                clientType: user.clientType,
-                role: user.roles?.[0] || "USER"
-            };
+
+    // Only try to fetch user if it's a valid ObjectId
+    if (userId && isValidObjectId) {
+        try {
+            const user = await UserModel.findById(userId).lean();
+            if (user) {
+                userDetails = {
+                    businessName: user.businessProfile?.businessName || "N/A",
+                    email: user.email,
+                    mobile: user.mobile,
+                    clientType: user.clientType,
+                    role: user.roles?.[0] || "USER"
+                };
+            }
+        } catch (error) {
+            console.error(`Error fetching user ${userId}:`, error);
         }
+    }
+
+    // If no user found or it's a guest, provide default guest details
+    if (!userDetails && isGuestUser) {
+        userDetails = {
+            businessName: "Guest User",
+            email: booking.userInfo?.email || "N/A",
+            mobile: "N/A",
+            clientType: "guest",
+            role: "GUEST"
+        };
     }
 
     return {
         ...booking,
-        userDetails 
+        userDetails: userDetails || {
+            businessName: "N/A",
+            email: booking.userInfo?.email || "N/A",
+            mobile: "N/A",
+            clientType: "unknown",
+            role: "UNKNOWN"
+        }
     };
 };
