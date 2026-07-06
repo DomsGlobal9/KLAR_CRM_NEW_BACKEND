@@ -3,33 +3,46 @@ import FormData from 'form-data';
 import { envConfig } from '../config';
 
 export const s3UploadService = {
-    async uploadToS3(pdfBuffer: Buffer, fileName: string): Promise<string> {
+    async uploadToS3(fileBuffer: Buffer, fileName: string): Promise<string> {
         try {
             const form = new FormData();
-            // We append the buffer as a file named 'file' to match your Postman screenshot
-            form.append('file', pdfBuffer, {
+
+            const isPdf = fileName.endsWith('.pdf');
+
+            // Content type mapping
+            const contentTypes: Record<string, string> = {
+                '.pdf': 'application/pdf',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+            };
+
+            const extension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+            const contentType = contentTypes[extension] || 'image/jpeg';
+
+            form.append('file', fileBuffer, {
                 filename: fileName,
-                contentType: 'application/pdf',
+                contentType: contentType,
             });
 
-            // Replace with your actual S3 Server URL
-            const S3_SERVER_URL = `${envConfig.S3_SERVER_URL}/upload-pdf`; 
+            const S3_SERVER_URL = `${envConfig.S3_SERVER_URL}${isPdf ? '/upload-pdf' : '/upload-image'}`;
 
             const response = await axios.post(S3_SERVER_URL, form, {
                 headers: {
                     ...form.getHeaders(),
-                    // Include Authorization if your S3 server requires the same token
                 }
             });
 
             if (response.data.status === 'success') {
                 return response.data.data.public_url;
             }
-            
+
             throw new Error('Upload failed: ' + response.data.message);
         } catch (error: any) {
             console.error('S3 Upload Error:', error.message);
-            throw new Error('Could not upload PDF to S3');
+            throw new Error('Could not upload file to S3');
         }
     }
 };

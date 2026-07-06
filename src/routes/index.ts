@@ -27,6 +27,7 @@ import voucherRoutes from './voucher.routes';
 import walletTransactionRoutes from './wallet-transaction.routes';
 import leadStageVoucherRoutes from './leadStageVoucher.routes';
 import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
+import travelerRoutes from './traveler.routes';
 
 const router = Router();
 
@@ -51,7 +52,7 @@ router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
-router.use("/set-reminder", setReminder)
+router.use("/set-reminder", setReminder);
 
 
 router.use("/flights", flight)
@@ -63,4 +64,5 @@ router.use('/voucher', voucherRoutes);
 router.use('/wallet-transactions', walletTransactionRoutes);
 router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
 router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
+router.use('/travelers', travelerRoutes);
 export default router;

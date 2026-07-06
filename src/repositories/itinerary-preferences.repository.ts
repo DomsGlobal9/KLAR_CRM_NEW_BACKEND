@@ -63,61 +63,54 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Get all preferences for a lead
-     */
+ * Get all preferences for a specific itinerary
+ */
     async getByItineraryId(itinerary_id: string): Promise<IItineraryPreferencesResponse> {
         try {
-
+            // First, verify the itinerary exists and get basic info
             const { data: itineraryData, error: itineraryError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
-                .select('lead_id')
+                .select('*')
                 .eq('id', itinerary_id)
                 .maybeSingle();
 
             if (itineraryError || !itineraryData) {
-                throw new Error(`Failed to fetch lead_id: ${itineraryError?.message || 'No data found'}`);
+                throw new Error(`Failed to fetch itinerary: ${itineraryError?.message || 'No data found'}`);
             }
 
             const clientID = itineraryData.lead_id;
 
+            // Fetch ONLY the preferences for this specific itinerary_id
             const [
                 flightPreferencesResult,
                 hotelPreferencesResult,
                 visaPreferencesResult,
-                userPreferencesResult,
                 servicePreferencesResult,
                 leadDetailsResult
             ] = await Promise.all([
                 supabaseAdmin
                     .from('flight_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('hotel_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('visa_preferences')
                     .select('*')
-                    .eq('lead_id', clientID)
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
                     .order('preference_order', { ascending: true }),
-
-                supabaseAdmin
-                    .from('user_itenary_preferences_summary')
-                    .select('*')
-                    .eq('lead_id', clientID)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle(),
 
                 supabaseAdmin
                     .from('service_preferences')
                     .select('*')
-                    .eq('lead_id', clientID),
+                    .eq('itinerary_id', itinerary_id)  // ← Changed from lead_id to itinerary_id
+                    .order('preference_order', { ascending: true }),
 
                 supabaseAdmin
                     .from('leads')
@@ -127,7 +120,7 @@ export const itineraryPreferencesRepository = {
             ]);
 
             if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
-                throw new Error(`Failed to fetch service preferences: ${servicePreferencesResult.error.message}`);
+                console.error('Error fetching service preferences:', servicePreferencesResult.error);
             }
 
             let leadDetails: ILeadDetails | undefined;
@@ -140,7 +133,7 @@ export const itineraryPreferencesRepository = {
                 hotel_preferences: hotelPreferencesResult.data ?? [],
                 visa_preferences: visaPreferencesResult.data ?? [],
                 service_preferences: servicePreferencesResult.data ?? [],
-                user_preferences_summary: userPreferencesResult.data ?? null,
+                user_preferences_summary: itineraryData,
                 lead_details: leadDetails
             };
         } catch (error) {
@@ -1924,8 +1917,8 @@ export const itineraryPreferencesRepository = {
     },
 
     /**
-     * Save all service preferences to service_preferences table
-     */
+  * Save all service preferences to service_preferences table
+  */
     async saveAllServicePreferences(data: {
         leadId: string;
         servicePreferences: Array<{
@@ -1976,9 +1969,21 @@ export const itineraryPreferencesRepository = {
                 serviceCounts[serviceType]++;
             });
 
-            // Step 1: Create the user preferences summary first to get itinerary_id
+            // Get the latest version number for this lead
+            const { data: latestSummary } = await supabaseAdmin
+                .from('user_itenary_preferences_summary')
+                .select('version_number')
+                .eq('lead_id', leadId)
+                .order('version_number', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            const newVersion = (latestSummary?.version_number || 0) + 1;
+
+            // Create new user preferences summary (always create new version)
             const userPrefsSummary: any = {
                 lead_id: leadId,
+                type: 'form',
                 flight_preferences_added: userPreferences.flightPreferencesAdded,
                 hotel_preferences_added: userPreferences.hotelPreferencesAdded,
                 visa_preferences_added: userPreferences.visaPreferencesAdded,
@@ -1992,23 +1997,30 @@ export const itineraryPreferencesRepository = {
                 metadata: {
                     ...userPreferences.metadata,
                     service_counts: serviceCounts,
-                    total_service_options: servicePreferences.length
+                    total_service_options: servicePreferences.length,
+                    version: newVersion,
+                    previous_version: latestSummary?.version_number || null,
+                    created_at: new Date().toISOString()
                 },
                 services_added: servicesAdded,
                 service_counts: serviceCounts,
+                version_number: newVersion,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 status: 'Itinerary_Created'
             };
 
-            const { data: userPrefsData, error: userPrefsError } = await supabaseAdmin
+            const { data: newData, error: userPrefsError } = await supabaseAdmin
                 .from('user_itenary_preferences_summary')
                 .insert(userPrefsSummary)
                 .select()
                 .single();
 
-            if (userPrefsError) throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
+            if (userPrefsError) {
+                throw new Error(`Failed to save user preferences summary: ${userPrefsError.message}`);
+            }
 
+            const userPrefsData = newData;
             const itineraryId = userPrefsData.id;
 
             // Save to flight_preferences table
@@ -2049,6 +2061,7 @@ export const itineraryPreferencesRepository = {
                 }
             }
 
+            // Save to hotel_preferences table
             const hotelPreferencesData = servicePreferences
                 .filter(sp => sp.service_type === 'HOTELS')
                 .map((sp, index) => ({
@@ -2078,7 +2091,7 @@ export const itineraryPreferencesRepository = {
                 const { data: insertedHotelData, error: hotelError } = await supabaseAdmin
                     .from('hotel_preferences')
                     .insert(hotelPreferencesData)
-                    .select();  // Add .select() to return inserted data
+                    .select();
 
                 if (hotelError) {
                     console.error('❌ Hotel insert error details:', {
@@ -2091,13 +2104,14 @@ export const itineraryPreferencesRepository = {
                     console.log('✅ Hotel preferences saved successfully:', insertedHotelData);
                 }
             }
-            // Step 2: Insert service preferences with the itinerary_id
+
+            // Insert service preferences with the itinerary_id
             let savedServicePreferences: any[] = [];
             if (servicePreferences.length > 0) {
                 const servicePrefsToInsert = servicePreferences.map((pref, index) => ({
                     ...pref,
                     lead_id: leadId,
-                    itinerary_id: itineraryId, // ✅ Now we have the itinerary_id
+                    itinerary_id: itineraryId,
                     preference_order: pref.preference_order || index + 1,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
@@ -2108,11 +2122,13 @@ export const itineraryPreferencesRepository = {
                     .insert(servicePrefsToInsert)
                     .select();
 
-                if (serviceError) throw new Error(`Failed to save service preferences: ${serviceError.message}`);
+                if (serviceError) {
+                    throw new Error(`Failed to save service preferences: ${serviceError.message}`);
+                }
                 savedServicePreferences = serviceData || [];
             }
 
-            // Step 3: Fetch lead details
+            // Fetch lead details
             let leadDetailsResult: ILeadDetails | undefined;
             try {
                 const { data: detailsData } = await supabaseAdmin

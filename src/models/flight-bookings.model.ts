@@ -9,6 +9,7 @@ export interface UserInfo {
     email: string;
     role: string;
     clientType: string;
+    type?: 'guest' | 'registered';
 }
 
 export interface SSRInfo {

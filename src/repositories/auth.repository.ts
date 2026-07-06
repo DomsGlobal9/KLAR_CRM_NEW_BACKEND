@@ -15,7 +15,8 @@ export const AuthRepository = {
             user_metadata: metadata,
         });
     },
-     async getUserByEmail(email: string) {
+    
+    async getUserByEmail(email: string) {
         try {
             const normalizedEmail = email.toLowerCase();
 
@@ -61,7 +62,7 @@ export const AuthRepository = {
     },
 
     async signIn(email: string, password: string) {
-        
+
         return supabase.auth.signInWithPassword({ email, password });
     },
 
@@ -82,7 +83,7 @@ export const AuthRepository = {
                 await supabaseAdmin.auth.admin.getUserById(userId);
 
             if (error || !data?.user) {
-                
+
                 return null;
             }
 

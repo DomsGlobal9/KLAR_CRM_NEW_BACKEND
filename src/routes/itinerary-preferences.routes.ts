@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { itineraryPreferencesController } from '../controllers/itinerary-preferences.controller';
-import { authenticate, requireRole } from '../middleware';
+import { authenticate, requireRole, upload } from '../middleware';
+import { userItineraryFilesController } from '../controllers/user-itinerary-files.controller';
 
 const router = Router();
 
@@ -9,6 +10,10 @@ const router = Router();
    ======================= */
 
 router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+
+
+router.get('/file-only-list', userItineraryFilesController.getAllFileItineraries);
+router.get('/file-only/by-itinerary/:itineraryId', userItineraryFilesController.getFileOnlyItineraryById); 
 
 router.post('/', itineraryPreferencesController.savePreferences);
 // router.post('/upsert', itineraryPreferencesController.saveOrUpdatePreferences);
@@ -22,7 +27,7 @@ router.get('/visa/:id', itineraryPreferencesController.getVisaPreferenceById);
    DYNAMIC LEAD ID ROUTES
    ======================= */
 
-router.get('/all', itineraryPreferencesController.getAllLeads); 
+router.get('/all', itineraryPreferencesController.getAllLeads);
 router.get('/:leadId/check', itineraryPreferencesController.checkPreferencesExist);
 router.get('/:itinerary_id', itineraryPreferencesController.getPreferences);
 router.patch('/:itinerary_id', itineraryPreferencesController.updatePreferences);
@@ -32,12 +37,41 @@ router.delete('/:itinerary_id', itineraryPreferencesController.deletePreferences
 /* =======================
    Get Itinerary Pdf
    ======================= */
-router.get('/:itinerary_id/download-itinerary',  itineraryPreferencesController.downloadItineraryOnlyPDF)
+router.get('/:itinerary_id/download-itinerary', itineraryPreferencesController.downloadItineraryOnlyPDF)
 
 
 /**
  * Uploads to S3 and returns the URL for sharing
  */
 router.post('/:itinerary_id/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
+
+
+router.post('/upload-pdf', upload.single('file'), itineraryPreferencesController.uploadPdfFile);
+router.post('/upload-image', upload.single('file'), itineraryPreferencesController.uploadImageFile);
+
+router.post('/upload-multiple', upload.array('files', 10), itineraryPreferencesController.uploadMultipleFiles);
+router.post('/save-file-urls', itineraryPreferencesController.saveUploadedFileUrls);
+
+// Create file-only itinerary
+router.post('/file-only/:leadId',
+   itineraryPreferencesController.createFileOnlyItinerary
+);
+
+// Get file-only itinerary
+router.get('/file-only/:leadId',
+   itineraryPreferencesController.getFileOnlyItinerary
+);
+
+// Check if file-only itinerary exists
+router.get('/file-only/:leadId/check',
+   itineraryPreferencesController.checkFileOnlyItinerary
+);
+
+// Delete file-only itinerary
+router.delete('/file-only/:leadId',
+   itineraryPreferencesController.deleteFileOnlyItinerary
+);
+
+
 
 export default router;

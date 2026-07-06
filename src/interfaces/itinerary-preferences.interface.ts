@@ -321,6 +321,15 @@ export interface IServicePreference {
 export interface IFrontendFormData {
     leadData?: any;
     itineraryData: any;
+    submissionType?: 'form' | 'files-only';
+    uploadedFiles?: Record<string, { name: string; url: string }[]>;
+    files?: {
+        [serviceType: string]: Array<{
+            name: string;
+            url: string;
+            type?: string;
+        }>;
+    };
     flightOptions: any[];
     hotelOptions: any[];
     visaOptions: any[];

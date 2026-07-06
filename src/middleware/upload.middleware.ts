@@ -3,12 +3,12 @@ import multer from 'multer';
 const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed'), false);
+        cb(new Error('Invalid file type. Only PDF, JPEG, PNG, GIF, and WEBP are allowed'), false);
     }
 };
 
