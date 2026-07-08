@@ -56,16 +56,6 @@ export const getSingleBooking = async (req: Request, res: Response) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
 export const getB2CFlightReport = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string, 10) || 1;

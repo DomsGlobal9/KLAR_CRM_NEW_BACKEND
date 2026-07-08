@@ -16,7 +16,7 @@ export const getAllFlightsWithUsers = async (page: number = 1, limit: number = 1
 
     const totalCount = await BookingModel.countDocuments(queryFilter);
 
-    const bookings = await BookingModel.find()
+    const bookings = await BookingModel.find(queryFilter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -144,26 +144,6 @@ export const getSingleFlightDetails = async (bookingId: string) => {
         }
     };
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
