@@ -12,7 +12,8 @@ export const getAllFlightsWithUsers = async (page: number = 1, limit: number = 1
     // const totalCount = await BookingModel.countDocuments();
 
 
-    const queryFilter = { "userInfo.clientType": "b2b" };
+    const queryFilter = { "userInfo.clientType": "b2b",
+    "userInfo.role": { $exists: true, $ne: "" } };
 
     const totalCount = await BookingModel.countDocuments(queryFilter);
 
@@ -156,7 +157,12 @@ export const getAllB2CFlightsWithUsers = async (page: number = 1, limit: number 
     const skip = (page - 1) * limit;
     
     // Explicitly target b2c bookings
-    const queryFilter = { "userInfo.clientType": "b2c" };
+    const queryFilter = { $or: [
+            { "userInfo.clientType": { $exists: false } },
+            { "userInfo.clientType": { $exists: true, $ne: "b2b" } },
+            { "userInfo.role": "" },
+            { "userInfo.role": { $exists: false } }
+        ] };
 
     const totalCount = await BookingModel.countDocuments(queryFilter);
     const bookings = await BookingModel.find(queryFilter)
@@ -201,14 +207,16 @@ export const getAllB2CFlightsWithUsers = async (page: number = 1, limit: number 
         const userId = booking.userInfo?.id?.toString();
         const matchingUser = userId && userMap[userId] ? userMap[userId] : null;
 
+        const isGuest = userId === 'guest_user' || !booking.userInfo?.clientType;
+
         return {
             bookingId: booking.bookingId,
             bookingDate: booking.createdAt,
             status: booking.status,
             totalPrice: booking.totalPrice || 0,
-            // For B2C, we can display the user's name or fallback to profile names comfortably
-            businessName: matchingUser?.businessProfile?.businessName || "Individual Customer",
-            agentEmail: booking.userInfo?.email || "N/A",
+            businessName: matchingUser?.businessProfile?.businessName || 
+                          (isGuest ? "Guest User" : "Individual Customer"),
+            agentEmail: booking.userInfo?.email || booking.email || "N/A",
             travellerName: booking.travellers?.[0]
                 ? `${booking.travellers[0].firstName} ${booking.travellers[0].lastName}`
                 : "N/A"
@@ -226,7 +234,18 @@ export const getSingleB2CFlightDetails = async (bookingId: string) => {
     const UserModel = getUserModel();
 
     // Verify it's a booking and that it explicitly belongs to b2c
-    const booking = await BookingModel.findOne({ bookingId, "userInfo.clientType": "b2c" }).lean();
+    const queryFilter = {
+        bookingId,
+        $or: [
+            { "userInfo.clientType": { $exists: false } },
+            { "userInfo.clientType": { $exists: true, $ne: "b2b" } },
+            { "userInfo.role": "" },
+            { "userInfo.role": { $exists: false } }
+        ]
+    };
+
+
+        const booking = await BookingModel.findOne(queryFilter).lean();
 
     if (!booking) {
         throw new Error("B2C Booking not found");
