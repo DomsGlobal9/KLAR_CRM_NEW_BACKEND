@@ -28,6 +28,7 @@ import walletTransactionRoutes from './wallet-transaction.routes';
 import leadStageVoucherRoutes from './leadStageVoucher.routes';
 import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 import travelerRoutes from './traveler.routes';
+import visaRoutes from './visa.routes';
 
 const router = Router();
 
@@ -65,4 +66,5 @@ router.use('/wallet-transactions', walletTransactionRoutes);
 router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
 router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
 router.use('/travelers', travelerRoutes);
+router.use('/visa', visaRoutes);
 export default router;
