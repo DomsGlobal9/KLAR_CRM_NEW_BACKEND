@@ -10,9 +10,16 @@ export const getAllInsuranceReportsWithUserDetails = async (page: number = 1, li
     const insuranceBookings = await insuranceRepo.findInsuranceBookings();
     
     // SORTING FUNCTIONALITY: Sort dynamically by date descending (Latest First) before paginating
-    const sortedBookings = [...insuranceBookings].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // const sortedBookings = [...insuranceBookings].sort(
+    //     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    // );
+    const sortedBookings = [...insuranceBookings].sort((a, b) => {
+    // 1. Get numeric values safely, falling back to 0 if the field is missing
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    
+    return timeB - timeA;
+});
 
     const totalCount = sortedBookings.length; 
     

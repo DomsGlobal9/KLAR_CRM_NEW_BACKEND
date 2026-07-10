@@ -67,7 +67,7 @@ export const leadStageInvoiceController = {
         });
       }
 
-      const invoice = await leadStageInvoiceService.getInvoiceRecordById(invoice_id);
+      const invoice = await leadStageInvoiceService.getInvoiceRecordById(invoice_id as string);
 
       return res.status(200).json({
         success: true,
@@ -97,7 +97,7 @@ export const leadStageInvoiceController = {
         return res.status(400).json({ success: false, message: 'Invoice ID param token required.' });
       }
 
-      const { buffer, invoiceNumber } = await leadStageInvoiceService.generateInvoicePDFBuffer(invoice_id);
+      const { buffer, invoiceNumber } = await leadStageInvoiceService.generateInvoicePDFBuffer(invoice_id as string);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Invoice_${invoiceNumber}.pdf"`);
@@ -120,7 +120,7 @@ export const leadStageInvoiceController = {
         return res.status(400).json({ success: false, message: 'Invoice ID is required' });
       }
 
-      const result = await leadStageInvoiceService.shareAndDeliverInvoice(invoice_id, sendVia);
+      const result = await leadStageInvoiceService.shareAndDeliverInvoice(invoice_id as string, sendVia);
 
       return sendUploadResponse(res, {
         success: true,
@@ -147,7 +147,7 @@ export const leadStageInvoiceController = {
         return res.status(400).json({ success: false, message: 'Invoice identification parameter missing.' });
       }
 
-      await leadStageInvoiceService.deleteInvoiceRecord(invoice_id);
+      await leadStageInvoiceService.deleteInvoiceRecord(invoice_id as string);
 
       return res.status(200).json({
         success: true,
@@ -178,13 +178,13 @@ export const leadStageInvoiceController = {
 
       // 1. If user just wants to inspect the raw HTML template engine styling
       if (previewHtml) {
-        const html = await leadStageInvoiceService.getCompiledInvoiceHtmlString(invoice_id);
+        const html = await leadStageInvoiceService.getCompiledInvoiceHtmlString(invoice_id as string);
         res.setHeader('Content-Type', 'text/html');
         return res.status(200).send(html);
       }
 
       // 2. Default: Compile Puppeteer buffer and stream down the PDF structure
-      const { buffer, invoiceNumber } = await leadStageInvoiceService.generateInvoicePDFBuffer(invoice_id);
+      const { buffer, invoiceNumber } = await leadStageInvoiceService.generateInvoicePDFBuffer(invoice_id as string);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="Invoice_${invoiceNumber}.pdf"`);

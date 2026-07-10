@@ -80,7 +80,7 @@ export const leadStageInvoicePdfService = {
         }
 
         // Process service configurations from the service_configurations array
-        let processedServices = [];
+        let processedServices: any[] = [];
         let totalAmount = 0;
 
         if (invoice.service_configurations && Array.isArray(invoice.service_configurations)) {

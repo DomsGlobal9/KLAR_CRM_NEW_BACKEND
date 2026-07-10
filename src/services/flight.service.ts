@@ -34,8 +34,8 @@ export const getAllFlightsWithUsers = async (page: number = 1, limit: number = 1
 
     const userIds = [...new Set(
         bookings
-            .map(b => b.userInfo?.id?.toString())
-            .filter((id): id is string => id && /^[0-9a-fA-F]{24}$/.test(id))
+            .map(b => (b as any).userInfo?.id?.toString())
+            .filter((id): id is string => !!id && /^[0-9a-fA-F]{24}$/.test(id))
     )];
 
     let users: any[] = [];
@@ -165,8 +165,8 @@ export const getAllB2CFlightsWithUsers = async (page: number = 1, limit: number 
 
     const userIds = [...new Set(
         bookings
-            .map(b => b.userInfo?.id?.toString())
-            .filter((id): id is string => id && /^[0-9a-fA-F]{24}$/.test(id))
+            .map(b => (b as any).userInfo?.id?.toString())
+            .filter((id): id is string => !! id && /^[0-9a-fA-F]{24}$/.test(id))
     )];
 
     let users: any[] = [];

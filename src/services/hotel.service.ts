@@ -44,7 +44,7 @@ export const getAllB2BHotelsWithUsers = async (page: number = 1, limit: number =
     const userMap = await compileUserLookupsMap(bookings);
 
     const transformedBookings = bookings.map(booking => {
-        const agentIdStr = booking.agentId?.toString() || booking.userInfo?.id?.toString();
+        const agentIdStr = booking.agentId?.toString() || (booking as any).userInfo?.id?.toString();
         const user = agentIdStr ? userMap[agentIdStr] : null;
 
         return {
@@ -63,7 +63,7 @@ export const getSingleB2BHotelDetails = async (reservationId: string) => {
     const booking = await findHotelBookingByQuery(filter);
     if (!booking) throw new Error("B2B Hotel booking not found");
 
-    const agentIdStr = booking.agentId?.toString() || booking.userInfo?.id?.toString();
+    const agentIdStr = booking.agentId?.toString() || (booking as any).userInfo?.id?.toString();
     let userDetails = null;
 
     if (agentIdStr && /^[0-9a-fA-F]{24}$/.test(agentIdStr)) {
@@ -99,9 +99,9 @@ export const getAllB2CHotelsWithUsers = async (page: number = 1, limit: number =
     const userMap = await compileUserLookupsMap(bookings);
         console.log("hotel.service.ts -> getAllB2CHotelsWithUsers -> userMap", userMap);
     const transformedBookings = bookings.map(booking => {
-        const userIdStr = booking.userInfo?.id?.toString() || booking.agentId?.toString();
+        const userIdStr = (booking as any).userInfo?.id?.toString() || (booking as any).agentId?.toString();
         const user = userIdStr ? userMap[userIdStr] : null;
-        const isGuest = userIdStr === 'guest_user' || !booking.userInfo?.clientType;
+        const isGuest = userIdStr === 'guest_user' || (!(booking as any).userInfo?.clientType);
 
         return {
             reservationId: booking.reservationId,
@@ -119,7 +119,7 @@ export const getSingleB2CHotelDetails = async (reservationId: string) => {
     const booking = await findHotelBookingByQuery(filter);
     if (!booking) throw new Error("B2C Hotel booking not found");
 
-    const userIdStr = booking.userInfo?.id?.toString() || booking.agentId?.toString();
+    const userIdStr = (booking as any).userInfo?.id?.toString() || (booking as any).agentId?.toString();
     let userDetails = null;
 
     if (userIdStr && /^[0-9a-fA-F]{24}$/.test(userIdStr)) {
@@ -137,9 +137,9 @@ export const getSingleB2CHotelDetails = async (reservationId: string) => {
     return {
         ...booking,
         userDetails: userDetails || {
-            businessName: booking.userInfo?.id === 'guest_user' ? "Guest User" : "Individual Customer",
-            email: booking.userInfo?.email || booking.guestEmail || "N/A",
-            mobile: booking.userInfo?.phone || booking.guestMobile || "N/A"
+            businessName: (booking as any).userInfo?.id === 'guest_user' ? "Guest User" : "Individual Customer",
+            email: (booking as any).userInfo?.email || (booking as any).guestEmail || "N/A",
+            mobile: (booking as any).userInfo?.phone || (booking as any).guestMobile || "N/A"
         }
     };
 };

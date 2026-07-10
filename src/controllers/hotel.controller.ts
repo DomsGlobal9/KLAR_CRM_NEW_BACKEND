@@ -24,7 +24,7 @@ export const getSingleHotelBooking = async (req: Request, res: Response) => {
         const { reservationId } = req.params;
         if (!reservationId) return res.status(400).json({ success: false, message: "Reservation ID is required" });
 
-        const data = await getSingleB2BHotelDetails(reservationId);
+        const data = await getSingleB2BHotelDetails(reservationId as string);
         res.status(200).json({ success: true, data });
     } catch (error: any) {
         const code = error.message.includes("not found") ? 404 : 500;
@@ -50,7 +50,7 @@ export const getSingleB2CHotelBooking = async (req: Request, res: Response) => {
         const { reservationId } = req.params;
         if (!reservationId) return res.status(400).json({ success: false, message: "Reservation ID is required" });
 
-        const data = await getSingleB2CHotelDetails(reservationId);
+        const data = await getSingleB2CHotelDetails(reservationId as string);
         res.status(200).json({ success: true, data });
     } catch (error: any) {
         const code = error.message.includes("not found") ? 404 : 500;
