@@ -10,6 +10,7 @@ export class LeadDataMapper {
             email: payload.email || payload.emailAddress,
             phone: payload.phone || payload.phoneNumber,
             type: payload.type || 'travel',
+            customer_type: payload.customer_type,
             interest: payload.interest,
 
 
@@ -155,7 +156,7 @@ export class LeadDataMapper {
             'service_type', 'services', 'sub_service', 'needs_visa',
             'budget', 'travelers', 'flight_class', 'customer_category',
             'sub_category', 'company_name', 'company_address', 'company_details',
-            'gst_number', 'lead_type', 'notes'
+            'gst_number', 'lead_type', 'notes',
         ];
 
         requirementFields.forEach(field => {
@@ -287,6 +288,7 @@ export class LeadDataMapper {
             phone: lead.phone,
             type: lead.type,
             interest: lead.interest,
+            customer_type: lead.customer_type,
 
             // Status & tracking
             status: lead.status,
@@ -379,7 +381,8 @@ export class LeadDataMapper {
             'name', 'email', 'phone', 'type',
             'status', 'stage', 'assigned_to',
             'source', 'source_medium',
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
+            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+            'customer_type'
         ];
         leadFields.forEach(f => {
             if (payload[f] !== undefined) mapped[f] = payload[f];

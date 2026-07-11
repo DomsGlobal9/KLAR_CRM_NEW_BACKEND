@@ -88,6 +88,13 @@ export const leadService = {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    if (!payload.customer_type) {
+      throw new Error('Customer type is required');
+    }
+    if (!['b2b', 'corporate'].includes(payload.customer_type)) {
+      throw new Error('Invalid customer type. Must be either b2b or corporate');
+    }
+
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
 
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
@@ -114,7 +121,7 @@ export const leadService = {
    */
   async getLeadById(id: string): Promise<LeadWithRequirements> {
     const lead = await leadRepository.getLeadWithFullDetails(id);
-    
+
     if (!lead) {
       throw new Error('Lead not found');
     }

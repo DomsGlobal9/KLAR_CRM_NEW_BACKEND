@@ -407,7 +407,7 @@ export const leadRepository = {
 
         let query = supabaseAdmin
             .from('leads')
-            .select('id, name, source, stage, stage_id, assigned_to, interest')
+            .select('id, name, source, stage, stage_id, assigned_to, interest, customer_type')
             .order('created_at', { ascending: false });
 
         if (filter.currentUser?.role === 'rm' && filter.currentUser?.id) {
@@ -1012,6 +1012,7 @@ export const leadRepository = {
                 utm_campaign: leadData.utm_campaign,
                 utm_term: leadData.utm_term,
                 utm_content: leadData.utm_content,
+                customer_type: payload.customer_type || 'b2b',
                 metadata: {
                     inquiry_source: payload.inquiry_source,
                     preferred_contact_method: payload.preferred_contact_method,
@@ -1182,6 +1183,7 @@ export const leadRepository = {
                 assigned_to: payload.assigned_to,
                 source: payload.source,
                 source_medium: payload.source_medium,
+                customer_type: payload.customer_type,
                 metadata: Object.keys(metadata).length > 0 ? metadata : null,
                 updated_at: new Date().toISOString()
             })
