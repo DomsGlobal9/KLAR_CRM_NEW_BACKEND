@@ -318,6 +318,7 @@ export const itineraryPreferencesController = {
     /**
      * Get all leads with preferences (admin endpoint)
      */
+
     async getAllLeads(req: AuthRequest, res: Response) {
         try {
             const leadId = req.query.id as string;
@@ -383,22 +384,7 @@ export const itineraryPreferencesController = {
                 assignedToField: 'assigned_to'
             };
 
-            if (detailed) {
-                const paginationParams: IPaginationParams = {
-                    page: Math.max(1, page),
-                    limit: Math.min(Math.max(1, limit), 50),
-                    sort_by: 'updated_at',
-                    sort_order: sortOrder
-                };
-
-                const result = await withTimeout(
-                    itineraryPreferencesService.getAllLeads(paginationParams, roleFilter),
-                    "getAllLeads"
-                );
-
-                return res.status(200).json(result);
-            }
-
+            // Use the combined method to get both form and file-only itineraries
             const paginationParams: IPaginationParams = {
                 page: Math.max(1, page),
                 limit: Math.min(Math.max(1, limit), 100),
@@ -406,23 +392,16 @@ export const itineraryPreferencesController = {
                 sort_order: sortOrder
             };
 
-            if (minimal) {
-                const result = await withTimeout(
-                    itineraryPreferencesService.getAllLeadsMinimal(paginationParams, roleFilter),
-                    "getAllLeadsMinimal"
-                );
+            // Use the combined service method
+            const result = await withTimeout(
+                itineraryPreferencesService.getAllItinerariesCombined(paginationParams, roleFilter),
+                "getAllItinerariesCombined"
+            );
 
-                return res.status(200).json(result);
-            } else {
-                const result = await withTimeout(
-                    itineraryPreferencesService.getAllLeadsBasic(paginationParams, roleFilter),
-                    "getAllLeadsBasic"
-                );
-
-                return res.status(200).json(result);
-            }
+            return res.status(200).json(result);
 
         } catch (error: any) {
+            console.error('Error in getAllLeads:', error);
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Internal server error'
@@ -891,7 +870,3 @@ export const itineraryPreferencesController = {
         }
     },
 };
-
-
-
-
