@@ -3,7 +3,6 @@ dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
 import dotenv from 'dotenv';
 import app from './app';
-// import cronService from './services';
 
 dotenv.config();
 
@@ -13,15 +12,9 @@ const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
-/**
- * Graceful shutdown
- */
 const gracefulShutdown = () => {
     console.log('Received shutdown signal, closing gracefully...');
 
-    /**
-     * Stop all cron jobs first
-     */
     // cronService.stopAllJobs();
 
     server.close(() => {
@@ -29,9 +22,6 @@ const gracefulShutdown = () => {
         process.exit(0);
     });
 
-    /**
-     * Force close after 10 seconds
-     */
     setTimeout(() => {
         console.error('Could not close connections in time, forcefully shutting down');
         process.exit(1);
