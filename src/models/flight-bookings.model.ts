@@ -9,6 +9,7 @@ export interface UserInfo {
     email: string;
     role: string;
     clientType: string;
+    type?: 'guest' | 'registered';
 }
 
 export interface SSRInfo {
@@ -185,7 +186,6 @@ const BookingSchema = new Schema<BookingDocument>(
 
 
 export const getBookingModel = () => {
-    // Ensure this uses the same "b2b" (or whichever DB holds the bookings) as before
     const conn = getDB("b2b"); 
     return conn.model<BookingDocument>("Booking", BookingSchema, "bookings");
 };

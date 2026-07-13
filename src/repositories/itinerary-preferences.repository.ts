@@ -1287,6 +1287,7 @@ export const itineraryPreferencesRepository = {
         sort_order?: 'asc' | 'desc';
     }, roleFilter?: IRoleFilter): Promise<{
         leads: Array<{
+            is_file_only: any;
             lead_id: string;
             itinerary_id: string;
             lead_details: {
@@ -1465,6 +1466,7 @@ export const itineraryPreferencesRepository = {
                 return {
                     lead_id: leadId,
                     itinerary_id: itineraryId,
+                    is_file_only: false,
                     lead_details: {
                         name: leadDetails.name,
                         email: leadDetails.email,
@@ -2185,4 +2187,215 @@ export const itineraryPreferencesRepository = {
 
         return data;
     },
+
+
+    /**
+     * Get all file-only itineraries with pagination
+     */
+
+
+    async getAllFileOnlyItineraries(params?: {
+        page?: number;
+        limit?: number;
+        sort_by?: string;
+        sort_order?: 'asc' | 'desc';
+    }, roleFilter?: IRoleFilter): Promise<{
+        leads: Array<{
+            lead_id: string;
+            itinerary_id: string;
+            lead_details: {
+                name: string;
+                email: string;
+                phone: string;
+                status: string;
+            };
+            services: Array<{
+                service_id: string;
+                service_name: string;
+                service_code: string;
+                categories: Array<{
+                    category_id: string;
+                    category_name: string;
+                    sub_services: Array<{
+                        sub_service_id: string;
+                        sub_service_name: string;
+                    }>;
+                }>;
+            }>;
+            summary: {
+                flight_preferences_added: boolean;
+                hotel_preferences_added: boolean;
+                visa_preferences_added: boolean;
+                last_updated: string;
+                status: string;
+            };
+            created_at: string;
+            is_file_only: boolean;
+        }>;
+        total_count: number;
+        page: number;
+        limit: number;
+        total_pages: number;
+    }> {
+        try {
+            const page = params?.page || 1;
+            const limit = params?.limit || 50;
+            const sortBy = params?.sort_by || 'created_at';
+            const sortOrder = params?.sort_order || 'desc';
+
+            // ✅ FIX: Use correct column names from your user_itinerary_files table
+            // Based on your code, the table has: id, lead_id, metadata, created_at, updated_at
+            // The file URLs are stored inside metadata.files
+            let query = supabaseAdmin
+                .from('user_itinerary_files')
+                .select(`
+                id,
+                lead_id,
+                metadata,
+                created_at,
+                updated_at,
+                leads:lead_id (
+                    id,
+                    name,
+                    email,
+                    phone,
+                    status,
+                    created_at
+                )
+            `, { count: 'exact' })  // ❌ REMOVED: file_urls
+                .order(sortBy, { ascending: sortOrder === 'asc' });
+
+            if (roleFilter?.role === 'rm' && roleFilter?.userId) {
+                query = query.eq('leads.assigned_to', roleFilter.userId);
+            }
+
+            const { data: fileItineraries, error: fileError, count } = await query
+                .range((page - 1) * limit, page * limit - 1);
+
+            if (fileError) {
+                console.error('Error fetching file-only itineraries:', fileError);
+                return {
+                    leads: [],
+                    total_count: 0,
+                    page,
+                    limit,
+                    total_pages: 0
+                };
+            }
+
+            if (!fileItineraries || fileItineraries.length === 0) {
+                return {
+                    leads: [],
+                    total_count: count || 0,
+                    page,
+                    limit,
+                    total_pages: Math.ceil((count || 0) / limit)
+                };
+            }
+
+            const leads = fileItineraries.map((item: any) => {
+                const leadDetails = item.leads;
+                const metadata = item.metadata || {};
+
+                const services: any[] = [];
+
+                // ✅ FIX: Extract files from metadata
+                // The files are stored in metadata.files (from your createFileOnlyItinerary)
+                if (metadata.files && typeof metadata.files === 'object') {
+                    Object.entries(metadata.files).forEach(([serviceType, files]: [string, any]) => {
+                        if (Array.isArray(files) && files.length > 0) {
+                            const serviceNameMap: Record<string, string> = {
+                                'flight': 'Flights',
+                                'hotel': 'Hotels',
+                                'visa': 'Visa',
+                                'transfer': 'Transfers',
+                                'group-booking': 'Group Bookings',
+                                'tour-package': 'Tour Packages',
+                                'aircraft-charter': 'Aircraft Charter',
+                                'event-management': 'Event Management',
+                                'yacht-charter': 'Yacht Charter',
+                                'documents': 'Documents'
+                            };
+
+                            const serviceName = serviceNameMap[serviceType] || serviceType;
+
+                            services.push({
+                                service_id: `file-${serviceType}-${item.id}`,
+                                service_name: serviceName,
+                                service_code: serviceType,
+                                is_file_service: true,
+                                categories: [{
+                                    category_id: `file-cat-${serviceType}`,
+                                    category_name: `${files.length} file(s) uploaded`,
+                                    sub_services: files.map((file: any, index: number) => ({
+                                        sub_service_id: `file-${item.id}-${serviceType}-${index}`,
+                                        sub_service_name: file.name || `File ${index + 1}`
+                                    }))
+                                }]
+                            });
+                        }
+                    });
+                } else {
+                    // Fallback: If no files in metadata, try to extract from other fields
+                    // Check if there are any file URLs in the metadata
+                    const fileUrls = metadata.fileUrls || metadata.urls || [];
+                    if (fileUrls.length > 0) {
+                        services.push({
+                            service_id: `file-documents-${item.id}`,
+                            service_name: 'Documents',
+                            service_code: 'documents',
+                            is_file_service: true,
+                            categories: [{
+                                category_id: `file-cat-documents`,
+                                category_name: `${fileUrls.length} file(s) uploaded`,
+                                sub_services: fileUrls.map((url: string, index: number) => ({
+                                    sub_service_id: `file-${item.id}-doc-${index}`,
+                                    sub_service_name: `File ${index + 1}`
+                                }))
+                            }]
+                        });
+                    }
+                }
+
+                return {
+                    lead_id: item.lead_id,
+                    itinerary_id: item.id,
+                    lead_details: {
+                        name: leadDetails?.name || 'Unknown',
+                        email: leadDetails?.email || '',
+                        phone: leadDetails?.phone || '',
+                        status: leadDetails?.status || 'active'
+                    },
+                    services: services,
+                    summary: {
+                        flight_preferences_added: false,
+                        hotel_preferences_added: false,
+                        visa_preferences_added: false,
+                        last_updated: item.updated_at || item.created_at,
+                        status: 'Itinerary_Created'
+                    },
+                    created_at: item.created_at,
+                    is_file_only: true
+                };
+            });
+
+            return {
+                leads,
+                total_count: count || 0,
+                page,
+                limit,
+                total_pages: Math.ceil((count || 0) / limit)
+            };
+
+        } catch (error) {
+            console.error('Error in getAllFileOnlyItineraries:', error);
+            return {
+                leads: [],
+                total_count: 0,
+                page: params?.page || 1,
+                limit: params?.limit || 50,
+                total_pages: 0
+            };
+        }
+    }
 };

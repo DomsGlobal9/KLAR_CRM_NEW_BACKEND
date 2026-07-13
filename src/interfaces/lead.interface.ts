@@ -79,6 +79,7 @@ export interface CreateLeadPayload {
     phone: string;
     type: 'event' | 'travel' | 'visa' | 'other';
     interest: 'event' | 'travel' | 'visa' | 'other';
+    customer_type?: 'b2b' | 'corporate'; 
 
     // Optional Primary Details
     source?: string;
@@ -149,6 +150,7 @@ export interface UpdateLeadPayload {
     phone?: string;
     type?: 'event' | 'travel' | 'visa' | 'other';
     status?: 'active' | 'inactive' | 'converted';
+    customer_type?: 'b2b' | 'corporate';
     stageId?: string;
     stage?: string;
     assigned_to?: string;
@@ -230,6 +232,7 @@ export interface LeadStats {
 export interface LeadWithRequirements extends Lead {
     requirements?: LeadRequirements;
     service_relationships?: LeadServiceRelationship[];
+    customer_type?: 'b2b' | 'corporate';
     assigned_user?: {
         id: string;
         email: string;

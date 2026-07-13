@@ -100,3 +100,6 @@ export {
     IInvoice,
     ILineItem
  } from './invoice.interface';
+
+
+ export * from "./leadStageVoucher.interface";

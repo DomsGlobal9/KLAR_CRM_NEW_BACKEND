@@ -18,9 +18,9 @@ export const AuthService = {
         }
 
         const { data: existingUsers } = await AuthRepository.listUsers();
-        if (existingUsers.users.length > 5) {
-            throw new Error('Registration is closed. Superadmin already exists.');
-        }
+        // if (existingUsers.users.length > 7) {
+        //     throw new Error('Registration is closed. Superadmin already exists.');
+        // }
 
         const role = await roleRepository.getRoleByIdOrName({ name: 'superadmin' });
         if (!role) {

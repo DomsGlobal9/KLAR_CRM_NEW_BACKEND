@@ -30,6 +30,7 @@ export interface IEmergencyContact {
 
 export interface ITraveler {
     id: string;
+    group_id: string; 
     title?: Title;
     travelerName?: string;
     travelerPhone?: string;
@@ -51,6 +52,7 @@ export interface CreateTravelerPayload {
     passport?: IPassport;
     gst?: IGST;
     emergencyContact?: IEmergencyContact;
+    group_id?: string; 
 }
 
 export interface UpdateTravelerPayload {
@@ -95,4 +97,13 @@ export interface AdvancedTravelerFilter {
         page: number;
         limit: number;
     };
+}
+
+export interface ITravelerGroup {
+    id: string;
+    group_id: string; 
+    primary_email?: string;
+    primary_phone?: string;
+    created_at: Date;
+    updated_at: Date;
 }

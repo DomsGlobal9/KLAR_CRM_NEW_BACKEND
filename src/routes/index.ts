@@ -23,7 +23,12 @@ import hotel from "./hotel.routes"
 import paymentRoutes from './paymentTracking.routes';
 import insuranceRoutes from "./insurance.routes"
 import cabsRoutes from "./cabs-routing.routes"
+import voucherRoutes from './voucher.routes';
+import walletTransactionRoutes from './wallet-transaction.routes';
+import leadStageVoucherRoutes from './leadStageVoucher.routes';
+import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 import travelerRoutes from './traveler.routes';
+import visaRoutes from './visa.routes';
 
 const router = Router();
 
@@ -48,7 +53,7 @@ router.use('/itinerary-preferences', itenaryUserPreference);
 router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
-router.use("/set-reminder", setReminder)
+router.use("/set-reminder", setReminder);
 
 
 router.use("/flights", flight)
@@ -56,5 +61,10 @@ router.use("/hotel", hotel)
 router.use('/payment', paymentRoutes);
 router.use("/insurance", insuranceRoutes)
 router.use("/cabs", cabsRoutes)
+router.use('/voucher', voucherRoutes);
+router.use('/wallet-transactions', walletTransactionRoutes);
+router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
+router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
 router.use('/travelers', travelerRoutes);
+router.use('/visa', visaRoutes);
 export default router;

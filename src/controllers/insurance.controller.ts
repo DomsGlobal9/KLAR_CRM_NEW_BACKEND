@@ -3,8 +3,17 @@ import * as insuranceService from "../services/insurance.service";
 
 export const getInsuranceBookingReport = async (req: Request, res: Response) => {
     try {
-        const data = await insuranceService.getAllInsuranceReportsWithUserDetails();
-        res.status(200).json({ success: true, data });
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+
+        const { bookings, pagination } = await insuranceService.getAllInsuranceReportsWithUserDetails(page, limit);
+        
+        res.status(200).json({ 
+            success: true, 
+            count: Array.isArray(bookings) ? bookings.length : 0,
+            data: bookings, 
+            pagination 
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }

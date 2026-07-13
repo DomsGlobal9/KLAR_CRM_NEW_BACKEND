@@ -34,7 +34,7 @@ export const travelerRepository = {
             throw new Error(`Failed to fetch traveler: ${error.message}`);
         }
 
-        return data as ITraveler || null;
+        return data ? this.mapDatabaseToInterface(data) : null;
     },
 
     async getTravelerByPhone(phone: string): Promise<ITraveler | null> {
@@ -63,6 +63,15 @@ export const travelerRepository = {
         if (payload.passport) insertData.passport = payload.passport;
         if (payload.gst) insertData.gst = payload.gst;
         if (payload.emergencyContact) insertData.emergency_contact = payload.emergencyContact;
+
+        // Set group_id
+        if (payload.group_id) {
+            insertData.group_id = payload.group_id;
+        } else {
+            // This should be handled in service before calling repository
+            throw new Error('group_id is required');
+        }
+
 
         const { data, error } = await supabaseAdmin
             .from('travelers')
@@ -437,9 +446,77 @@ export const travelerRepository = {
         return results;
     },
 
+    // NEW METHOD: Find group by email or phone
+    async findGroupByEmailOrPhone(email?: string, phone?: string): Promise<string | null> {
+        if (!email && !phone) return null;
+
+        let query = supabaseAdmin
+            .from('travelers')
+            .select('group_id')
+            .limit(1);
+
+        if (email) {
+            query = query.eq('traveler_email', email);
+        } else if (phone) {
+            query = query.eq('traveler_phone', phone);
+        }
+
+        const { data, error } = await query;
+
+        if (error || !data || data.length === 0) {
+            return null;
+        }
+
+        return data[0].group_id;
+    },
+
+    // NEW METHOD: Find or create group
+    async findOrCreateGroup(email?: string, phone?: string): Promise<string> {
+        // First, try to find existing group by email or phone
+        if (email || phone) {
+            let query = supabaseAdmin
+                .from('travelers')
+                .select('group_id')
+                .limit(1);
+
+            if (email) {
+                query = query.eq('traveler_email', email);
+            } else if (phone) {
+                query = query.eq('traveler_phone', phone);
+            }
+
+            const { data, error } = await query;
+
+            if (!error && data && data.length > 0) {
+                return data[0].group_id;
+            }
+        }
+
+        // If no existing group found, create a new group ID
+        const groupId = `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return groupId;
+    },
+
+    // NEW METHOD: Get travelers by group
+    async getTravelersByGroup(groupId: string): Promise<ITraveler[]> {
+        const { data, error } = await supabaseAdmin
+            .from('travelers')
+            .select('*')
+            .eq('group_id', groupId)
+            .order('is_primary', { ascending: false });
+
+        if (error) {
+            throw new Error(`Failed to fetch travelers by group: ${error.message}`);
+        }
+
+        return data.map((row: any) => this.mapDatabaseToInterface(row));
+    },
+
+    // UPDATED: mapDatabaseToInterface with group_id and is_primary
     mapDatabaseToInterface(data: any): ITraveler {
         return {
             id: data.id,
+            group_id: data.group_id,
             title: data.title,
             travelerName: data.traveler_name,
             travelerPhone: data.traveler_phone,
