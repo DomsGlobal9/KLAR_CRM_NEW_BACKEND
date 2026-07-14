@@ -14,8 +14,7 @@
     ]
   },
   "include": [
-    "src",
-    "drizzle.config.ts"  
+    "src"  
   ],
   "exclude": [
     "node_modules",
