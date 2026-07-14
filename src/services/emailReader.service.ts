@@ -38,22 +38,6 @@ export class EmailReaderService {
         console.log('✅ IMAP Connected');
     }
 
-    // async connect(): Promise<void> {
-    //     try {
-    //         if (this.isConnected) return;
-
-    //         await this.client.connect();
-    //         await this.client.mailboxOpen('INBOX');
-    //         this.isConnected = true;
-
-    //         this.startKeepAlive();
-    //     } catch (error) {
-    //         console.error('IMAP connection error:', error);
-    //         this.isConnected = false;
-    //         setTimeout(() => this.connect(), 5000);
-    //     }
-    // }
-
     private startKeepAlive(): void {
         if (this.reconnectTimer) clearInterval(this.reconnectTimer);
         this.reconnectTimer = setInterval(async () => {
