@@ -11,7 +11,7 @@ import connectDB from './config/mongodbDatabase.config';
 const app = express();
 
 app.use(helmet());
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 app.use(express.json());
 app.use(cors(corsOptions));
 

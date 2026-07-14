@@ -28,20 +28,31 @@ export class EmailReaderService {
     }
 
     async connect(): Promise<void> {
-        try {
-            if (this.isConnected) return;
+        if (this.isConnected) return;
 
-            await this.client.connect();
-            await this.client.mailboxOpen('INBOX');
-            this.isConnected = true;
+        await this.client.connect();
+        await this.client.mailboxOpen('INBOX');
 
-            this.startKeepAlive();
-        } catch (error) {
-            console.error('IMAP connection error:', error);
-            this.isConnected = false;
-            setTimeout(() => this.connect(), 5000);
-        }
+        this.isConnected = true;
+
+        console.log('✅ IMAP Connected');
     }
+
+    // async connect(): Promise<void> {
+    //     try {
+    //         if (this.isConnected) return;
+
+    //         await this.client.connect();
+    //         await this.client.mailboxOpen('INBOX');
+    //         this.isConnected = true;
+
+    //         this.startKeepAlive();
+    //     } catch (error) {
+    //         console.error('IMAP connection error:', error);
+    //         this.isConnected = false;
+    //         setTimeout(() => this.connect(), 5000);
+    //     }
+    // }
 
     private startKeepAlive(): void {
         if (this.reconnectTimer) clearInterval(this.reconnectTimer);
@@ -181,6 +192,30 @@ export class EmailReaderService {
         } catch (error) {
             console.error('Fatal error in readEmails():', error);
             this.isConnected = false;
+        }
+    }
+
+    public async start(): Promise<void> {
+        while (true) {
+            try {
+                if (!this.isConnected) {
+                    await this.connect();
+                }
+
+                console.log('📨 Waiting for new emails...');
+
+                while (this.isConnected) {
+
+                    await this.client.idle();
+
+                    await this.readEmails();
+                }
+            } catch (err) {
+                console.error('IDLE Error:', err);
+                this.isConnected = false;
+
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
         }
     }
 
