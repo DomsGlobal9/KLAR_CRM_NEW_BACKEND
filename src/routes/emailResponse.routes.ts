@@ -4,6 +4,13 @@ import { emailResponseController } from '../controllers/emailResponse.controller
 
 const router = express.Router();
 
+
+/**
+ * Get all emails (both incoming and outgoing)
+ */
+router.get('/all', authenticate, emailResponseController.getAllEmails);
+
+
 /**
  * Get all email logs with optional filters
  */

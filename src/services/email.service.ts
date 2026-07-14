@@ -1,8 +1,10 @@
 import { envConfig } from '../config';
 import { mailConfig, MailOptions } from '../config/mail.config';
 import { supabase } from '../config/supabase.config';
+import { emailMessageRepository } from '../repositories/email-message.repository';
 import { emailRepository } from '../repositories/email.repository';
 import { v4 as uuidv4 } from 'uuid';
+
 
 
 export interface SendEmailPayload {
@@ -39,9 +41,6 @@ export interface BulkEmailPayload {
 }
 
 export class EmailService {
-    /**
-     * Send a single email
-     */
     async sendEmail(payload: SendEmailPayload): Promise<EmailResponse> {
         try {
             if (!payload.to) {
@@ -64,25 +63,15 @@ export class EmailService {
             const uniqueCc = processRecipients(payload.cc);
             const uniqueBcc = processRecipients(payload.bcc);
 
-            /**
-             * 🔥 STEP 1: Generate trackingId
-             */
             const trackingId = payload.trackingId || uuidv4();
 
-            /**
-             * 🔥 STEP 2: Build subject with tracking
-             */
             let finalSubject = payload.subject;
-
             finalSubject += ` [TID:${trackingId}]`;
 
             if (payload.leadId) {
                 finalSubject += ` [LEAD_ID:${payload.leadId}]`;
             }
 
-            /**
-             * 🔥 STEP 3: Send email with headers
-             */
             const result = await mailConfig.sendMail({
                 from: process.env.SMTP_FROM || envConfig.SMTP_USER,
                 to: uniqueTo,
@@ -101,16 +90,24 @@ export class EmailService {
                     : undefined,
             });
 
-            /**
-             * 🔥 STEP 4: Store email log
-             */
-            // await emailRepository.createEmailLog({
-            //     tracking_id: trackingId,
-            //     lead_id: payload.leadId || null,
-            //     message_id: result.messageId,
-            //     to_email: uniqueTo,
-            //     subject: finalSubject,
-            // });
+            await emailMessageRepository.createEmailMessage({
+                tracking_id: trackingId,
+                parent_tracking_id: null,
+                message_id: result.messageId,
+                in_reply_to: null,
+                direction: 'outgoing',
+                from_email: process.env.SMTP_FROM || envConfig.SMTP_USER,
+                to_email: uniqueTo,
+                cc_email: uniqueCc.length > 0 ? uniqueCc : null,
+                bcc_email: uniqueBcc.length > 0 ? uniqueBcc : null,
+                subject: finalSubject,
+                body: payload.text || null,
+                html_body: payload.html || null,
+                status: 'sent',
+                lead_id: payload.leadId || null,
+                raw_headers: null,
+                error: null,
+            });
 
             return {
                 success: true,
@@ -127,9 +124,6 @@ export class EmailService {
         }
     }
 
-    /**
-     * Send bulk emails
-     */
     async sendBulkEmails(payload: BulkEmailPayload): Promise<{
         success: boolean;
         results: Array<{ email: SendEmailPayload; response: EmailResponse }>;
@@ -150,7 +144,6 @@ export class EmailService {
                 failed++;
             }
 
-            // Small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
@@ -162,9 +155,6 @@ export class EmailService {
         };
     }
 
-    /**
-     * Send a test email
-     */
     async sendTestEmail(to?: string): Promise<EmailResponse> {
         try {
             const testPayload: SendEmailPayload = {
@@ -194,9 +184,6 @@ export class EmailService {
         }
     }
 
-    /**
-     * Validate email addresses
-     */
     validateEmailAddresses(emails: string | string[]): { valid: string[]; invalid: string[] } {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const emailArray = Array.isArray(emails) ? emails : [emails];
@@ -215,9 +202,6 @@ export class EmailService {
         return { valid, invalid };
     }
 
-    /**
-     * Get service status
-     */
     async getServiceStatus(): Promise<{
         status: 'healthy' | 'degraded' | 'unhealthy';
         message: string;
@@ -230,7 +214,6 @@ export class EmailService {
         };
     }> {
         try {
-            // Test SMTP connection
             await mailConfig.getTransporter().verify();
 
             return {

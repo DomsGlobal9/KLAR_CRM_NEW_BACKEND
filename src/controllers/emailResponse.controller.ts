@@ -166,5 +166,42 @@ export const emailResponseController = {
                 error: error.message 
             });
         }
-    }
+    },
+
+    async getAllEmails(req: Request, res: Response) {
+        try {
+            const {
+                page = 1,
+                limit = 20,
+                leadId,
+                status,
+                trackingId,
+                direction,
+                startDate,
+                endDate
+            } = req.query;
+
+            const result = await emailResponseService.getAllEmails({
+                page: Number(page),
+                limit: Number(limit),
+                leadId: leadId as string,
+                status: status as string,
+                trackingId: trackingId as string,
+                direction: direction as 'incoming' | 'outgoing' | undefined,
+                startDate: startDate as string,
+                endDate: endDate as string
+            });
+
+            res.json({
+                success: true,
+                message: 'Emails fetched successfully',
+                ...result
+            });
+        } catch (error: any) {
+            res.status(500).json({ 
+                success: false, 
+                error: error.message 
+            });
+        }
+    },
 };
