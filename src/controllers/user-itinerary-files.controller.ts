@@ -3,6 +3,9 @@ import { supabaseAdmin } from '../config';
 import { userItineraryFilesService } from '../services/user-itinerary-files.service';
 import { fileUploadService } from '../services/file-upload.service';
 import { AuthRequest } from '../middleware';
+import { processPDFDelivery } from '../helpers/pdfDelivery.helper';
+import { s3UploadService } from '../services/s3-upload.service';
+import { itineraryPdfService } from '../services/itinerary-pdf.service';
 
 export const userItineraryFilesController = {
 
@@ -550,6 +553,136 @@ async uploadImageFile(req: Request, res: Response) {
         return res.status(500).json({ 
             success: false, 
             error: error.message 
+        });
+    }
+},
+
+/**
+ * Send file-only itinerary PDF via WhatsApp/Email
+ */
+async sendFileItineraryPDF(req: Request, res: Response) {
+    try {
+        const { itineraryId } = req.params;
+        const { sendVia } = req.body;
+
+        console.log('Sending file itinerary PDF:', { itineraryId, sendVia });
+
+        // 1. Get file itinerary with lead details
+        const { data: fileRecord, error: fileError } = await supabaseAdmin
+            .from('user_itinerary_files')
+            .select('*, lead:lead_id(*)')
+            .eq('id', itineraryId)
+            .single();
+
+        if (fileError || !fileRecord) {
+            return res.status(404).json({
+                success: false,
+                message: 'File itinerary not found'
+            });
+        }
+
+        const leadData = fileRecord.lead;
+        if (!leadData) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found'
+            });
+        }
+
+        // 2. Get uploaded files from metadata
+        const uploadedFiles = fileRecord.metadata?.attachment_urls || fileRecord.files || {};
+        
+        // 3. Build HTML content
+        const clientName = leadData.name || 'Client';
+        const fileName = `itinerary_${fileRecord.lead_id}_${clientName}.pdf`;
+
+        // Build file list HTML
+        let filesHtml = '';
+        Object.entries(uploadedFiles).forEach(([serviceType, files]: [string, any]) => {
+            if (Array.isArray(files) && files.length > 0) {
+                const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1).toLowerCase();
+                filesHtml += `<h3>${serviceName} (${files.length} files)</h3><ul>`;
+                files.forEach((file: any) => {
+                    filesHtml += `<li>${file.name || 'File'} - <a href="${file.url}">View File</a></li>`;
+                });
+                filesHtml += '</ul>';
+            }
+        });
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; }
+                    h1 { color: #1a56db; }
+                    .header { border-bottom: 2px solid #1a56db; padding-bottom: 10px; margin-bottom: 20px; }
+                    .client-info { background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+                    .files-section { margin-top: 20px; }
+                    .file-item { padding: 10px; border-bottom: 1px solid #e5e7eb; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>📄 File Itinerary</h1>
+                    <p>Generated on: ${new Date().toLocaleDateString()}</p>
+                </div>
+                <div class="client-info">
+                    <h3>Client Details</h3>
+                    <p><strong>Name:</strong> ${leadData.name || 'N/A'}</p>
+                    <p><strong>Email:</strong> ${leadData.email || 'N/A'}</p>
+                    <p><strong>Phone:</strong> ${leadData.phone || 'N/A'}</p>
+                </div>
+                <div class="files-section">
+                    <h2>Uploaded Files</h2>
+                    ${filesHtml || '<p>No files found</p>'}
+                </div>
+            </body>
+            </html>
+        `;
+
+        // 4. Generate PDF
+        const pdfBuffer = await itineraryPdfService.generateBuffer(htmlContent);
+        
+        // 5. Upload to S3
+        const pdfUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
+        
+        console.log('PDF uploaded to S3:', pdfUrl);
+
+        // 6. Update status to 'Itinerary_send'
+        await supabaseAdmin
+            .from('user_itinerary_files')
+            .update({ 
+                status: 'Itinerary_send',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', itineraryId);
+
+        // 7. Send via WhatsApp/Email
+        const deliveryOptions = {
+            leadId: fileRecord.lead_id,
+            clientName: clientName,
+            clientEmail: leadData.email || '',
+            clientPhone: leadData.phone || '',
+            pdfUrl: pdfUrl,
+            pdfFileName: fileName,
+            htmlContent: htmlContent
+        };
+
+        const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
+
+        return res.status(200).json({
+            success: true,
+            message: 'File itinerary PDF sent successfully',
+            delivery: deliveryResult,
+            pdfUrl: pdfUrl
+        });
+
+    } catch (error: any) {
+        console.error('Error sending file itinerary PDF:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to send file itinerary PDF'
         });
     }
 }

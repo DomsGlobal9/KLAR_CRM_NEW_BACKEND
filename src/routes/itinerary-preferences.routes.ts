@@ -53,6 +53,8 @@ router.post('/save-file-urls', userItineraryFilesController.saveUploadedFileUrls
 router.post('/upload-pdf', upload.single('file'), userItineraryFilesController.uploadPdfFile);
 router.post('/upload-image', upload.single('file'), userItineraryFilesController.uploadImageFile);
 
-
+router.post('/file-only/:itineraryId/share-itinerary', 
+    userItineraryFilesController.sendFileItineraryPDF
+);
 
 export default router;
