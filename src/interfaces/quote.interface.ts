@@ -1,4 +1,5 @@
 export interface IQuote {
+    itinerary_type: string;
     id: string;
     quote_number: string;
     lead_id?: string | null;
@@ -85,7 +86,26 @@ export interface ICreateQuoteDTO {
     client_name?: string;
     client_email?: string;
     client_phone?: string;
-    status?: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+    status?: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'Quote_Generated' | 'Quote_Sent';
+
+    itinerary_type?: 'form' | 'file';
+
+    itinerary_id?: string | null;
+    lead_id?: string | null;
+    currency?: string;
+    subtotal?: number;
+    tax_amount?: number;
+    total?: number;
+    final_amount?: number;
+    initial_amount?: number;
+    line_items?: IQuoteLineItem[];
+    validity_days?: number;
+    valid_until?: Date | string;
+    notes?: string | null;
+    terms_conditions?: string | null;
+    services_included?: string[] | null;
+    meta?: Record<string, any> | null;
+    gst_number?: string | null;
 
     // Add new fields for frontend structure
     lead?: {
@@ -157,6 +177,8 @@ export interface IUpdateQuoteDTO {
 
     itinerary_details?: Record<string, any>;
     service_counts?: Record<string, number>;
+
+    itinerary_type?: 'form' | 'file';
 
     metadata?: Record<string, any>;
 }
