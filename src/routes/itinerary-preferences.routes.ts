@@ -44,33 +44,14 @@ router.get('/:itinerary_id/download-itinerary', itineraryPreferencesController.d
  * Uploads to S3 and returns the URL for sharing
  */
 router.post('/:itinerary_id/share-itinerary', itineraryPreferencesController.uploadItineraryToS3);
-
-
-router.post('/upload-pdf', upload.single('file'), itineraryPreferencesController.uploadPdfFile);
-router.post('/upload-image', upload.single('file'), itineraryPreferencesController.uploadImageFile);
-
-router.post('/upload-multiple', upload.array('files', 10), itineraryPreferencesController.uploadMultipleFiles);
-router.post('/save-file-urls', itineraryPreferencesController.saveUploadedFileUrls);
-
-// Create file-only itinerary
-router.post('/file-only/:leadId',
-   itineraryPreferencesController.createFileOnlyItinerary
-);
-
-// Get file-only itinerary
-router.get('/file-only/:leadId',
-   itineraryPreferencesController.getFileOnlyItinerary
-);
-
-// Check if file-only itinerary exists
-router.get('/file-only/:leadId/check',
-   itineraryPreferencesController.checkFileOnlyItinerary
-);
-
-// Delete file-only itinerary
-router.delete('/file-only/:leadId',
-   itineraryPreferencesController.deleteFileOnlyItinerary
-);
+router.get('/file-only/:leadId', userItineraryFilesController.getFileOnlyItinerary);
+router.get('/file-only/:leadId/check', userItineraryFilesController.checkFileOnlyItinerary);
+router.post('/file-only/:leadId', userItineraryFilesController.createFileOnlyItinerary);
+router.delete('/file-only/:leadId', userItineraryFilesController.deleteFileOnlyItinerary);
+router.post('/upload-multiple', upload.array('files', 10), userItineraryFilesController.uploadMultipleFiles);
+router.post('/save-file-urls', userItineraryFilesController.saveUploadedFileUrls);
+router.post('/upload-pdf', upload.single('file'), userItineraryFilesController.uploadPdfFile);
+router.post('/upload-image', upload.single('file'), userItineraryFilesController.uploadImageFile);
 
 
 
