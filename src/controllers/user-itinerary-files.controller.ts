@@ -87,7 +87,7 @@ export const userItineraryFilesController = {
                         visa_preferences_added: false,
                         last_updated: item.updated_at || item.created_at,
                     },
-                    services: servicesArray,  // ← ADD THIS LINE
+                    services: servicesArray,  
                     created_at: item.created_at,
                 };
             });
