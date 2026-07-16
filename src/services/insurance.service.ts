@@ -1,31 +1,40 @@
 import * as insuranceRepo from "../repositories/insurance.repository";
 import { getUserModel } from "../models/auth.models";
 
-export const getAllInsuranceReportsWithUserDetails = async (page: number = 1, limit: number = 10) => {
+/**
+ * Fetch paginated insurance reports hydration with user profile context records
+ */
+export const getAllInsuranceReportsWithUserDetails = async (
+    page: number = 1, 
+    limit: number = 10,
+    portalType: "b2b" | "b2c"
+) => {
     const UserModel = getUserModel();
-    
     const skip = (page - 1) * limit;
     
-    // 1. Fetch all insurance bookings from the database
-    const insuranceBookings = await insuranceRepo.findInsuranceBookings();
+    // Inclusive fallback query matrix to prevent losing historical or un-hydrated records
+    const queryFilter = portalType === "b2b" 
+        ? { "tjBookPayload.source": "B2B_PORTAL" }
+        : {
+            $or: [
+                { "tjBookPayload.source": "B2C_PORTAL" },
+                { "agentId": "guest_user" },
+                { "userId": "guest_user" },
+                { "tjBookPayload.source": { $exists: false } } 
+            ]
+          };
     
-    // SORTING FUNCTIONALITY: Sort dynamically by date descending (Latest First) before paginating
-    // const sortedBookings = [...insuranceBookings].sort(
-    //     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    // );
+    const insuranceBookings = await insuranceRepo.findInsuranceBookings(queryFilter);
+    
+    // Sort documents safely by date descending
     const sortedBookings = [...insuranceBookings].sort((a, b) => {
-    // 1. Get numeric values safely, falling back to 0 if the field is missing
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    
-    return timeB - timeA;
-});
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        return timeB - timeA;
+    });
 
     const totalCount = sortedBookings.length; 
-    
-    // Extract the precise page window slice from sorted data
     const paginatedBookings = sortedBookings.slice(skip, skip + limit);
-
     const totalPages = Math.ceil(totalCount / limit) || 1;
 
     const paginationMetadata = {
@@ -35,20 +44,22 @@ export const getAllInsuranceReportsWithUserDetails = async (page: number = 1, li
         rowsPerPage: limit
     };
 
-    // 2. Extract unique agentIds
+    // Extract unique matching hexadecimal pattern IDs safely
     const agentIds = [...new Set(
         paginatedBookings
-            .map(b => b.agentId?.toString())
-            .filter((id): id is string => Boolean(id))
+            .map(b => b.agentId?.toString() || b.userId?.toString())
+            .filter((id): id is string => 
+                Boolean(id) && 
+                id !== 'guest_user' && 
+                /^[0-9a-fA-F]{24}$/.test(id as any)
+            )
     )];
 
-    // 3. Fetch matching users from database
     let users: any[] = [];
     if (agentIds.length > 0) {
         users = await UserModel.find({ _id: { $in: agentIds } }).lean();
     }
 
-    // 4. Create lookup map
     const userMap = users.reduce((acc: any, user: any) => {
         if (user?._id) {
             acc[user._id.toString()] = user;
@@ -56,12 +67,24 @@ export const getAllInsuranceReportsWithUserDetails = async (page: number = 1, li
         return acc;
     }, {});
 
-    // 5. Merge data
+    // Hydrate the matching records array cleanly
     const mergedData = paginatedBookings.map(booking => {
-        const agentIdStr = booking.agentId?.toString();
+        const userIdStr = booking.agentId?.toString() || booking.userId?.toString();
+        
+        let defaultUserDetails = null;
+        if (userIdStr === 'guest_user' || !userIdStr || !/^[0-9a-fA-F]{24}$/.test(userIdStr)) {
+            defaultUserDetails = {
+                businessProfile: {
+                    businessName: "Individual Customer"
+                },
+                email: booking.userName || booking.agentName || "Guest",
+                clientType: "b2c"
+            };
+        }
+
         return {
             ...booking,
-            userDetails: agentIdStr ? (userMap[agentIdStr] || null) : null
+            userDetails: (userIdStr && userMap[userIdStr]) ? userMap[userIdStr] : defaultUserDetails
         };
     });
 
@@ -71,19 +94,48 @@ export const getAllInsuranceReportsWithUserDetails = async (page: number = 1, li
     };
 };
 
-export const getSingleInsuranceBookingDetails = async (bookingId: string) => {
+/**
+ * Fetch a single insurance booking's detailed trace information
+ */
+export const getSingleInsuranceBookingDetails = async (bookingId: string, portalType: "b2b" | "b2c") => {
     const UserModel = getUserModel();
-    const booking = await insuranceRepo.findInsuranceBookingById(bookingId);
+    
+    const targetQuery = portalType === "b2b"
+        ? { bookingId, "tjBookPayload.source": "B2B_PORTAL" }
+        : {
+            bookingId,
+            $or: [
+                { "tjBookPayload.source": "B2C_PORTAL" },
+                { "agentId": "guest_user" },
+                { "userId": "guest_user" },
+                { "tjBookPayload.source": { $exists: false } }
+            ]
+          };
 
+    const booking = await insuranceRepo.findInsuranceBookingById(bookingId, targetQuery);
     if (!booking) return null;
 
     let userDetails = null;
-    if (booking.agentId) {
-        userDetails = await UserModel.findById(booking.agentId.toString()).lean();
+    const trackingId = booking.agentId || booking.userId;
+    
+    // Apply regex validation safeguard to prevent casting crashes on guest identifiers
+    if (trackingId && trackingId !== 'guest_user' && /^[0-9a-fA-F]{24}$/.test(trackingId)) {
+        userDetails = await UserModel.findById(trackingId.toString()).lean();
+    }
+
+    // Default configuration hydration block for unmatched single views
+    if (!userDetails && (trackingId === 'guest_user' || !trackingId || !/^[0-9a-fA-F]{24}$/.test(trackingId))) {
+        userDetails = {
+            businessProfile: {
+                businessName: "Individual Customer"
+            },
+            email: booking.userName || booking.agentName || "Guest",
+            clientType: "b2c"
+        };
     }
 
     return {
         ...booking,
-        userDetails: userDetails || null
+        userDetails
     };
 };

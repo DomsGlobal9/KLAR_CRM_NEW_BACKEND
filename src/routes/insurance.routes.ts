@@ -4,10 +4,23 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Route for all insurance bookings (Report view)
-router.get("/insurance-report", authenticate, insuranceController.getInsuranceBookingReport);
+// ==========================================
+// B2B Endpoints
+// ==========================================
+// Route to fetch all B2B insurance bookings
+router.get("/insurance-report", authenticate, insuranceController.getB2BInsuranceReport);
 
-// Route for specific insurance booking details
-router.get("/insurance-details/:bookingId", authenticate, insuranceController.getInsuranceBookingById);
+// Route for specific B2B insurance booking details
+router.get("/insurance-report/:bookingId", authenticate, insuranceController.getB2BInsuranceBookingById);
+
+
+// ==========================================
+// B2C Endpoints
+// ==========================================
+// Route to fetch all B2C insurance bookings
+router.get("/b2c-insurance-report", authenticate, insuranceController.getB2CInsuranceReport);
+
+// Route for specific B2C insurance booking details
+router.get("/b2c-insurance-report/:bookingId", authenticate, insuranceController.getB2CInsuranceBookingById);
 
 export default router;
