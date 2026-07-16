@@ -23,7 +23,7 @@ import visaRoutes from './visa.routes';
 import hotel from "./hotel.routes"
 import paymentRoutes from './paymentTracking.routes';
 import insuranceRoutes from "./insurance.routes"
-import cabsRoutes from "./cabs-routing.routes"
+import cabsRoutes from "./cab.routes"
 import voucherRoutes from './voucher.routes';
 import walletTransactionRoutes from './wallet-transaction.routes';
 import leadStageVoucherRoutes from './leadStageVoucher.routes';
