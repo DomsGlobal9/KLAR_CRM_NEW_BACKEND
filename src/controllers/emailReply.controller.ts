@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { emailReplyService } from '../services/emailReply.service';
 
 export const emailReplyController = {
+
     async sendReply(req: Request, res: Response) {
         try {
             const { trackingId } = req.params;
@@ -50,4 +51,5 @@ export const emailReplyController = {
             });
         }
     }
+    
 };

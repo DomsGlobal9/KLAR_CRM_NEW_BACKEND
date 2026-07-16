@@ -27,6 +27,61 @@ export class EmailReaderService {
         });
     }
 
+    private extractBody(parsed: ParsedMail): { text: string | null; html: string | null } {
+        let text: string | null = null;
+        let html: string | null = null;
+
+        if (parsed.text) {
+            text = parsed.text;
+        }
+
+        if (parsed.html) {
+            const htmlContent = parsed.html as string | Buffer;
+            if (typeof htmlContent === 'string') {
+                html = htmlContent;
+            } else if (Buffer.isBuffer(htmlContent)) {
+                html = htmlContent.toString('utf-8');
+            }
+        }
+
+        if (!text && !html) {
+            if (parsed.textAsHtml) {
+                html = parsed.textAsHtml;
+            }
+        }
+
+        if (!text && html) {
+            const stripHtml = (htmlStr: string): string => {
+                return htmlStr
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/&nbsp;/g, ' ')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            };
+            text = stripHtml(html);
+        }
+
+        if (!text && !html && parsed.attachments && parsed.attachments.length > 0) {
+            for (const attachment of parsed.attachments) {
+                if (attachment.contentType === 'text/plain' || attachment.contentType === 'text/html') {
+                    const content = attachment.content.toString('utf-8');
+                    if (attachment.contentType === 'text/plain') {
+                        text = content;
+                    } else {
+                        html = content;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return { text, html };
+    }
+
     async connect(): Promise<void> {
         if (this.isConnected) return;
 
@@ -51,6 +106,48 @@ export class EmailReaderService {
                 }
             }
         }, 60000);
+    }
+
+    private async parseEmailSource(source: any): Promise<ParsedMail | null> {
+        try {
+            let raw: Buffer;
+            if (Buffer.isBuffer(source)) {
+                raw = source;
+            } else if (source && typeof source === 'object' && Symbol.asyncIterator in Object(source)) {
+                const chunks: Buffer[] = [];
+                for await (const chunk of source as AsyncIterable<Buffer>) {
+                    chunks.push(chunk);
+                }
+                raw = Buffer.concat(chunks);
+            } else {
+                return null;
+            }
+
+            return await simpleParser(raw);
+        } catch (err) {
+            console.error('Failed to parse email source:', err);
+            return null;
+        }
+    }
+
+    private extractRecipients(parsed: ParsedMail): string[] {
+        const recipients: string[] = [];
+
+        if (parsed.to) {
+            const toList = Array.isArray(parsed.to) ? parsed.to : [parsed.to];
+            for (const recipient of toList) {
+                if (recipient && recipient.value) {
+                    const values = Array.isArray(recipient.value) ? recipient.value : [recipient.value];
+                    for (const v of values) {
+                        if (v && v.address) {
+                            recipients.push(v.address);
+                        }
+                    }
+                }
+            }
+        }
+
+        return recipients;
     }
 
     async readEmails(): Promise<void> {
@@ -78,28 +175,19 @@ export class EmailReaderService {
                         continue;
                     }
 
-                    let raw: Buffer;
-                    if (Buffer.isBuffer(msg.source)) {
-                        raw = msg.source;
-                    } else if (msg.source && typeof msg.source === 'object' && Symbol.asyncIterator in Object(msg.source)) {
-                        const chunks: Buffer[] = [];
-                        for await (const chunk of msg.source as AsyncIterable<Buffer>) {
-                            chunks.push(chunk);
-                        }
-                        raw = Buffer.concat(chunks);
-                    } else {
+                    const parsed = await this.parseEmailSource(msg.source);
+                    if (!parsed) {
+                        await this.client.messageFlagsAdd(uid, ['\\Seen']);
                         continue;
                     }
 
-                    const parsed: ParsedMail = await simpleParser(raw);
-
                     const subject = parsed.subject ?? '';
                     const from = parsed.from?.text ?? '';
-                    const text = parsed.text ?? '';
-                    const html = typeof parsed.html === 'string' ? parsed.html : '';
                     const messageId = parsed.messageId;
                     const inReplyTo = parsed.inReplyTo?.[0] || null;
-                    const toRecipients = parsed.to ? (Array.isArray(parsed.to) ? parsed.to.flatMap((addr: any) => addr.value?.map((v: any) => v.address) || []) : parsed.to.value?.map((v: any) => v.address) || []) : [];
+                    const toRecipients = this.extractRecipients(parsed);
+
+                    const { text, html } = this.extractBody(parsed);
 
                     if (messageId) {
                         const existingMessage = await emailMessageRepository.getByMessageId(messageId);

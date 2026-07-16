@@ -34,6 +34,18 @@ export const emailReplyService = {
 
             const lastMessage = threadMessages[threadMessages.length - 1];
 
+            const replyExists = await emailMessageRepository.checkReplyExists(
+                trackingId,
+                lastMessage.message_id || ''
+            );
+
+            if (replyExists) {
+                return {
+                    success: false,
+                    error: 'Reply already sent for this message'
+                };
+            }
+
             const leadId = lastMessage.lead_id;
 
             let toEmail: string[] = [];
@@ -82,24 +94,24 @@ export const emailReplyService = {
                 };
             }
 
-            await emailMessageRepository.createEmailMessage({
-                tracking_id: trackingId,
-                parent_tracking_id: trackingId,
-                message_id: emailResult.messageId || null,
-                in_reply_to: lastMessage.message_id || null,
-                direction: 'outgoing',
-                from_email: process.env.SMTP_FROM || envConfig.SMTP_USER,
-                to_email: toEmail,
-                cc_email: cc ? (Array.isArray(cc) ? cc : [cc]) : null,
-                bcc_email: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : null,
-                subject: subject,
-                body: text || null,
-                html_body: html || null,
-                status: 'sent',
-                lead_id: leadId || null,
-                raw_headers: null,
-                error: null,
-            });
+            // await emailMessageRepository.createEmailMessage({
+            //     tracking_id: trackingId,
+            //     parent_tracking_id: trackingId,
+            //     message_id: emailResult.messageId || null,
+            //     in_reply_to: lastMessage.message_id || null,
+            //     direction: 'outgoing',
+            //     from_email: process.env.SMTP_FROM || envConfig.SMTP_USER,
+            //     to_email: toEmail,
+            //     cc_email: cc ? (Array.isArray(cc) ? cc : [cc]) : null,
+            //     bcc_email: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : null,
+            //     subject: subject,
+            //     body: text || null,
+            //     html_body: html || null,
+            //     status: 'sent',
+            //     lead_id: leadId || null,
+            //     raw_headers: null,
+            //     error: null,
+            // });
 
             return {
                 success: true,
