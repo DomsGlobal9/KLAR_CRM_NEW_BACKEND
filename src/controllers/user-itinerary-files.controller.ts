@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin } from '../config';
 import { userItineraryFilesService } from '../services/user-itinerary-files.service';
+import { fileUploadService } from '../services/file-upload.service';
+import { AuthRequest } from '../middleware';
+import { processPDFDelivery } from '../helpers/pdfDelivery.helper';
+import { s3UploadService } from '../services/s3-upload.service';
+import { itineraryPdfService } from '../services/itinerary-pdf.service';
 
 export const userItineraryFilesController = {
 
@@ -85,7 +90,7 @@ export const userItineraryFilesController = {
                         visa_preferences_added: false,
                         last_updated: item.updated_at || item.created_at,
                     },
-                    services: servicesArray,  // ← ADD THIS LINE
+                    services: servicesArray,  
                     created_at: item.created_at,
                 };
             });
@@ -178,5 +183,507 @@ export const userItineraryFilesController = {
             console.error('Error in getFileOnlyItineraryById:', error);
             return res.status(500).json({ success: false, message: error.message });
         }
+    },
+    // =============================================
+// ADD THESE METHODS TO user-itinerary-files.controller.ts
+// =============================================
+
+/**
+ * Get file-only itinerary by lead ID
+ */
+async getFileOnlyItinerary(req: Request, res: Response) {
+    try {
+        const { leadId } = req.params;
+        const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+        if (!leadIdStr) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID is required'
+            });
+        }
+
+        const result = await userItineraryFilesService.getFileItinerary(leadIdStr);
+
+        return res.status(200).json({
+            ...result,
+            itineraryType: 'file-only'
+        });
+
+    } catch (error) {
+        console.error('Error in getFileOnlyItinerary:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
     }
+},
+
+/**
+ * Check if file-only itinerary exists
+ */
+async checkFileOnlyItinerary(req: Request, res: Response) {
+    try {
+        const { leadId } = req.params;
+        const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+        if (!leadIdStr) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID is required'
+            });
+        }
+
+        const exists = await userItineraryFilesService.hasFileItinerary(leadIdStr);
+
+        return res.status(200).json({
+            success: true,
+            exists,
+            itineraryType: exists ? 'file-only' : null
+        });
+
+    } catch (error) {
+        console.error('Error in checkFileOnlyItinerary:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+},
+
+/**
+ * Create file-only itinerary
+ */
+async createFileOnlyItinerary(req: Request, res: Response) {
+    try {
+        const { leadId } = req.params;
+        const { files, metadata } = req.body;
+        const userId = (req as AuthRequest).user?.id;
+
+        const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+        if (!leadIdStr) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID is required'
+            });
+        }
+
+        if (!files || Object.keys(files).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Files are required'
+            });
+        }
+
+        const result = await userItineraryFilesService.saveFileItinerary({
+            leadId: leadIdStr,
+            files,
+            metadata,
+            userId
+        });
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        return res.status(201).json({
+            ...result,
+            itineraryType: 'file-only'
+        });
+
+    } catch (error) {
+        console.error('Error in createFileOnlyItinerary:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+},
+
+/**
+ * Delete file-only itinerary
+ */
+async deleteFileOnlyItinerary(req: Request, res: Response) {
+    try {
+        const { leadId } = req.params;
+        const leadIdStr = Array.isArray(leadId) ? leadId[0] : leadId;
+
+        if (!leadIdStr) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID is required'
+            });
+        }
+
+        const result = await userItineraryFilesService.deleteFileItinerary(leadIdStr);
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        return res.status(200).json(result);
+
+    } catch (error) {
+        console.error('Error in deleteFileOnlyItinerary:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+},
+
+/**
+ * Upload multiple files
+ */
+async uploadMultipleFiles(req: Request, res: Response) {
+    try {
+        const files = req.files as Express.Multer.File[];
+        const { serviceType, leadId } = req.body;
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No files uploaded'
+            });
+        }
+
+        const uploadedUrls: string[] = [];
+        const errors: string[] = [];
+
+        for (const file of files) {
+            try {
+                let result;
+                if (file.mimetype === 'application/pdf') {
+                    result = await fileUploadService.uploadPdf(file, leadId, serviceType);
+                } else if (['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.mimetype)) {
+                    result = await fileUploadService.uploadImage(file, leadId, serviceType);
+                } else {
+                    errors.push(`${file.originalname}: Unsupported file type`);
+                    continue;
+                }
+
+                if (result.success && result.fileUrl) {
+                    uploadedUrls.push(result.fileUrl);
+                } else {
+                    errors.push(`${file.originalname}: ${result.error}`);
+                }
+            } catch (error: any) {
+                errors.push(`${file.originalname}: ${error.message}`);
+            }
+        }
+
+        return res.status(200).json({
+            success: uploadedUrls.length > 0,
+            data: {
+                uploadedUrls,
+                totalUploaded: uploadedUrls.length,
+                totalFailed: errors.length,
+                errors: errors.length > 0 ? errors : undefined
+            },
+            message: `${uploadedUrls.length} file(s) uploaded successfully`
+        });
+
+    } catch (error: any) {
+        console.error('Error in uploadMultipleFiles:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+},
+
+/**
+ * Save uploaded file URLs to database
+ */
+async saveUploadedFileUrls(req: Request, res: Response) {
+    try {
+        const { fileUrls, serviceType, leadId } = req.body;
+
+        if (!fileUrls || fileUrls.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file URLs provided'
+            });
+        }
+
+        if (!leadId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID is required'
+            });
+        }
+
+        const { data: existingSummary, error: fetchError } = await supabaseAdmin
+            .from('user_itenary_preferences_summary')
+            .select('metadata')
+            .eq('lead_id', leadId)
+            .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            throw new Error(fetchError.message);
+        }
+
+        const currentMetadata = existingSummary?.metadata || {};
+        const existingAttachments = currentMetadata.attachments || [];
+
+        const updatedMetadata = {
+            ...currentMetadata,
+            attachments: [
+                ...existingAttachments,
+                {
+                    id: `${leadId}_${Date.now()}`,
+                    serviceType,
+                    fileUrls,
+                    totalFiles: fileUrls.length,
+                    uploadedAt: new Date().toISOString()
+                }
+            ]
+        };
+
+        const { error: updateError } = await supabaseAdmin
+            .from('user_itenary_preferences_summary')
+            .update({
+                metadata: updatedMetadata,
+                updated_at: new Date().toISOString()
+            })
+            .eq('lead_id', leadId);
+
+        if (updateError) {
+            throw new Error(updateError.message);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${fileUrls.length} file URL(s) saved successfully`,
+            data: { fileUrls, serviceType, leadId }
+        });
+
+    } catch (error: any) {
+        console.error('Error in saveUploadedFileUrls:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+},
+
+/**
+ * Upload single PDF
+ */
+async uploadPdfFile(req: Request, res: Response) {
+    try {
+        const file = req.file;
+        const { serviceType, leadId } = req.body;
+
+        if (!file) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No file uploaded' 
+            });
+        }
+
+        if (file.mimetype !== 'application/pdf') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Only PDF files are allowed' 
+            });
+        }
+
+        const result = await fileUploadService.uploadPdf(file, leadId, serviceType);
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { 
+                fileUrl: result.fileUrl, 
+                message: result.message 
+            }
+        });
+    } catch (error: any) {
+        console.error('Error in uploadPdfFile:', error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+},
+
+/**
+ * Upload single image
+ */
+async uploadImageFile(req: Request, res: Response) {
+    try {
+        const file = req.file;
+        const { serviceType, leadId } = req.body;
+
+        if (!file) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No file uploaded' 
+            });
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.mimetype)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Only image files are allowed' 
+            });
+        }
+
+        const result = await fileUploadService.uploadImage(file, leadId, serviceType);
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { 
+                fileUrl: result.fileUrl, 
+                message: result.message 
+            }
+        });
+    } catch (error: any) {
+        console.error('Error in uploadImageFile:', error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+},
+
+/**
+ * Send file-only itinerary PDF via WhatsApp/Email
+ */
+async sendFileItineraryPDF(req: Request, res: Response) {
+    try {
+        const { itineraryId } = req.params;
+        const { sendVia } = req.body;
+
+        console.log('Sending file itinerary PDF:', { itineraryId, sendVia });
+
+        // 1. Get file itinerary with lead details
+        const { data: fileRecord, error: fileError } = await supabaseAdmin
+            .from('user_itinerary_files')
+            .select('*, lead:lead_id(*)')
+            .eq('id', itineraryId)
+            .single();
+
+        if (fileError || !fileRecord) {
+            return res.status(404).json({
+                success: false,
+                message: 'File itinerary not found'
+            });
+        }
+
+        const leadData = fileRecord.lead;
+        if (!leadData) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found'
+            });
+        }
+
+        // 2. Get uploaded files from metadata
+        const uploadedFiles = fileRecord.metadata?.attachment_urls || fileRecord.files || {};
+        
+        // 3. Build HTML content
+        const clientName = leadData.name || 'Client';
+        const fileName = `itinerary_${fileRecord.lead_id}_${clientName}.pdf`;
+
+        // Build file list HTML
+        let filesHtml = '';
+        Object.entries(uploadedFiles).forEach(([serviceType, files]: [string, any]) => {
+            if (Array.isArray(files) && files.length > 0) {
+                const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1).toLowerCase();
+                filesHtml += `<h3>${serviceName} (${files.length} files)</h3><ul>`;
+                files.forEach((file: any) => {
+                    filesHtml += `<li>${file.name || 'File'} - <a href="${file.url}">View File</a></li>`;
+                });
+                filesHtml += '</ul>';
+            }
+        });
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; }
+                    h1 { color: #1a56db; }
+                    .header { border-bottom: 2px solid #1a56db; padding-bottom: 10px; margin-bottom: 20px; }
+                    .client-info { background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+                    .files-section { margin-top: 20px; }
+                    .file-item { padding: 10px; border-bottom: 1px solid #e5e7eb; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>📄 File Itinerary</h1>
+                    <p>Generated on: ${new Date().toLocaleDateString()}</p>
+                </div>
+                <div class="client-info">
+                    <h3>Client Details</h3>
+                    <p><strong>Name:</strong> ${leadData.name || 'N/A'}</p>
+                    <p><strong>Email:</strong> ${leadData.email || 'N/A'}</p>
+                    <p><strong>Phone:</strong> ${leadData.phone || 'N/A'}</p>
+                </div>
+                <div class="files-section">
+                    <h2>Uploaded Files</h2>
+                    ${filesHtml || '<p>No files found</p>'}
+                </div>
+            </body>
+            </html>
+        `;
+
+        // 4. Generate PDF
+        const pdfBuffer = await itineraryPdfService.generateBuffer(htmlContent);
+        
+        // 5. Upload to S3
+        const pdfUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
+        
+        console.log('PDF uploaded to S3:', pdfUrl);
+
+        // 6. Update status to 'Itinerary_send'
+        // await supabaseAdmin
+        //     .from('user_itinerary_files')
+        //     .update({ 
+        //         status: 'Itinerary_send',
+        //         updated_at: new Date().toISOString()
+        //     })
+        //     .eq('id', itineraryId);
+
+        // 7. Send via WhatsApp/Email
+        const deliveryOptions = {
+            leadId: fileRecord.lead_id,
+            clientName: clientName,
+            clientEmail: leadData.email || '',
+            clientPhone: leadData.phone || '',
+            pdfUrl: pdfUrl,
+            pdfFileName: fileName,
+            htmlContent: htmlContent
+        };
+
+        const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
+
+        return res.status(200).json({
+            success: true,
+            message: 'File itinerary PDF sent successfully',
+            delivery: deliveryResult,
+            pdfUrl: pdfUrl
+        });
+
+    } catch (error: any) {
+        console.error('Error sending file itinerary PDF:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to send file itinerary PDF'
+        });
+    }
+}
 };

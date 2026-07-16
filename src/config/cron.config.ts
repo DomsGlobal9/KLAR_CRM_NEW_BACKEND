@@ -1,5 +1,5 @@
 import invoiceNotificationService from '../services/invoiceNotification.service';
-import whatsappService from '../services/whatsapp.service';
+import getWhatsAppService from '../services/whatsapp.service';
 import { envConfig } from './index';
 
 
@@ -116,7 +116,13 @@ export const cronJobs = {
             return;
         }
 
-        const sent = await whatsappService.sendMessage(phoneNumber, message);
+        const service = getWhatsAppService();
+        if (!service) {
+            console.log('❌ WhatsApp number not configured in .env');
+            return;
+        }
+
+        const sent = await service.sendMessage(phoneNumber, message);
         if (sent) {
             console.log(`✅ WhatsApp message sent to ${phoneNumber} at ${new Date().toISOString()}`);
         }

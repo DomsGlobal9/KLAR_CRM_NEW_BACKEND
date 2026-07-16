@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../config';
-import whatsappService from './whatsapp.service';
+import getWhatsAppService from '../services/whatsapp.service';
 
 export interface InvoiceWithRestAmount {
     id: string;
@@ -14,6 +14,15 @@ export interface InvoiceWithRestAmount {
 }
 
 class InvoiceNotificationService {
+
+    private service: any;
+
+    constructor() {
+        this.service = getWhatsAppService();
+        if (!this.service) {
+            console.log('❌ WhatsApp number not configured in .env');
+        }
+    }
 
     /**
      * Find all invoices with rest_amount > 0 (handling null values)
@@ -131,7 +140,7 @@ class InvoiceNotificationService {
             `Please make the payment at your earliest convenience.\n\n` +
             `Thank you for your business!`;
 
-        return await whatsappService.sendMessage(invoice.client_phone, message);
+        return await this.service.sendMessage(invoice.client_phone, message);
     }
 
     /**
@@ -158,7 +167,7 @@ class InvoiceNotificationService {
             `Please arrange for immediate payment to avoid any interruption of services.\n\n` +
             `If you have already made the payment, please disregard this message.`;
 
-        return await whatsappService.sendMessage(invoice.client_phone, message);
+        return await this.service.sendMessage(invoice.client_phone, message);
     }
 
     /**

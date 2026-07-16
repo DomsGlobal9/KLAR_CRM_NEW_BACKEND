@@ -67,7 +67,12 @@ class WhatsAppService {
             this.restartClient();
         });
 
-        this.initializeClient();
+        // Skip WhatsApp in development
+        if (process.env.NODE_ENV === 'production') {
+            this.initializeClient();
+        } else {
+            console.log('⚠️ WhatsApp disabled in development');
+        }
     }
 
     private initializeClient() {
@@ -160,4 +165,15 @@ class WhatsAppService {
     }
 }
 
-export default new WhatsAppService();
+let whatsappInstance: WhatsAppService | null = null;
+
+export default function getWhatsAppService() {
+    if (process.env.NODE_ENV === 'production') {
+        if (!whatsappInstance) {
+            whatsappInstance = new WhatsAppService();
+        }
+        return whatsappInstance;
+    }
+    console.log('⚠️ WhatsApp service not available in development mode');
+    return null;
+}

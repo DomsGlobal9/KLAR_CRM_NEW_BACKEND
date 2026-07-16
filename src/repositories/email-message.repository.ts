@@ -2,7 +2,7 @@ import { supabaseAdmin } from '../config';
 import { EmailCleanerService } from '../utils/email-cleaner.utils';
 
 export const emailMessageRepository = {
-    
+
     async createEmailMessage(payload: {
         tracking_id: string;
         parent_tracking_id: string | null;
@@ -51,6 +51,21 @@ export const emailMessageRepository = {
         }
 
         return data;
+    },
+
+    async checkReplyExists(trackingId: string, messageId: string): Promise<boolean> {
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('id')
+            .eq('tracking_id', trackingId)
+            .eq('in_reply_to', messageId)
+            .maybeSingle();
+
+        if (error) {
+            throw new Error(`Failed to check reply existence: ${error.message}`);
+        }
+
+        return !!data;
     },
 
     async getByTrackingId(trackingId: string) {

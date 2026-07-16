@@ -1,6 +1,6 @@
 // user-credentials.service.ts
 import { emailService, SendEmailPayload } from './email.service';
-import WhatsAppService from './whatsapp.service';
+import getWhatsAppService from './whatsapp.service';
 
 export interface UserCredentialsPayload {
     userId: string;
@@ -45,6 +45,15 @@ export interface BulkCredentialsResult {
 class UserCredentialsService {
     private readonly DEFAULT_APP_NAME = 'Our Platform';
     private readonly DEFAULT_LOGIN_PATH = '/login';
+
+    private service: any;
+
+    constructor() {
+        this.service = getWhatsAppService();
+        if (!this.service) {
+            console.log('❌ WhatsApp number not configured in .env');
+        }
+    }
 
     /**
      * Send user credentials via email only
@@ -122,7 +131,7 @@ class UserCredentialsService {
             }
 
             // Check WhatsApp service status
-            if (!WhatsAppService.getStatus()) {
+            if (!this.service.getStatus()) {
                 return {
                     sent: false,
                     error: 'WhatsApp service is not ready',
@@ -135,7 +144,7 @@ class UserCredentialsService {
 
             const message = this.createWhatsAppMessage(payload, loginUrl, appName);
 
-            const sent = await WhatsAppService.sendMessage(payload.phoneNumber, message);
+            const sent = await this.service.sendMessage(payload.phoneNumber, message);
 
             if (sent) {
                 return {
@@ -506,7 +515,7 @@ ${appName} Team
     Best regards,
     ${appName} Team
             `.trim();
-        }
+    }
 
     /**
      * Get service status
@@ -524,8 +533,8 @@ ${appName} Team
                 status: emailStatus.status
             },
             whatsapp: {
-                ready: WhatsAppService.getStatus(),
-                status: WhatsAppService.getStatus() ? 'connected' : 'disconnected'
+                ready: this.service.getStatus(),
+                status: this.service.getStatus() ? 'connected' : 'disconnected'
             },
             timestamp: new Date().toISOString()
         };
