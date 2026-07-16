@@ -151,6 +151,7 @@ export class EmailReaderService {
     }
 
     async readEmails(): Promise<void> {
+        console.log("3. readEmails() called");
         try {
 
             if (!this.isConnected) {
