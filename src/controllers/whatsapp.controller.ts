@@ -1,9 +1,15 @@
 import { Request, Response } from 'express';
-import whatsappService from '../services/whatsapp.service';
+import getWhatsAppService from '../services/whatsapp.service';
 
 export const getQrJson = async (_req: Request, res: Response) => {
-  const status = whatsappService.getConnectionStatus();
-  const qrDataUrl = await whatsappService.getQrDataUrl();
+  const service = getWhatsAppService();
+  if (!service) {
+    console.log('❌ WhatsApp number not configured in .env');
+    return;
+  }
+
+  const status = service.getConnectionStatus();
+  const qrDataUrl = await service.getQrDataUrl();
 
   res.json({
     status,
@@ -13,8 +19,14 @@ export const getQrJson = async (_req: Request, res: Response) => {
 };
 
 export const getQrPage = async (_req: Request, res: Response) => {
-  const status = whatsappService.getConnectionStatus();
-  const qrDataUrl = await whatsappService.getQrDataUrl();
+  const service = getWhatsAppService();
+  if (!service) {
+    console.log('❌ WhatsApp number not configured in .env');
+    return;
+  }
+
+  const status = service.getConnectionStatus();
+  const qrDataUrl = await service.getQrDataUrl();
 
   const brandColor = '#aa4545';
   const brandColorLight = '#c99494';

@@ -28,7 +28,7 @@ export const quoteService = {
                 throw new Error('Stage name not found for Itinerary Generation');
             }
 
-            await leadRepository.updateLeadStageOnly(transformedPayload.lead_id, stageName);
+            await leadRepository.updateLeadStageOnly(transformedPayload.lead_id as any, stageName);
 
             return {
                 success: true,

@@ -1,4 +1,4 @@
-import WhatsAppService from './whatsapp.service';
+import getWhatsAppService from './whatsapp.service';
 import { emailService, SendEmailPayload } from './email.service';
 
 export interface PDFDeliveryOptions {
@@ -30,6 +30,16 @@ export interface DeliveryResult {
 type DocumentType = 'invoice' | 'quotation' | 'proposal' | 'itinerary';
 
 class PDFDeliveryService {
+
+
+    private service: any;
+
+    constructor() {
+        this.service = getWhatsAppService();
+        if (!this.service) {
+            console.log('❌ WhatsApp number not configured in .env');
+        }
+    }
 
     /**
     * Helper to detect document type based on the file name
@@ -69,7 +79,7 @@ class PDFDeliveryService {
                 return { success: false, error: 'Phone number is required' };
             }
 
-            if (!WhatsAppService.getStatus()) {
+            if (!this.service.getStatus()) {
                 return { success: false, error: 'WhatsApp service is not ready' };
             }
 
@@ -79,7 +89,7 @@ class PDFDeliveryService {
 
             const message = this.createWhatsAppMessage(clientName, pdfUrl);
 
-            const sent = await WhatsAppService.sendMessage(sanitizedPhone, message);
+            const sent = await this.service.sendMessage(sanitizedPhone, message);
 
             if (sent) {
                 return { success: true };
@@ -363,7 +373,7 @@ Thank you for choosing our services.`;
 
         return {
             whatsapp: {
-                ready: WhatsAppService.getStatus()
+                ready: this.service.getStatus()
             },
             email: {
                 status: emailStatus.status,
