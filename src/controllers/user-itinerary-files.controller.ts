@@ -650,13 +650,13 @@ async sendFileItineraryPDF(req: Request, res: Response) {
         console.log('PDF uploaded to S3:', pdfUrl);
 
         // 6. Update status to 'Itinerary_send'
-        await supabaseAdmin
-            .from('user_itinerary_files')
-            .update({ 
-                status: 'Itinerary_send',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', itineraryId);
+        // await supabaseAdmin
+        //     .from('user_itinerary_files')
+        //     .update({ 
+        //         status: 'Itinerary_send',
+        //         updated_at: new Date().toISOString()
+        //     })
+        //     .eq('id', itineraryId);
 
         // 7. Send via WhatsApp/Email
         const deliveryOptions = {
