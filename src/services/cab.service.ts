@@ -55,7 +55,7 @@ export const getAllCabReportsWithUserDetails = async (
         paginatedBookings
             .map(b => b.agentId?.toString() || b.userId?.toString())
             .filter((id): id is string => 
-                Boolean(id) && 
+                id !== undefined &&
                 id !== 'guest_user' && 
                 !id.includes('@') && 
                 /^[0-9a-fA-F]{24}$/.test(id)
