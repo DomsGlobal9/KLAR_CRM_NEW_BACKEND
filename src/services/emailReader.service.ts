@@ -86,11 +86,11 @@ export class EmailReaderService {
         if (this.isConnected) return;
 
         await this.client.connect();
-        await this.client.mailboxOpen('INBOX');
+        await this.client.mailboxOpen("INBOX");
 
         this.isConnected = true;
 
-        console.log('✅ IMAP Connected');
+        console.log("✅ IMAP Connected");
     }
 
     private startKeepAlive(): void {
@@ -275,20 +275,27 @@ export class EmailReaderService {
                     await this.connect();
                 }
 
-                console.log('📨 Waiting for new emails...');
+                console.log("📨 Checking for new emails...");
 
-                while (this.isConnected) {
-                    console.log("1. Before idle()");
-                    await this.client.idle();
-                    console.log("2. After idle()");
-                    await this.readEmails();
-                }
+                await this.readEmails();
+
             } catch (err) {
-                console.error('IDLE Error:', err);
+                console.error("Email polling failed:", err);
+
                 this.isConnected = false;
 
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                try {
+                    await this.client.logout();
+                } catch { }
+
+                this.client = new ImapFlow({
+                    ...imapConfig,
+                    socketTimeout: 60000,
+                });
             }
+
+            // Poll every 10 seconds
+            await new Promise(resolve => setTimeout(resolve, 10000));
         }
     }
 
