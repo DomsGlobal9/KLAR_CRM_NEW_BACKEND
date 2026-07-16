@@ -276,14 +276,11 @@ export class EmailReaderService {
 
                 console.log('📨 Waiting for new emails...');
 
-                // while (this.isConnected) {
-                //     await this.client.idle();
-                //     await this.readEmails();
-                // }
-
                 while (this.isConnected) {
+                    console.log("1. Before idle()");
+                    await this.client.idle();
+                    console.log("2. After idle()");
                     await this.readEmails();
-                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
             } catch (err) {
                 console.error('IDLE Error:', err);
