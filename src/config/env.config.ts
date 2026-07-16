@@ -62,6 +62,7 @@ interface EnvConfig {
     SUPABASE_DEVELOPMENT_SERVICE_ROLE: string;
 
     SUPABASE_DATABASE_URL: string;
+    SUPABASE_PRODUCTION_DATABASE_URL: string;
 
     /**
      * Active environment Supabase config
@@ -336,6 +337,7 @@ export const envConfig: EnvConfig = {
     SUPABASE_DEVELOPMENT_SERVICE_ROLE: process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE || '',
 
     SUPABASE_DATABASE_URL: process.env.SUPABASE_DATABASE_URL || '',
+    SUPABASE_PRODUCTION_DATABASE_URL: process.env.SUPABASE_PRODUCTION_DATABASE_URL || '',
 
     /**
      * Active Supabase config based on NODE_ENV
