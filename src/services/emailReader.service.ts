@@ -151,122 +151,237 @@ export class EmailReaderService {
     }
 
     async readEmails(): Promise<void> {
-        console.log("3. readEmails() called");
-        try {
+    console.log("📩 readEmails() called");
+
+    try {
+
+        if (!this.isConnected) {
+            console.log("🔄 IMAP not connected. Reconnecting...");
+            await this.connect();
 
             if (!this.isConnected) {
-                await this.connect();
-                if (!this.isConnected) {
-                    return;
-                }
-            }
-
-            const result = await this.client.search({ seen: false });
-            const uids: number[] = Array.isArray(result) ? result : [];
-
-            if (uids.length === 0) {
+                console.log("❌ Reconnection failed.");
                 return;
             }
 
-            for (const uid of uids) {
-                try {
-                    const msg = await this.client.fetchOne(uid, { source: true });
+            console.log("✅ Reconnected successfully.");
+        }
 
-                    if (!msg || !msg.source) {
-                        continue;
-                    }
+        console.log("🔍 Searching for unread emails...");
 
-                    const parsed = await this.parseEmailSource(msg.source);
-                    if (!parsed) {
-                        await this.client.messageFlagsAdd(uid, ['\\Seen']);
-                        continue;
-                    }
+        const result = await this.client.search({ seen: false });
 
-                    const subject = parsed.subject ?? '';
-                    const from = parsed.from?.text ?? '';
-                    const messageId = parsed.messageId;
-                    const inReplyTo = parsed.inReplyTo?.[0] || null;
-                    const toRecipients = this.extractRecipients(parsed);
+        console.log("📋 Search Result:", result);
 
-                    const { text, html } = this.extractBody(parsed);
+        const uids: number[] = Array.isArray(result) ? result : [];
 
-                    if (messageId) {
-                        const existingMessage = await emailMessageRepository.getByMessageId(messageId);
-                        if (existingMessage) {
-                            await this.client.messageFlagsAdd(uid, ['\\Seen']);
-                            continue;
-                        }
-                    }
+        console.log(`📨 Total unread emails found: ${uids.length}`);
 
-                    let trackingId: string | null = null;
-                    let parentTrackingId: string | null = null;
-                    let leadId: string | null = null;
+        if (uids.length === 0) {
+            console.log("📭 No unread emails found.");
+            return;
+        }
 
-                    const tidMatch = subject.match(/\[TID:([^\]]+)\]/);
-                    if (tidMatch) {
-                        trackingId = tidMatch[1];
-                    } else {
-                        const trkMatch = subject.match(/\[(trk_[^\]]+)\]/);
-                        if (trkMatch) {
-                            trackingId = trkMatch[1];
-                        }
-                    }
+        for (const uid of uids) {
 
-                    if (!trackingId && parsed.inReplyTo && parsed.inReplyTo.length > 0) {
-                        const parentMessage = await emailMessageRepository.getByMessageId(parsed.inReplyTo[0]);
-                        if (parentMessage) {
-                            trackingId = parentMessage.tracking_id;
-                            parentTrackingId = parentMessage.tracking_id;
-                            leadId = parentMessage.lead_id;
-                        }
-                    }
+            console.log(`\n==============================`);
+            console.log(`📧 Processing UID: ${uid}`);
+            console.log(`==============================`);
 
-                    if (!trackingId) {
-                        trackingId = uuidv4();
-                        parentTrackingId = null;
-                    }
+            try {
 
-                    if (trackingId) {
-                        const existingMessage = await emailMessageRepository.getByTrackingIdAndDirection(trackingId, 'incoming');
-                        if (existingMessage && existingMessage.message_id === messageId) {
-                            await this.client.messageFlagsAdd(uid, ['\\Seen']);
-                            continue;
-                        }
+                console.log("📥 Fetching email...");
 
-                        await emailMessageRepository.createIncomingEmail({
-                            tracking_id: trackingId,
-                            parent_tracking_id: parentTrackingId,
-                            message_id: messageId || null,
-                            in_reply_to: inReplyTo,
-                            from_email: from,
-                            to_email: toRecipients.length > 0 ? toRecipients : [process.env.SMTP_USER || ''],
-                            cc_email: null,
-                            bcc_email: null,
-                            subject: subject,
-                            body: text || null,
-                            html_body: html || null,
-                            raw_headers: parsed.headers || null,
-                            lead_id: leadId,
-                        });
-                    }
+                const msg = await this.client.fetchOne(uid, {
+                    source: true,
+                });
+
+                if (!msg || !msg.source) {
+                    console.log(`❌ No source found for UID ${uid}`);
+                    continue;
+                }
+
+                console.log("✅ Email fetched successfully.");
+
+                console.log("📝 Parsing email...");
+
+                const parsed = await this.parseEmailSource(msg.source);
+
+                if (!parsed) {
+                    console.log("❌ Email parsing failed.");
 
                     await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
-                } catch (err) {
-                    console.error(`Error processing email UID ${uid}:`, err);
-                    try {
+                    console.log("✔️ Email marked as read.");
+
+                    continue;
+                }
+
+                console.log("✅ Email parsed.");
+
+                const subject = parsed.subject ?? '';
+                const from = parsed.from?.text ?? '';
+                const messageId = parsed.messageId;
+                const inReplyTo = parsed.inReplyTo?.[0] || null;
+
+                console.log("Subject:", subject);
+                console.log("From:", from);
+                console.log("Message ID:", messageId);
+                console.log("In Reply To:", inReplyTo);
+
+                const toRecipients = this.extractRecipients(parsed);
+
+                console.log("Recipients:", toRecipients);
+
+                const { text, html } = this.extractBody(parsed);
+
+                console.log("Body Length:", text?.length || 0);
+                console.log("HTML Length:", html?.length || 0);
+
+                if (messageId) {
+
+                    console.log("🔎 Checking duplicate by Message ID...");
+
+                    const existingMessage =
+                        await emailMessageRepository.getByMessageId(messageId);
+
+                    if (existingMessage) {
+
+                        console.log("⚠️ Duplicate Message ID found. Skipping.");
+
                         await this.client.messageFlagsAdd(uid, ['\\Seen']);
-                    } catch (flagErr) {
-                        console.error(`Failed to mark email UID ${uid} as read:`, flagErr);
+
+                        continue;
+                    }
+
+                    console.log("✅ Message ID is unique.");
+                }
+
+                let trackingId: string | null = null;
+                let parentTrackingId: string | null = null;
+                let leadId: string | null = null;
+
+                const tidMatch = subject.match(/\[TID:([^\]]+)\]/);
+
+                if (tidMatch) {
+                    trackingId = tidMatch[1];
+                    console.log("Tracking ID from subject:", trackingId);
+                } else {
+
+                    const trkMatch = subject.match(/\[(trk_[^\]]+)\]/);
+
+                    if (trkMatch) {
+                        trackingId = trkMatch[1];
+                        console.log("Tracking ID (legacy):", trackingId);
                     }
                 }
-            }
 
-        } catch (error) {
-            console.error('Fatal error in readEmails():', error);
-            this.isConnected = false;
+                if (!trackingId && parsed.inReplyTo && parsed.inReplyTo.length > 0) {
+
+                    console.log("Looking up parent message...");
+
+                    const parentMessage =
+                        await emailMessageRepository.getByMessageId(parsed.inReplyTo[0]);
+
+                    if (parentMessage) {
+
+                        trackingId = parentMessage.tracking_id;
+                        parentTrackingId = parentMessage.tracking_id;
+                        leadId = parentMessage.lead_id;
+
+                        console.log("Parent Tracking ID:", trackingId);
+                    }
+                }
+
+                if (!trackingId) {
+
+                    trackingId = uuidv4();
+
+                    console.log("Generated new Tracking ID:", trackingId);
+
+                    parentTrackingId = null;
+                }
+
+                if (trackingId) {
+
+                    console.log("Checking duplicate by Tracking ID...");
+
+                    const existingMessage =
+                        await emailMessageRepository.getByTrackingIdAndDirection(
+                            trackingId,
+                            'incoming'
+                        );
+
+                    if (
+                        existingMessage &&
+                        existingMessage.message_id === messageId
+                    ) {
+
+                        console.log("⚠️ Duplicate incoming email found.");
+
+                        await this.client.messageFlagsAdd(uid, ['\\Seen']);
+
+                        continue;
+                    }
+
+                    console.log("💾 Saving email to database...");
+
+                    await emailMessageRepository.createIncomingEmail({
+                        tracking_id: trackingId,
+                        parent_tracking_id: parentTrackingId,
+                        message_id: messageId || null,
+                        in_reply_to: inReplyTo,
+                        from_email: from,
+                        to_email:
+                            toRecipients.length > 0
+                                ? toRecipients
+                                : [process.env.SMTP_USER || ''],
+                        cc_email: null,
+                        bcc_email: null,
+                        subject,
+                        body: text || null,
+                        html_body: html || null,
+                        raw_headers: parsed.headers || null,
+                        lead_id: leadId,
+                    });
+
+                    console.log("✅ Email saved successfully.");
+                }
+
+                console.log("✔️ Marking email as read...");
+
+                await this.client.messageFlagsAdd(uid, ['\\Seen']);
+
+                console.log(`✅ UID ${uid} processed successfully.`);
+
+            } catch (err) {
+
+                console.error(`❌ Error processing UID ${uid}:`, err);
+
+                try {
+
+                    console.log("Marking failed email as read...");
+
+                    await this.client.messageFlagsAdd(uid, ['\\Seen']);
+
+                    console.log("✔️ Marked as read.");
+
+                } catch (flagErr) {
+
+                    console.error("Failed to mark email as read:", flagErr);
+                }
+            }
         }
+
+        console.log("🎉 Poll cycle completed.");
+
+    } catch (error) {
+
+        console.error("💥 Fatal error in readEmails():", error);
+
+        this.isConnected = false;
     }
+}
 
     public async start(): Promise<void> {
         while (true) {
