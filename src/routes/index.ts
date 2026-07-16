@@ -19,6 +19,7 @@ import travelPlanRoutes from "./travelplan.routes"
 import whatsappRoutes from './whatsapp.routes';
 import setReminder from "./setReminder.routes"
 import flight from "./flight.routes"
+import visaRoutes from './visa.routes';
 import hotel from "./hotel.routes"
 import paymentRoutes from './paymentTracking.routes';
 import insuranceRoutes from "./insurance.routes"
@@ -28,7 +29,7 @@ import walletTransactionRoutes from './wallet-transaction.routes';
 import leadStageVoucherRoutes from './leadStageVoucher.routes';
 import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 import travelerRoutes from './traveler.routes';
-import visaRoutes from './visa.routes';
+import emailReplyRoutes from './emailReply.routes';
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.use("/team-lead", teamLead);
 router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
 router.use("/set-reminder", setReminder);
+router.use('/email-reply', emailReplyRoutes);
 
 
 router.use("/flights", flight)

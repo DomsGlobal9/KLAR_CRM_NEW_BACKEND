@@ -3,9 +3,6 @@ import { EmailCleanerService } from '../utils/email-cleaner.utils';
 
 export const emailRepository = {
 
-    /**
-     * Create email log (when sending email)
-     */
     async createEmailLog(payload: {
         tracking_id: string;
         lead_id?: string | null;
@@ -36,9 +33,6 @@ export const emailRepository = {
         return data;
     },
 
-    /**
-     * Get email log by tracking_id
-     */
     async getByTrackingId(trackingId: string) {
         const { data, error } = await supabaseAdmin
             .from('email_logs')
@@ -53,9 +47,6 @@ export const emailRepository = {
         return data;
     },
 
-    /**
-     * Get email log by message_id (for threading)
-     */
     async getByMessageId(messageId: string) {
         const { data, error } = await supabaseAdmin
             .from('email_logs')
@@ -70,9 +61,6 @@ export const emailRepository = {
         return data;
     },
 
-    /**
-     * Store incoming email (IMAP)
-     */
     async createEmailReply(payload: {
         tracking_id?: string | null;
         lead_id?: string | null;
@@ -86,9 +74,7 @@ export const emailRepository = {
         raw_headers?: any;
     }) {
 
-        // Clean the email body
         const cleanedBody = EmailCleanerService.cleanEmailBody(payload.body || '');
-        const newMessageOnly = EmailCleanerService.extractNewMessage(payload.body || '');
 
         const { data, error } = await supabaseAdmin
             .from('email_replies')
@@ -98,9 +84,7 @@ export const emailRepository = {
                 from_email: payload.from_email,
                 to_email: payload.to_email || null,
                 subject: payload.subject || null,
-                body: cleanedBody, 
-                original_body: payload.body, 
-                new_message: newMessageOnly, 
+                body: cleanedBody,
                 html_body: payload.html_body || null,
                 message_id: payload.message_id || null,
                 in_reply_to: payload.in_reply_to || null,
@@ -117,9 +101,6 @@ export const emailRepository = {
         return data;
     },
 
-    /**
-     * Resolve lead_id using tracking_id
-     */
     async resolveLeadByTrackingId(trackingId: string): Promise<string | null> {
         const { data, error } = await supabaseAdmin
             .from('email_logs')
@@ -134,9 +115,6 @@ export const emailRepository = {
         return data?.lead_id || null;
     },
 
-    /**
-     * Resolve lead_id using message_id (reply threading)
-     */
     async resolveLeadByMessageId(messageId: string): Promise<string | null> {
         const { data, error } = await supabaseAdmin
             .from('email_logs')
@@ -193,7 +171,8 @@ export const emailRepository = {
             .from('email_replies')
             .select('*')
             .eq('tracking_id', trackingId)
-            .eq('uid', uid)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
         if (error) {

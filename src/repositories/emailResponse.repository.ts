@@ -1,54 +1,42 @@
 import { supabaseAdmin } from '../config';
 
-export interface EmailLog {
+export interface EmailMessage {
     id: string;
     tracking_id: string;
-    lead_id: string | null;
+    parent_tracking_id: string | null;
     message_id: string | null;
     in_reply_to: string | null;
+    direction: 'incoming' | 'outgoing';
+    from_email: string;
     to_email: string[];
     cc_email: string[] | null;
     bcc_email: string[] | null;
     subject: string;
+    body: string | null;
+    html_body: string | null;
     status: string;
+    lead_id: string | null;
+    raw_headers: any | null;
     error: string | null;
     created_at: string;
     updated_at: string;
 }
 
-export interface EmailReply {
-    id: string;
-    tracking_id: string | null;
-    lead_id: string | null;
-    from_email: string;
-    to_email: string[] | null;
-    subject: string | null;
-    body: string | null;
-    html_body: string | null;
-    message_id: string | null;
-    in_reply_to: string | null;
-    raw_headers: any | null;
-    created_at: string;
-}
-
 export const emailResponseRepository = {
-    /**
-     * Get email logs with filters
-     */
-    async getEmailLogs(params: {
+    async getEmailMessages(params: {
         limit: number;
         offset: number;
         leadId?: string;
         status?: string;
         trackingId?: string;
+        direction?: 'incoming' | 'outgoing';
         startDate?: string;
         endDate?: string;
     }) {
         let query = supabaseAdmin
-            .from('email_logs')
+            .from('email_messages')
             .select('*', { count: 'exact', head: false });
 
-        // Apply filters
         if (params.leadId) {
             query = query.eq('lead_id', params.leadId);
         }
@@ -58,6 +46,9 @@ export const emailResponseRepository = {
         if (params.trackingId) {
             query = query.eq('tracking_id', params.trackingId);
         }
+        if (params.direction) {
+            query = query.eq('direction', params.direction);
+        }
         if (params.startDate) {
             query = query.gte('created_at', params.startDate);
         }
@@ -65,7 +56,6 @@ export const emailResponseRepository = {
             query = query.lte('created_at', params.endDate);
         }
 
-        // Apply pagination and ordering
         query = query
             .order('created_at', { ascending: false })
             .range(params.offset, params.offset + params.limit - 1);
@@ -73,13 +63,10 @@ export const emailResponseRepository = {
         const { data, error, count } = await query;
 
         if (error) throw error;
-        return { data: data as EmailLog[], total: count || 0 };
+        return { data: data as EmailMessage[], total: count || 0 };
     },
 
-    /**
-     * Get email replies with filters
-     */
-    async getEmailReplies(params: {
+    async getIncomingEmails(params: {
         limit: number;
         offset: number;
         leadId?: string;
@@ -89,10 +76,49 @@ export const emailResponseRepository = {
         unreadOnly?: boolean;
     }) {
         let query = supabaseAdmin
-            .from('email_replies')
-            .select('*', { count: 'exact', head: false });
+            .from('email_messages')
+            .select('*', { count: 'exact', head: false })
+            .eq('direction', 'incoming');
 
-        // Apply filters
+        if (params.leadId) {
+            query = query.eq('lead_id', params.leadId);
+        }
+        if (params.trackingId) {
+            query = query.eq('tracking_id', params.trackingId);
+        }
+        if (params.startDate) {
+            query = query.gte('created_at', params.startDate);
+        }
+        if (params.endDate) {
+            query = query.lte('created_at', params.endDate);
+        }
+        if (params.unreadOnly) {
+            query = query.eq('status', 'received');
+        }
+
+        query = query
+            .order('created_at', { ascending: false })
+            .range(params.offset, params.offset + params.limit - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+        return { data: data as EmailMessage[], total: count || 0 };
+    },
+
+    async getOutgoingEmails(params: {
+        limit: number;
+        offset: number;
+        leadId?: string;
+        trackingId?: string;
+        startDate?: string;
+        endDate?: string;
+    }) {
+        let query = supabaseAdmin
+            .from('email_messages')
+            .select('*', { count: 'exact', head: false })
+            .eq('direction', 'outgoing');
+
         if (params.leadId) {
             query = query.eq('lead_id', params.leadId);
         }
@@ -106,7 +132,6 @@ export const emailResponseRepository = {
             query = query.lte('created_at', params.endDate);
         }
 
-        // Apply pagination and ordering
         query = query
             .order('created_at', { ascending: false })
             .range(params.offset, params.offset + params.limit - 1);
@@ -114,92 +139,137 @@ export const emailResponseRepository = {
         const { data, error, count } = await query;
 
         if (error) throw error;
-        return { data: data as EmailReply[], total: count || 0 };
+        return { data: data as EmailMessage[], total: count || 0 };
     },
 
-    /**
-     * Get email logs by tracking ID
-     */
-    async getEmailLogsByTrackingId(trackingId: string): Promise<EmailLog[]> {
+    async getEmailMessagesByTrackingId(trackingId: string): Promise<EmailMessage[]> {
         const { data, error } = await supabaseAdmin
-            .from('email_logs')
+            .from('email_messages')
             .select('*')
             .eq('tracking_id', trackingId)
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        return data as EmailLog[];
+        return data as EmailMessage[];
     },
 
-    /**
-     * Get replies by tracking ID
-     */
-    async getRepliesByTrackingId(trackingId: string): Promise<EmailReply[]> {
+    async getEmailThreadByTrackingId(trackingId: string): Promise<EmailMessage[]> {
         const { data, error } = await supabaseAdmin
-            .from('email_replies')
+            .from('email_messages')
             .select('*')
             .eq('tracking_id', trackingId)
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        return data as EmailReply[];
+        return data as EmailMessage[];
     },
 
-    /**
-     * Get email logs by lead ID
-     */
-    async getEmailLogsByLeadId(leadId: string, limit: number, offset: number): Promise<EmailLog[]> {
+    async getEmailMessagesByLeadId(leadId: string, limit: number, offset: number): Promise<EmailMessage[]> {
         const { data, error } = await supabaseAdmin
-            .from('email_logs')
+            .from('email_messages')
             .select('*')
             .eq('lead_id', leadId)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
         if (error) throw error;
-        return data as EmailLog[];
+        return data as EmailMessage[];
     },
 
-    /**
-     * Get replies by lead ID
-     */
-    async getRepliesByLeadId(leadId: string, limit: number, offset: number): Promise<EmailReply[]> {
+    async getRecentIncomingEmails(limit: number, since: string): Promise<EmailMessage[]> {
         const { data, error } = await supabaseAdmin
-            .from('email_replies')
+            .from('email_messages')
             .select('*')
-            .eq('lead_id', leadId)
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1);
-
-        if (error) throw error;
-        return data as EmailReply[];
-    },
-
-    /**
-     * Get recent replies
-     */
-    async getRecentReplies(limit: number, since: string): Promise<EmailReply[]> {
-        const { data, error } = await supabaseAdmin
-            .from('email_replies')
-            .select('*')
+            .eq('direction', 'incoming')
             .gte('created_at', since)
             .order('created_at', { ascending: false })
             .limit(limit);
 
         if (error) throw error;
-        return data as EmailReply[];
+        return data as EmailMessage[];
     },
 
-    /**
-     * Mark reply as read (if you add a read_status column)
-     * Note: You'll need to add this column to your table first
-     */
-    async markReplyAsRead(replyId: string): Promise<void> {
+    async markEmailAsRead(messageId: string): Promise<void> {
         const { error } = await supabaseAdmin
-            .from('email_replies')
-            .update({ read_status: true } as any)
-            .eq('id', replyId);
+            .from('email_messages')
+            .update({ status: 'read' })
+            .eq('id', messageId);
 
         if (error) throw error;
+    },
+
+    async getEmailByMessageId(messageId: string): Promise<EmailMessage | null> {
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('*')
+            .eq('message_id', messageId)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data as EmailMessage | null;
+    },
+
+    async getEmailsByParentTrackingId(parentTrackingId: string): Promise<EmailMessage[]> {
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('*')
+            .eq('parent_tracking_id', parentTrackingId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data as EmailMessage[];
+    },
+
+    async getEmailConversation(trackingId: string): Promise<{
+        messages: EmailMessage[];
+        total: number;
+    }> {
+        const { data, error, count } = await supabaseAdmin
+            .from('email_messages')
+            .select('*', { count: 'exact', head: false })
+            .eq('tracking_id', trackingId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return { messages: data as EmailMessage[], total: count || 0 };
+    },
+
+    async getLatestEmailByTrackingId(trackingId: string): Promise<EmailMessage | null> {
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('*')
+            .eq('tracking_id', trackingId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data as EmailMessage | null;
+    },
+
+    async getEmailStatsByLeadId(leadId: string): Promise<{
+        total: number;
+        incoming: number;
+        outgoing: number;
+        lastMessageAt: string | null;
+    }> {
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('direction, created_at', { count: 'exact' })
+            .eq('lead_id', leadId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const incoming = data?.filter(msg => msg.direction === 'incoming').length || 0;
+        const outgoing = data?.filter(msg => msg.direction === 'outgoing').length || 0;
+        const lastMessageAt = data && data.length > 0 ? data[0].created_at : null;
+
+        return {
+            total: data?.length || 0,
+            incoming,
+            outgoing,
+            lastMessageAt,
+        };
     }
 };

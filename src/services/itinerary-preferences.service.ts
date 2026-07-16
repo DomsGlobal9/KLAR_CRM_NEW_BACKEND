@@ -500,4 +500,134 @@ export const itineraryPreferencesService = {
     },
 
 
+    /**
+     * Get all itineraries (both form-based and file-only)
+     */
+    async getAllItinerariesCombined(params?: IPaginationParams, roleFilter?: IRoleFilter): Promise<{
+        success: boolean;
+        data?: {
+            leads: Array<any>;
+            total_count: number;
+            pagination: {
+                page: number;
+                limit: number;
+                total_pages: number;
+            };
+        };
+        summary?: {
+            total_leads: number;
+            total_flight_preferences: number;
+            total_hotel_preferences: number;
+            total_visa_preferences: number;
+            leads_with_flight_prefs: number;
+            leads_with_hotel_prefs: number;
+            leads_with_visa_prefs: number;
+            complete_leads: number;
+            file_only_leads: number;
+        };
+        message?: string;
+    }> {
+        try {
+            const page = params?.page || 1;
+            const limit = params?.limit || 50;
+
+            // Fetch both types
+            const [formResult, fileResult] = await Promise.all([
+                itineraryPreferencesRepository.getAllLeadsMinimal(params, roleFilter),
+                itineraryPreferencesRepository.getAllFileOnlyItineraries(params, roleFilter)
+            ]);
+
+            // Combine the leads
+            const combinedLeads = [...formResult.leads, ...fileResult.leads];
+
+            // Sort by created_at (newest first)
+            combinedLeads.sort((a, b) => {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+
+            // Calculate pagination for combined results
+            const totalCount = formResult.total_count + fileResult.total_count;
+            const totalPages = Math.ceil(totalCount / limit);
+
+            // Paginate the combined results
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit;
+            const paginatedLeads = combinedLeads.slice(startIndex, endIndex);
+
+            // Calculate summaries
+            let totalFlightPrefs = 0;
+            let totalHotelPrefs = 0;
+            let totalVisaPrefs = 0;
+            let leadsWithFlightPrefs = 0;
+            let leadsWithHotelPrefs = 0;
+            let leadsWithVisaPrefs = 0;
+            let completeLeads = 0;
+            let fileOnlyLeads = 0;
+
+            combinedLeads.forEach(lead => {
+                if (lead.is_file_only) {
+                    fileOnlyLeads++;
+                }
+
+                // For file-only leads, we don't count preferences
+                if (!lead.is_file_only) {
+                    if (lead.summary?.flight_preferences_added) totalFlightPrefs++;
+                    if (lead.summary?.hotel_preferences_added) totalHotelPrefs++;
+                    if (lead.summary?.visa_preferences_added) totalVisaPrefs++;
+
+                    if (lead.summary?.flight_preferences_added) leadsWithFlightPrefs++;
+                    if (lead.summary?.hotel_preferences_added) leadsWithHotelPrefs++;
+                    if (lead.summary?.visa_preferences_added) leadsWithVisaPrefs++;
+
+                    if (lead.summary?.flight_preferences_added &&
+                        lead.summary?.hotel_preferences_added &&
+                        lead.summary?.visa_preferences_added) {
+                        completeLeads++;
+                    }
+                }
+            });
+
+            return {
+                success: true,
+                data: {
+                    leads: paginatedLeads,
+                    total_count: totalCount,
+                    pagination: {
+                        page,
+                        limit,
+                        total_pages: totalPages
+                    }
+                },
+                summary: {
+                    total_leads: totalCount,
+                    total_flight_preferences: totalFlightPrefs,
+                    total_hotel_preferences: totalHotelPrefs,
+                    total_visa_preferences: totalVisaPrefs,
+                    leads_with_flight_prefs: leadsWithFlightPrefs,
+                    leads_with_hotel_prefs: leadsWithHotelPrefs,
+                    leads_with_visa_prefs: leadsWithVisaPrefs,
+                    complete_leads: completeLeads,
+                    file_only_leads: fileOnlyLeads
+                }
+            };
+
+        } catch (error) {
+            console.error('Error in getAllItinerariesCombined:', error);
+            return {
+                success: false,
+                data: {
+                    leads: [],
+                    total_count: 0,
+                    pagination: {
+                        page: params?.page || 1,
+                        limit: params?.limit || 50,
+                        total_pages: 0
+                    }
+                },
+                message: error instanceof Error ? error.message : 'Failed to get itineraries'
+            };
+        }
+    }
+
+
 };

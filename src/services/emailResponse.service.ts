@@ -1,6 +1,5 @@
 import { emailResponseRepository } from "../repositories/emailResponse.repository";
 
-
 export interface EmailLogFilters {
     page: number;
     limit: number;
@@ -21,20 +20,30 @@ export interface EmailReplyFilters {
     unreadOnly?: boolean;
 }
 
+export interface AllEmailsFilters {
+    page: number;
+    limit: number;
+    leadId?: string;
+    status?: string;
+    trackingId?: string;
+    direction?: 'incoming' | 'outgoing';
+    startDate?: string;
+    endDate?: string;
+}
+
 export const emailResponseService = {
-    /**
-     * Get email logs with pagination and filters
-     */
+
     async getEmailLogs(filters: EmailLogFilters) {
         const { page, limit, leadId, status, trackingId, startDate, endDate } = filters;
         const offset = (page - 1) * limit;
 
-        const { data, total } = await emailResponseRepository.getEmailLogs({
+        const { data, total } = await emailResponseRepository.getEmailMessages({
             limit,
             offset,
             leadId,
             status,
             trackingId,
+            direction: 'outgoing',
             startDate,
             endDate
         });
@@ -50,14 +59,11 @@ export const emailResponseService = {
         };
     },
 
-    /**
-     * Get email replies with pagination and filters
-     */
     async getEmailReplies(filters: EmailReplyFilters) {
         const { page, limit, leadId, trackingId, startDate, endDate, unreadOnly } = filters;
         const offset = (page - 1) * limit;
 
-        const { data, total } = await emailResponseRepository.getEmailReplies({
+        const { data, total } = await emailResponseRepository.getIncomingEmails({
             limit,
             offset,
             leadId,
@@ -78,67 +84,68 @@ export const emailResponseService = {
         };
     },
 
-    /**
-     * Get complete email conversation by tracking ID
-     */
     async getEmailConversation(trackingId: string) {
-        // Get sent email logs
-        const sentEmails = await emailResponseRepository.getEmailLogsByTrackingId(trackingId);
+        const { messages } = await emailResponseRepository.getEmailConversation(trackingId);
 
-        // Get replies for this tracking ID
-        const replies = await emailResponseRepository.getRepliesByTrackingId(trackingId);
-
-        // Combine and sort by created_at
-        const conversation = [
-            ...sentEmails.map(email => ({ ...email, type: 'sent' as const })),
-            ...replies.map(reply => ({ ...reply, type: 'received' as const }))
-        ].sort((a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+        const sentEmails = messages.filter(msg => msg.direction === 'outgoing');
+        const replies = messages.filter(msg => msg.direction === 'incoming');
 
         return {
             trackingId,
-            conversation,
+            conversation: messages,
             sentCount: sentEmails.length,
             replyCount: replies.length
         };
     },
 
-    /**
-     * Get emails by lead ID
-     */
     async getEmailsByLeadId(leadId: string, page: number, limit: number) {
         const offset = (page - 1) * limit;
 
-        const sentEmails = await emailResponseRepository.getEmailLogsByLeadId(leadId, limit, offset);
-        const replies = await emailResponseRepository.getRepliesByLeadId(leadId, limit, offset);
-
-        const allEmails = [
-            ...sentEmails.map(email => ({ ...email, type: 'sent' as const })),
-            ...replies.map(reply => ({ ...reply, type: 'received' as const }))
-        ].sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        const messages = await emailResponseRepository.getEmailMessagesByLeadId(leadId, limit, offset);
 
         return {
-            data: allEmails,
+            data: messages,
             pagination: {
                 page,
                 limit,
-                total: allEmails.length
+                total: messages.length
             }
         };
     },
 
-    /**
-     * Get recent replies (last X hours)
-     */
     async getRecentReplies(limit: number, hours: number) {
         const since = new Date();
         since.setHours(since.getHours() - hours);
 
-        const replies = await emailResponseRepository.getRecentReplies(limit, since.toISOString());
+        const replies = await emailResponseRepository.getRecentIncomingEmails(limit, since.toISOString());
 
         return replies;
-    }
+    },
+
+    async getAllEmails(filters: AllEmailsFilters) {
+        const { page, limit, leadId, status, trackingId, direction, startDate, endDate } = filters;
+        const offset = (page - 1) * limit;
+
+        const { data, total } = await emailResponseRepository.getEmailMessages({
+            limit,
+            offset,
+            leadId,
+            status,
+            trackingId,
+            direction,
+            startDate,
+            endDate
+        });
+
+        return {
+            data,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+    },
+
 };

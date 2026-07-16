@@ -135,21 +135,58 @@ export const travelerService = {
             throw new Error(`Validation failed: ${errors.join(', ')}`);
         }
 
+        // Check for existing group
+        let groupId = payload.group_id;
+
+        if (!groupId) {
+            // Try to find existing group by email or phone
+            const existingGroupId = await travelerRepository.findGroupByEmailOrPhone(
+                payload.travelerEmail,
+                payload.travelerPhone
+            );
+
+            if (existingGroupId) {
+                groupId = existingGroupId;
+            } else {
+                // Create new group
+                groupId = await travelerRepository.findOrCreateGroup(
+                    payload.travelerEmail,
+                    payload.travelerPhone
+                );
+            }
+        }
+
+        // Add group_id to payload
+        const payloadWithGroup = {
+            ...payload,
+            group_id: groupId,
+        };
+
+        // Check if traveler with same email or phone already exists
         if (payload.travelerEmail) {
             const existingTraveler = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
             if (existingTraveler) {
-                throw new Error('Traveler with this email already exists');
+                // If exists but different group, merge groups
+                if (existingTraveler.group_id !== groupId) {
+                    await this.mergeGroups(existingTraveler.group_id, groupId);
+                    groupId = existingTraveler.group_id;
+                }
+                throw new Error('Traveler with this email already exists in the group');
             }
         }
 
         if (payload.travelerPhone) {
             const existingTravelerByPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
             if (existingTravelerByPhone) {
-                throw new Error('Traveler with this phone number already exists');
+                if (existingTravelerByPhone.group_id !== groupId) {
+                    await this.mergeGroups(existingTravelerByPhone.group_id, groupId);
+                    groupId = existingTravelerByPhone.group_id;
+                }
+                throw new Error('Traveler with this phone number already exists in the group');
             }
         }
 
-        const traveler = await travelerRepository.createTraveler(payload);
+        const traveler = await travelerRepository.createTraveler(payloadWithGroup);
         return traveler;
     },
 
@@ -241,6 +278,20 @@ export const travelerService = {
         return travelers;
     },
 
+    async mergeGroups(sourceGroupId: string, targetGroupId: string): Promise<void> {
+        // Update all travelers from source group to target group
+        const { error } = await supabaseAdmin
+            .from('travelers')
+            .update({ group_id: targetGroupId })
+            .eq('group_id', sourceGroupId);
+
+        if (error) {
+            throw new Error(`Failed to merge groups: ${error.message}`);
+        }
+
+
+    },
+
     async bulkCreateTravelers(travelersData: any[]): Promise<{
         created: number;
         skipped: number;
@@ -267,8 +318,9 @@ export const travelerService = {
 
         const toCreate: any[] = [];
 
-        travelersData.forEach((row, index) => {
-            const rowNum = index + 2;
+        for (let i = 0; i < travelersData.length; i++) {
+            const row = travelersData[i];
+            const rowNum = i + 2;
 
             try {
                 const insertData: any = {
@@ -309,6 +361,19 @@ export const travelerService = {
                     };
                 }
 
+                // ✅ FIXED: Simplified grouping logic
+                const existingGroupId = await travelerRepository.findGroupByEmailOrPhone(
+                    insertData.traveler_email,
+                    insertData.traveler_phone
+                );
+
+                if (existingGroupId) {
+                    insertData.group_id = existingGroupId;
+                } else {
+                    const newGroupId = `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    insertData.group_id = newGroupId;
+                }
+
                 toCreate.push(insertData);
 
             } catch (error: any) {
@@ -317,7 +382,7 @@ export const travelerService = {
                     reason: `Error processing row: ${error.message || 'Unknown error'}`
                 });
             }
-        });
+        }
 
         if (toCreate.length > 0) {
             console.log(`📝 Attempting to create ${toCreate.length} travelers...`);
@@ -359,5 +424,10 @@ export const travelerService = {
         }
 
         return results;
+    },
+
+    async getTravelersByGroup(groupId: string): Promise<ITraveler[]> {
+        return await travelerRepository.getTravelersByGroup(groupId);
     }
 };
+

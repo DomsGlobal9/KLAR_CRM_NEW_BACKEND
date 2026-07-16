@@ -1,16 +1,14 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser, ParsedMail } from 'mailparser';
 import { imapConfig } from '../config/imap.config';
-import { emailRepository } from '../repositories/email.repository';
-
-type MsgWithSource = {
-    uid?: number;
-    source?: Buffer | AsyncIterable<Buffer>;
-};
+import { emailMessageRepository } from '../repositories/email-message.repository';
+import { v4 as uuidv4 } from 'uuid';
 
 export class EmailReaderService {
+
     private client: ImapFlow;
     private isConnected: boolean = false;
+    private reconnectTimer: NodeJS.Timeout | null = null;
 
     constructor() {
         this.client = new ImapFlow({
@@ -30,31 +28,47 @@ export class EmailReaderService {
     }
 
     async connect(): Promise<void> {
-        try {
-            if (this.isConnected) return;
+        if (this.isConnected) return;
 
-            await this.client.connect();
-            await this.client.mailboxOpen('INBOX');
+        await this.client.connect();
+        await this.client.mailboxOpen('INBOX');
 
-            this.isConnected = true;
-            console.log('IMAP connected to INBOX');
-        } catch (error) {
-            console.error('IMAP connection error:', error);
-            this.isConnected = false;
-        }
+        this.isConnected = true;
+
+        console.log('✅ IMAP Connected');
+    }
+
+    private startKeepAlive(): void {
+        if (this.reconnectTimer) clearInterval(this.reconnectTimer);
+        this.reconnectTimer = setInterval(async () => {
+            if (this.isConnected) {
+                try {
+                    await this.client.noop();
+                } catch (err) {
+                    console.error('Keep-alive failed:', err);
+                    this.isConnected = false;
+                    await this.connect();
+                }
+            }
+        }, 60000);
     }
 
     async readEmails(): Promise<void> {
         try {
+
             if (!this.isConnected) {
                 await this.connect();
-                if (!this.isConnected) return;
+                if (!this.isConnected) {
+                    return;
+                }
             }
 
             const result = await this.client.search({ seen: false });
             const uids: number[] = Array.isArray(result) ? result : [];
 
-            if (uids.length === 0) return;
+            if (uids.length === 0) {
+                return;
+            }
 
             for (const uid of uids) {
                 try {
@@ -84,159 +98,120 @@ export class EmailReaderService {
                     const text = parsed.text ?? '';
                     const html = typeof parsed.html === 'string' ? parsed.html : '';
                     const messageId = parsed.messageId;
+                    const inReplyTo = parsed.inReplyTo?.[0] || null;
+                    const toRecipients = parsed.to ? (Array.isArray(parsed.to) ? parsed.to.flatMap((addr: any) => addr.value?.map((v: any) => v.address) || []) : parsed.to.value?.map((v: any) => v.address) || []) : [];
 
                     if (messageId) {
-                        const existingReply = await emailRepository.getReplyByMessageId(messageId);
-                        if (existingReply) {
+                        const existingMessage = await emailMessageRepository.getByMessageId(messageId);
+                        if (existingMessage) {
                             await this.client.messageFlagsAdd(uid, ['\\Seen']);
                             continue;
                         }
                     }
 
                     let trackingId: string | null = null;
+                    let parentTrackingId: string | null = null;
+                    let leadId: string | null = null;
 
                     const tidMatch = subject.match(/\[TID:([^\]]+)\]/);
                     if (tidMatch) {
                         trackingId = tidMatch[1];
                     } else {
                         const trkMatch = subject.match(/\[(trk_[^\]]+)\]/);
-                        trackingId = trkMatch ? trkMatch[1] : null;
+                        if (trkMatch) {
+                            trackingId = trkMatch[1];
+                        }
                     }
 
                     if (!trackingId && parsed.inReplyTo && parsed.inReplyTo.length > 0) {
-                        const parentLog = await emailRepository.getByMessageId(parsed.inReplyTo[0]);
-                        if (parentLog && parentLog.tracking_id) {
-                            trackingId = parentLog.tracking_id;
+                        const parentMessage = await emailMessageRepository.getByMessageId(parsed.inReplyTo[0]);
+                        if (parentMessage) {
+                            trackingId = parentMessage.tracking_id;
+                            parentTrackingId = parentMessage.tracking_id;
+                            leadId = parentMessage.lead_id;
                         }
                     }
 
+                    if (!trackingId) {
+                        trackingId = uuidv4();
+                        parentTrackingId = null;
+                    }
+
                     if (trackingId) {
-                        const existingReply = await emailRepository.getReplyByTrackingIdAndUid(trackingId, uid);
-                        if (!existingReply) {
-                            await emailRepository.createEmailReply({
-                                tracking_id: trackingId,
-                                from_email: from,
-                                subject,
-                                body: text,
-                                html_body: html,
-                                message_id: messageId,
-                                in_reply_to: parsed.inReplyTo?.[0] || undefined,
-                                raw_headers: parsed.headers,
-                            });
+                        const existingMessage = await emailMessageRepository.getByTrackingIdAndDirection(trackingId, 'incoming');
+                        if (existingMessage && existingMessage.message_id === messageId) {
+                            await this.client.messageFlagsAdd(uid, ['\\Seen']);
+                            continue;
                         }
+
+                        await emailMessageRepository.createIncomingEmail({
+                            tracking_id: trackingId,
+                            parent_tracking_id: parentTrackingId,
+                            message_id: messageId || null,
+                            in_reply_to: inReplyTo,
+                            from_email: from,
+                            to_email: toRecipients.length > 0 ? toRecipients : [process.env.SMTP_USER || ''],
+                            cc_email: null,
+                            bcc_email: null,
+                            subject: subject,
+                            body: text || null,
+                            html_body: html || null,
+                            raw_headers: parsed.headers || null,
+                            lead_id: leadId,
+                        });
                     }
 
                     await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
                 } catch (err) {
-                    // silently ignore or handle if needed
+                    console.error(`Error processing email UID ${uid}:`, err);
+                    try {
+                        await this.client.messageFlagsAdd(uid, ['\\Seen']);
+                    } catch (flagErr) {
+                        console.error(`Failed to mark email UID ${uid} as read:`, flagErr);
+                    }
                 }
             }
 
         } catch (error) {
+            console.error('Fatal error in readEmails():', error);
             this.isConnected = false;
         }
     }
 
-    // async readEmails(): Promise<void> {
-    //     try {
-    //         if (!this.isConnected) {
-    //             await this.connect();
-    //             if (!this.isConnected) return;
-    //         }
+    public async start(): Promise<void> {
+        while (true) {
+            try {
+                if (!this.isConnected) {
+                    await this.connect();
+                }
 
-    //         const result = await this.client.search({ seen: false });
-    //         const uids: number[] = Array.isArray(result) ? result : [];
+                console.log('📨 Waiting for new emails...');
 
-    //         if (uids.length === 0) return;
+                while (this.isConnected) {
 
-    //         for (const uid of uids) {
-    //             try {
-    //                 const msg = await this.client.fetchOne(uid, { source: true });
+                    await this.client.idle();
 
-    //                 if (!msg || !msg.source) continue;
+                    await this.readEmails();
+                }
+            } catch (err) {
+                console.error('IDLE Error:', err);
+                this.isConnected = false;
 
-    //                 let raw: Buffer;
-    //                 if (Buffer.isBuffer(msg.source)) {
-    //                     raw = msg.source;
-    //                 } else if (msg.source && typeof msg.source === 'object' && Symbol.asyncIterator in Object(msg.source)) {
-    //                     const chunks: Buffer[] = [];
-    //                     for await (const chunk of msg.source as AsyncIterable<Buffer>) {
-    //                         chunks.push(chunk);
-    //                     }
-    //                     raw = Buffer.concat(chunks);
-    //                 } else {
-    //                     continue;
-    //                 }
-
-    //                 const parsed: ParsedMail = await simpleParser(raw);
-
-    //                 const subject = parsed.subject ?? '';
-    //                 const from = parsed.from?.text ?? '';
-    //                 const text = parsed.text ?? '';
-    //                 const html = typeof parsed.html === 'string' ? parsed.html : '';
-    //                 const messageId = parsed.messageId;
-
-    //                 if (messageId) {
-    //                     const existingReply = await emailRepository.getReplyByMessageId(messageId);
-    //                     if (existingReply) {
-    //                         await this.client.messageFlagsAdd(uid, ['\\Seen']);
-    //                         continue;
-    //                     }
-    //                 }
-
-    //                 let trackingId: string | null = null;
-
-    //                 const tidMatch = subject.match(/\[TID:([^\]]+)\]/);
-    //                 if (tidMatch) {
-    //                     trackingId = tidMatch[1];
-    //                 } else {
-    //                     const trkMatch = subject.match(/\[(trk_[^\]]+)\]/);
-    //                     trackingId = trkMatch ? trkMatch[1] : null;
-    //                 }
-
-    //                 if (!trackingId && parsed.inReplyTo && parsed.inReplyTo.length > 0) {
-    //                     const parentLog = await emailRepository.getByMessageId(parsed.inReplyTo[0]);
-    //                     if (parentLog && parentLog.tracking_id) {
-    //                         trackingId = parentLog.tracking_id;
-    //                     }
-    //                 }
-
-    //                 if (trackingId) {
-    //                     const existingReply = await emailRepository.getReplyByTrackingIdAndUid(trackingId, uid);
-    //                     if (!existingReply) {
-    //                         await emailRepository.createEmailReply({
-    //                             tracking_id: trackingId,
-    //                             from_email: from,
-    //                             subject,
-    //                             body: text,
-    //                             html_body: html,
-    //                             message_id: messageId,
-    //                             in_reply_to: parsed.inReplyTo?.[0] || undefined,
-    //                             raw_headers: parsed.headers,
-    //                         });
-    //                     }
-    //                 }
-
-    //                 await this.client.messageFlagsAdd(uid, ['\\Seen']);
-
-    //             } catch (err) {
-    //                 console.error(`Error processing email UID ${uid}:`, err);
-    //             }
-    //         }
-
-    //     } catch (error) {
-    //         console.error('Error reading emails:', error);
-    //         this.isConnected = false;
-    //     }
-    // }
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+        }
+    }
 
     async stop(): Promise<void> {
+        if (this.reconnectTimer) {
+            clearInterval(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
         try {
             if (this.isConnected) {
                 await this.client.logout();
                 this.isConnected = false;
-                console.log('IMAP disconnected');
             }
         } catch (error) {
             console.error('Error closing IMAP:', error);
