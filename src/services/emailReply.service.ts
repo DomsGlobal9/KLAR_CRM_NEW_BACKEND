@@ -80,7 +80,7 @@ export const emailReplyService = {
                 html: html,
                 cc: cc,
                 bcc: bcc,
-                replyTo: replyTo || envConfig.SMTP_USER,
+                replyTo: envConfig.SMTP_USER,
                 leadId: leadId,
                 trackingId: trackingId,
                 threadId: lastMessage.message_id || undefined,
