@@ -1,5 +1,5 @@
 import dns from "node:dns/promises";
-dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1", "0.0.0.0", "172.31.2.100"]);
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1", "0.0.0.0"]);
 
 import dotenv from 'dotenv';
 import app from './app';
