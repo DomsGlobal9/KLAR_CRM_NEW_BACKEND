@@ -326,6 +326,8 @@ export const authController = {
             const { data: userList } = await AuthRepository.listUsers();
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
+            console.log(`[AUTH Controller] USER data: `, user);
+
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered' });
             }
