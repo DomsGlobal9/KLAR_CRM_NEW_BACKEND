@@ -51,9 +51,9 @@ app.get('/api/v1/cron/status', (_req, res) => {
   });
 });
 
-if (envConfig.NODE_ENV !== 'test') {
-  startEmailReaderJob();
-}
+// if (envConfig.NODE_ENV !== 'test') {
+//   startEmailReaderJob();
+// }
 
 connectDB();
 
