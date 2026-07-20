@@ -324,6 +324,9 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
+            console.log(`[AUTH Controller] USER LIST data: `, userList);
+
+
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
             console.log(`[AUTH Controller] USER data: `, user);
