@@ -30,6 +30,7 @@ import leadStageVoucherRoutes from './leadStageVoucher.routes';
 import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 import travelerRoutes from './traveler.routes';
 import emailReplyRoutes from './emailReply.routes';
+import tourRoutes from "./tour.routes"
 
 const router = Router();
 
@@ -69,4 +70,5 @@ router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
 router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
 router.use('/travelers', travelerRoutes);
 router.use('/visa', visaRoutes);
+router.use("/tour", tourRoutes)
 export default router;
