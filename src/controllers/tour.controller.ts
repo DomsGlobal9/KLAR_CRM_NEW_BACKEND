@@ -29,7 +29,8 @@ export const getB2BTourReport = async (req: Request, res: Response) => {
 export const getB2BTourById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await tourService.getSingleTourQueryDetails(id, "B2B");
+    const targetId = Array.isArray(id) ? id[0] : id;
+    const data = await tourService.getSingleTourQueryDetails(targetId, "B2B");
 
     res.status(200).json({ success: true, data });
   } catch (error: any) {
@@ -66,7 +67,8 @@ export const getB2CTourReport = async (req: Request, res: Response) => {
 export const getB2CTourById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = await tourService.getSingleTourQueryDetails(id, "B2C");
+    const targetId = Array.isArray(id) ? id[0] : id;
+    const data = await tourService.getSingleTourQueryDetails(targetId, "B2C");
 
     res.status(200).json({ success: true, data });
   } catch (error: any) {

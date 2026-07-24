@@ -1,12 +1,12 @@
-import { TourQueryModel } from "../models/tour.model";
+import { TourQueryModel, PortalSource } from "../models/tour.model";
 
 export const findTourQueriesBySource = async (
-  source: string,
+  source: PortalSource | string,
   skip: number,
   limit: number
 ) => {
   const model = TourQueryModel();
-  const filter = { source };
+  const filter = { source: source as PortalSource };
 
   const [queries, totalCount] = await Promise.all([
     model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -18,8 +18,10 @@ export const findTourQueriesBySource = async (
 
 export const findTourQueryByIdAndSource = async (
   id: string,
-  source: string
+  source: PortalSource | string
 ) => {
   const model = TourQueryModel();
-  return await model.findOne({ _id: id, source }).lean();
+  const filter = { _id: id, source: source as PortalSource };
+  
+  return await model.findOne(filter as any).lean();
 };
