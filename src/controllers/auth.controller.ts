@@ -324,10 +324,15 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
+            console.log(`[AUTH Controller] USER LIST data: `, userList);
+
+
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
+            console.log(`[AUTH Controller] USER data: `, user);
+
             if (!user) {
-                return res.status(404).json({ error: 'Email not registered' });
+                return res.status(404).json({ error: 'Email not registered - 1' });
             }
 
             if (user.user_metadata.status !== "active") {
@@ -367,7 +372,7 @@ export const authController = {
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
             if (!user) {
-                return res.status(404).json({ error: 'Email not registered' });
+                return res.status(404).json({ error: 'Email not registered - 2' });
             }
 
             const { data: authData, error: authError } = await AuthService.login(normalizedEmail, password);
