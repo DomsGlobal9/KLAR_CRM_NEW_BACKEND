@@ -20,6 +20,30 @@ const validatePhone = (phone: string): boolean => {
     return phoneRegex.test(phone);
 };
 
+const validateAadhaar = (aadhaar: string): string[] => {
+    const errors: string[] = [];
+    if (!aadhaar) return errors;
+
+    const aadhaarRegex = /^[0-9]{12}$/;
+    if (!aadhaarRegex.test(aadhaar)) {
+        errors.push('Invalid Aadhaar number format. Must be 12 digits');
+    }
+
+    return errors;
+};
+
+const validatePassportFormat = (passport: string): string[] => {
+    const errors: string[] = [];
+    if (!passport) return errors;
+
+    const passportRegex = /^[A-Z0-9]{6,9}$/;
+    if (!passportRegex.test(passport)) {
+        errors.push('Invalid Passport number format. Must be 6-9 alphanumeric characters');
+    }
+
+    return errors;
+};
+
 const validateTitle = (title: string): boolean => {
     if (!title) return true;
     return Object.values(Title).includes(title as Title);
@@ -57,7 +81,7 @@ const validateGST = (gst: any): string[] => {
     if (!gst) return errors;
 
     if (gst.gstNumber) {
-        if (!gst.registeredName) errors.push('Registered name is required when GST number is provided');
+        // if (!gst.registeredName) errors.push('Registered name is required when GST number is provided');
         if (!gst.email) errors.push('Email is required when GST number is provided');
         if (!gst.mobile) errors.push('Mobile is required when GST number is provided');
         if (!gst.address) errors.push('Address is required when GST number is provided');
@@ -131,6 +155,37 @@ export const travelerService = {
             errors.push(`Emergency contact validation failed: ${ecErrors.join(', ')}`);
         }
 
+        if (payload.aadhaarNumber) {
+            const aadhaarErrors = validateAadhaar(payload.aadhaarNumber);
+            if (aadhaarErrors.length > 0) {
+                errors.push(`Aadhaar validation failed: ${aadhaarErrors.join(', ')}`);
+            }
+
+            const isUnique = await travelerRepository.checkAadhaarUniqueness(payload.aadhaarNumber);
+            if (!isUnique) {
+                errors.push('Aadhaar number already exists');
+            }
+        }
+
+        // Validate Passport number
+        let passportNumber = payload.passportNumber;
+        if (payload.passport?.passportNumber && !passportNumber) {
+            passportNumber = payload.passport.passportNumber;
+        }
+
+        if (passportNumber) {
+            const passportErrors = validatePassportFormat(passportNumber);
+            if (passportErrors.length > 0) {
+                errors.push(`Passport validation failed: ${passportErrors.join(', ')}`);
+            }
+
+            const isUnique = await travelerRepository.checkPassportUniqueness(passportNumber);
+            if (!isUnique) {
+                errors.push('Passport number already exists');
+            }
+        }
+
+
         if (errors.length > 0) {
             throw new Error(`Validation failed: ${errors.join(', ')}`);
         }
@@ -156,6 +211,13 @@ export const travelerService = {
             }
         }
 
+        if (payload.passport?.passportNumber && !payload.passportNumber) {
+            payload.passportNumber = payload.passport.passportNumber;
+        }
+        if (payload.passport?.aadhaarNumber && !payload.aadhaarNumber) {
+            payload.aadhaarNumber = payload.passport.aadhaarNumber;
+        }
+
         // Add group_id to payload
         const payloadWithGroup = {
             ...payload,
@@ -164,25 +226,14 @@ export const travelerService = {
 
         // Check if traveler with same email or phone already exists
         if (payload.travelerEmail) {
-            const existingTraveler = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
-            if (existingTraveler) {
-                // If exists but different group, merge groups
-                if (existingTraveler.group_id !== groupId) {
-                    await this.mergeGroups(existingTraveler.group_id, groupId);
-                    groupId = existingTraveler.group_id;
-                }
-                throw new Error('Traveler with this email already exists in the group');
+            if (!validateEmail(payload.travelerEmail)) {
+                throw new Error('Invalid email format');
             }
         }
 
         if (payload.travelerPhone) {
-            const existingTravelerByPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
-            if (existingTravelerByPhone) {
-                if (existingTravelerByPhone.group_id !== groupId) {
-                    await this.mergeGroups(existingTravelerByPhone.group_id, groupId);
-                    groupId = existingTravelerByPhone.group_id;
-                }
-                throw new Error('Traveler with this phone number already exists in the group');
+            if (!validatePhone(payload.travelerPhone)) {
+                throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
             }
         }
 
@@ -210,27 +261,8 @@ export const travelerService = {
             throw new Error('Traveler not found');
         }
 
-        if (payload.travelerEmail) {
-            if (!validateEmail(payload.travelerEmail)) {
-                throw new Error('Invalid email format');
-            }
-
-            const travelerWithEmail = await travelerRepository.getTravelerByEmail(payload.travelerEmail);
-            if (travelerWithEmail && travelerWithEmail.id !== id) {
-                throw new Error('Email already in use by another traveler');
-            }
-        }
-
-        if (payload.travelerPhone) {
-            if (!validatePhone(payload.travelerPhone)) {
-                throw new Error('Invalid phone number format. Phone number must start with country code (e.g., +1234567890)');
-            }
-
-            const travelerWithPhone = await travelerRepository.getTravelerByPhone(payload.travelerPhone);
-            if (travelerWithPhone && travelerWithPhone.id !== id) {
-                throw new Error('Phone number already in use by another traveler');
-            }
-        }
+        // REMOVED: Email and Phone uniqueness checks - now allows duplicates
+        // No need to check group merging during update
 
         if (payload.passport) {
             const passportErrors = validatePassport(payload.passport);
@@ -250,6 +282,36 @@ export const travelerService = {
             const ecErrors = validateEmergencyContact(payload.emergencyContact);
             if (ecErrors.length > 0) {
                 throw new Error(`Emergency contact validation failed: ${ecErrors.join(', ')}`);
+            }
+        }
+
+        if (payload.aadhaarNumber) {
+            const aadhaarErrors = validateAadhaar(payload.aadhaarNumber);
+            if (aadhaarErrors.length > 0) {
+                throw new Error(`Aadhaar validation failed: ${aadhaarErrors.join(', ')}`);
+            }
+
+            const isUnique = await travelerRepository.checkAadhaarUniqueness(payload.aadhaarNumber, id);
+            if (!isUnique) {
+                throw new Error('Aadhaar number already exists');
+            }
+        }
+
+        // Validate Passport number for update
+        let passportNumber = payload.passportNumber;
+        if (payload.passport?.passportNumber && !passportNumber) {
+            passportNumber = payload.passport.passportNumber;
+        }
+
+        if (passportNumber) {
+            const passportErrors = validatePassportFormat(passportNumber);
+            if (passportErrors.length > 0) {
+                throw new Error(`Passport validation failed: ${passportErrors.join(', ')}`);
+            }
+
+            const isUnique = await travelerRepository.checkPassportUniqueness(passportNumber, id);
+            if (!isUnique) {
+                throw new Error('Passport number already exists');
             }
         }
 
@@ -346,7 +408,7 @@ export const travelerService = {
                 if (row.gstNumber) {
                     insertData.gst = {
                         gstNumber: row.gstNumber,
-                        registeredName: row.registeredName || '',
+                        // registeredName: row.registeredName || '',
                         email: row.gstEmail || '',
                         mobile: row.gstMobile ? formatPhone(row.gstMobile) : '',
                         address: row.gstAddress || ''
@@ -360,6 +422,32 @@ export const travelerService = {
                         phoneNumber: row.emergencyContactPhone ? formatPhone(row.emergencyContactPhone) : ''
                     };
                 }
+
+                if (row.aadhaarNumber) {
+                    const aadhaarErrors = validateAadhaar(row.aadhaarNumber);
+                    if (aadhaarErrors.length > 0) {
+                        results.errors.push({
+                            row: rowNum,
+                            reason: `Aadhaar validation failed: ${aadhaarErrors.join(', ')}`
+                        });
+                        continue;
+                    }
+                    insertData.aadhaar_number = row.aadhaarNumber;
+                }
+
+                // Add Passport number if present
+                if (row.passportNumber) {
+                    const passportErrors = validatePassportFormat(row.passportNumber);
+                    if (passportErrors.length > 0) {
+                        results.errors.push({
+                            row: rowNum,
+                            reason: `Passport validation failed: ${passportErrors.join(', ')}`
+                        });
+                        continue;
+                    }
+                    insertData.passport_number = row.passportNumber;
+                }
+
 
                 // ✅ FIXED: Simplified grouping logic
                 const existingGroupId = await travelerRepository.findGroupByEmailOrPhone(
