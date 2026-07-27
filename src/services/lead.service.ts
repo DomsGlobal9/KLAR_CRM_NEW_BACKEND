@@ -91,8 +91,8 @@ export const leadService = {
     if (!payload.customer_type) {
       throw new Error('Customer type is required');
     }
-    if (!['b2b', 'corporate'].includes(payload.customer_type)) {
-      throw new Error('Invalid customer type. Must be either b2b or corporate');
+    if (!['b2b', 'b2c', 'corporate'].includes(payload.customer_type)) {
+      throw new Error('Invalid customer type. Must be either b2b or b2c or corporate');
     }
 
     const sanitizedData = ValidationUtils.sanitizeLeadData(payload);
