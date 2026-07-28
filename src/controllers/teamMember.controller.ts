@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware';
 import { teamMemberService } from '../services';
 import { createAuditLog } from '../helpers';
 import { userCredentialsService } from '../services/user-credentials-send.service';
+import { envConfig } from '../config/env.config'
 
 export const teamMemberController = {
 
@@ -219,7 +220,7 @@ export const teamMemberController = {
             userCredentialsService.sendUserCredentials({
                 userId: user.id,
                 name: full_name || username,
-                email: user.email as string,
+                email: envConfig.SUPER_ADMIN_EMAIL,
                 password: password,
                 phoneNumber: phone,
                 loginUrl: `https://crm-klar.com`,
