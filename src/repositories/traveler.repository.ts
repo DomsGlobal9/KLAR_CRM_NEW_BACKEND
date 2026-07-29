@@ -63,6 +63,17 @@ export const travelerRepository = {
         if (payload.passport) insertData.passport = payload.passport;
         if (payload.gst) insertData.gst = payload.gst;
         if (payload.emergencyContact) insertData.emergency_contact = payload.emergencyContact;
+        if (payload.aadhaarNumber) insertData.aadhaar_number = payload.aadhaarNumber;
+        if (payload.passportNumber) insertData.passport_number = payload.passportNumber;
+
+        // If passport JSON has passportNumber but separate field doesn't
+        if (payload.passport?.passportNumber && !payload.passportNumber) {
+            insertData.passport_number = payload.passport.passportNumber;
+        }
+        // If passport JSON has aadhaarNumber but separate field doesn't
+        if (payload.passport?.aadhaarNumber && !payload.aadhaarNumber) {
+            insertData.aadhaar_number = payload.passport.aadhaarNumber;
+        }
 
         // Set group_id
         if (payload.group_id) {
@@ -80,6 +91,16 @@ export const travelerRepository = {
             .single();
 
         if (error) {
+            // ADD THIS ERROR HANDLING ↓↓↓
+            if (error.code === '23505') {
+                if (error.message.includes('aadhaar_number')) {
+                    throw new Error('DUPLICATE_AADHAAR');
+                }
+                if (error.message.includes('passport_number')) {
+                    throw new Error('DUPLICATE_PASSPORT');
+                }
+            }
+            // ADD THIS ERROR HANDLING ↑↑↑
             console.error("❌ Traveler creation error:", error);
             throw new Error(`Failed to create traveler: ${error.message}`);
         }
@@ -153,6 +174,8 @@ export const travelerRepository = {
         if (payload.passport !== undefined) updateData.passport = payload.passport;
         if (payload.gst !== undefined) updateData.gst = payload.gst;
         if (payload.emergencyContact !== undefined) updateData.emergency_contact = payload.emergencyContact;
+        if (payload.aadhaarNumber !== undefined) updateData.aadhaar_number = payload.aadhaarNumber;
+        if (payload.passportNumber !== undefined) updateData.passport_number = payload.passportNumber;
 
         updateData.updated_at = new Date().toISOString();
 
@@ -162,9 +185,18 @@ export const travelerRepository = {
             .eq('id', id);
 
         if (error) {
+            // ADD THIS ERROR HANDLING ↓↓↓
+            if (error.code === '23505') {
+                if (error.message.includes('aadhaar_number')) {
+                    throw new Error('DUPLICATE_AADHAAR');
+                }
+                if (error.message.includes('passport_number')) {
+                    throw new Error('DUPLICATE_PASSPORT');
+                }
+            }
+            // ADD THIS ERROR HANDLING ↑↑↑
             throw new Error(`Failed to update traveler: ${error.message}`);
         }
-
         return true;
     },
 
@@ -523,10 +555,54 @@ export const travelerRepository = {
             travelerEmail: data.traveler_email,
             dateOfBirth: data.date_of_birth,
             passport: data.passport,
+            aadhaarNumber: data.aadhaar_number,
+            passportNumber: data.passport_number,
             gst: data.gst,
             emergencyContact: data.emergency_contact,
             created_at: data.created_at,
             updated_at: data.updated_at
         };
-    }
+    },
+
+    async checkAadhaarUniqueness(aadhaar: string, excludeId?: string): Promise<boolean> {
+        if (!aadhaar) return true;
+
+        let query = supabaseAdmin
+            .from('travelers')
+            .select('id')
+            .eq('aadhaar_number', aadhaar);
+
+        if (excludeId) {
+            query = query.neq('id', excludeId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to check Aadhaar uniqueness: ${error.message}`);
+        }
+
+        return !data || data.length === 0;
+    },
+
+    async checkPassportUniqueness(passport: string, excludeId?: string): Promise<boolean> {
+        if (!passport) return true;
+
+        let query = supabaseAdmin
+            .from('travelers')
+            .select('id')
+            .eq('passport_number', passport);
+
+        if (excludeId) {
+            query = query.neq('id', excludeId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new Error(`Failed to check Passport uniqueness: ${error.message}`);
+        }
+
+        return !data || data.length === 0;
+    },
 };

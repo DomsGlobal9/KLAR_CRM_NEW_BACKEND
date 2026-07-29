@@ -9,6 +9,7 @@ export enum Title {
 
 export interface IPassport {
     passportNumber?: string;
+    aadhaarNumber?: string;
     nationality?: string;
     issueDate?: Date;
     expiryDate?: Date;
@@ -16,7 +17,7 @@ export interface IPassport {
 
 export interface IGST {
     gstNumber?: string;
-    registeredName?: string;
+    // registeredName?: string;
     email?: string;
     mobile?: string;
     address?: string;
@@ -38,6 +39,8 @@ export interface ITraveler {
     dateOfBirth?: Date;
     passport?: IPassport;
     gst?: IGST;
+    aadhaarNumber?: string;  
+    passportNumber?: string;
     emergencyContact?: IEmergencyContact;
     created_at: Date;
     updated_at: Date;
@@ -50,6 +53,8 @@ export interface CreateTravelerPayload {
     travelerEmail?: string;
     dateOfBirth?: Date;
     passport?: IPassport;
+    aadhaarNumber?: string;   
+    passportNumber?: string; 
     gst?: IGST;
     emergencyContact?: IEmergencyContact;
     group_id?: string; 
@@ -62,6 +67,8 @@ export interface UpdateTravelerPayload {
     travelerEmail?: string;
     dateOfBirth?: Date;
     passport?: IPassport;
+    aadhaarNumber?: string;   
+    passportNumber?: string;
     gst?: IGST;
     emergencyContact?: IEmergencyContact;
 }
