@@ -79,7 +79,7 @@ export const teamService = {
             service_ids: string[];
         }) {
 
-        console.log("THe payload we get in SERVICE", JSON.stringify(payload, null, 2));
+
         return teamRepository.updateTeam(id, payload);
     },
 

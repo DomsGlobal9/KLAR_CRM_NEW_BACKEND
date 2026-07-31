@@ -20,7 +20,7 @@ export const leadStageVoucherController = {
                 data: result
             });
         } catch (error: any) {
-            console.error("❌ Lead Stage Voucher submission failure:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message || 'An explicit data storage error occurred'
@@ -50,7 +50,7 @@ export const leadStageVoucherController = {
         }
       });
     } catch (error: any) {
-      console.error("❌ Lead Stage Voucher paginated retrieval failure:", error);
+
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to retrieve vouchers list'
@@ -73,7 +73,7 @@ export const leadStageVoucherController = {
         data: voucher
       });
     } catch (error: any) {
-      console.error("❌ Lead Stage Voucher single record fetch failure:", error);
+
       res.status(404).json({
         success: false,
         error: error.message || 'The requested voucher layout profile could not be found'
@@ -116,7 +116,7 @@ async previewVoucherPDF(req: Request, res: Response) {
     
     return res.send(buffer);
   } catch (error: any) {
-    console.error("❌ Voucher PDF Preview loop failure:", error);
+
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to render PDF preview window.'
@@ -172,7 +172,7 @@ async previewVoucherPDF(req: Request, res: Response) {
       });
 
     } catch (error: any) {
-      console.error("❌ Voucher sharing processing loop failure:", error);
+
       return res.status(500).json({
         success: false,
         error: error.message || 'An internal error occurred during voucher delivery optimization loops.'
@@ -206,7 +206,7 @@ async downloadVoucherPDF(req: Request, res: Response) {
     
     return res.send(buffer);
   } catch (error: any) {
-    console.error("❌ Voucher PDF Download loop failure:", error);
+
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to generate downloadable PDF file.'

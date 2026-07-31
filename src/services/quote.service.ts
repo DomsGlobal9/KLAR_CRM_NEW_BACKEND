@@ -16,10 +16,10 @@ export const quoteService = {
      */
     async createQuote(payload: any): Promise<IQuoteResponse> {
         try {
-            console.log("Raw payload:", JSON.stringify(payload, null, 2));
+
 
             const transformedPayload: ICreateQuoteDTO = this.transformPayload(payload);
-            console.log("&&&&&&&&&&&&&&&&&&&&&The transformed payload:\n", JSON.stringify(transformedPayload, null, 2));
+
 
             const result = await quoteRepository.createQuote(transformedPayload);
 
@@ -36,7 +36,7 @@ export const quoteService = {
                 data: result
             };
         } catch (error: any) {
-            console.error('Error creating quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to create quote'
@@ -46,7 +46,7 @@ export const quoteService = {
 
 
     transformPayload(frontendPayload: any): ICreateQuoteDTO {
-        console.log("^^^^^^^^^^^^^^^^^^^The payload we get", frontendPayload);
+
 
         // Extract quote number - check both possible field names
         const quoteNumber = frontendPayload.quote_number || frontendPayload.quoteNumber;
@@ -99,7 +99,7 @@ export const quoteService = {
             lead_id: frontendPayload.lead_id || frontendPayload.lead?.id
         };
 
-        console.log("&&&&&&&&&&&&&&&&&&&&&The transformed payload (flattened):\n", JSON.stringify(dto, null, 2));
+
         return dto;
     },
 
@@ -333,7 +333,7 @@ export const quoteService = {
                 data: quote
             };
         } catch (error: any) {
-            console.error('Error fetching quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch quote'
@@ -360,7 +360,7 @@ export const quoteService = {
                 data: quote
             };
         } catch (error: any) {
-            console.error('Error fetching quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch quote'
@@ -386,7 +386,7 @@ export const quoteService = {
                 }
             };
         } catch (error: any) {
-            console.error('Error fetching quotes:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch quotes'
@@ -417,7 +417,7 @@ export const quoteService = {
                 data: updatedQuote
             };
         } catch (error: any) {
-            console.error('Error updating quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to update quote'
@@ -447,7 +447,7 @@ export const quoteService = {
                 message: 'Quote deleted successfully'
             };
         } catch (error: any) {
-            console.error('Error deleting quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to delete quote'
@@ -484,7 +484,7 @@ export const quoteService = {
                 data: updatedQuote
             };
         } catch (error: any) {
-            console.error('Error updating quote status:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to update quote status'
@@ -504,7 +504,7 @@ export const quoteService = {
                 data: quotes
             };
         } catch (error: any) {
-            console.error('Error fetching quotes by itinerary:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch quotes'
@@ -524,7 +524,7 @@ export const quoteService = {
                 data: quotes
             };
         } catch (error: any) {
-            console.error('Error fetching quotes by client:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch quotes'
@@ -544,7 +544,7 @@ export const quoteService = {
                 data: stats
             };
         } catch (error: any) {
-            console.error('Error fetching quote statistics:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch statistics'
@@ -564,7 +564,7 @@ export const quoteService = {
                 data: quotes
             };
         } catch (error: any) {
-            console.error('Error fetching recent quotes:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to fetch recent quotes'
@@ -591,7 +591,7 @@ export const quoteService = {
                 data: quotes
             };
         } catch (error: any) {
-            console.error('Error searching quotes:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to search quotes'
@@ -611,7 +611,7 @@ export const quoteService = {
                 data: { quote_number: quoteNumber }
             };
         } catch (error: any) {
-            console.error('Error generating quote number:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to generate quote number'

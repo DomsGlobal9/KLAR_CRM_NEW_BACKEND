@@ -42,11 +42,11 @@ const connectDB = async () => {
         await conn.asPromise();
         connections[name] = conn;
 
-        console.log(`✅ Connected to DB: ${name}`);
+
       })
     );
   } catch (error) {
-    console.error("❌ MongoDB initial connection error:", error);
+
     process.exit(1);
   }
 };

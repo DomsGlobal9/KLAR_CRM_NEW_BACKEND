@@ -7,7 +7,7 @@ class InquirySourceService {
         try {
             return await inquirySourceRepository.findAll(includeInactive);
         } catch (error) {
-            console.error('Error in getAllSources service:', error);
+
             throw new Error('Failed to fetch inquiry sources');
         }
     }
@@ -25,7 +25,7 @@ class InquirySourceService {
                 return acc;
             }, {});
         } catch (error) {
-            console.error('Error in getSourcesByCategory service:', error);
+
             throw new Error('Failed to fetch grouped sources');
         }
     }
@@ -48,7 +48,7 @@ class InquirySourceService {
 
             return source;
         } catch (error) {
-            console.error('Error in createSource service:', error);
+
             throw error;
         }
     }
@@ -76,7 +76,7 @@ class InquirySourceService {
 
             return updated;
         } catch (error) {
-            console.error('Error in updateSource service:', error);
+
             throw error;
         }
     }
@@ -113,7 +113,7 @@ class InquirySourceService {
                 };
             }
         } catch (error) {
-            console.error('Error in deleteSource service:', error);
+
             throw error;
         }
     }
@@ -126,7 +126,7 @@ class InquirySourceService {
 
             return source;
         } catch (error) {
-            console.error('Error in toggleSourceStatus service:', error);
+
             throw error;
         }
     }
@@ -140,7 +140,7 @@ class InquirySourceService {
 
 
         } catch (error) {
-            console.error('Error in updateDisplayOrder service:', error);
+
             throw new Error('Failed to update display order');
         }
     }

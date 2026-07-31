@@ -61,14 +61,14 @@ export const cronJobs = {
     * Display message every 30 seconds
     */
     displayThirtySecondMessage: () => {
-        console.log(`[${new Date().toISOString()}] 🔔 30-second cron job triggered - Hello from cron job!`);
+
     },
 
     /**
      * Example: Clean up old data
      */
     cleanupOldData: () => {
-        console.log('Running cleanup job...');
+
         /**
          * Add your cleanup logic here
          */
@@ -78,7 +78,7 @@ export const cronJobs = {
      * Example: Send daily reports
      */
     sendDailyReports: () => {
-        console.log('Sending daily reports...');
+
         /**
          * Add your report sending logic here
          */
@@ -88,7 +88,7 @@ export const cronJobs = {
      * Example: Sync external data
      */
     syncExternalData: () => {
-        console.log('Syncing external data...');
+
         /**
          * Add your sync logic here
          */
@@ -98,7 +98,7 @@ export const cronJobs = {
      * Example: Database backup
      */
     backupDatabase: () => {
-        console.log('Creating database backup...');
+
         /**
          * Add your backup logic here
          */
@@ -112,19 +112,19 @@ export const cronJobs = {
         const message = `Cron job triggered at ${new Date().toLocaleString()}`;
 
         if (!phoneNumber) {
-            console.log('❌ WhatsApp number not configured in .env');
+
             return;
         }
 
         const service = getWhatsAppService();
         if (!service) {
-            console.log('❌ WhatsApp number not configured in .env');
+
             return;
         }
 
         const sent = await service.sendMessage(phoneNumber, message);
         if (sent) {
-            console.log(`✅ WhatsApp message sent to ${phoneNumber} at ${new Date().toISOString()}`);
+
         }
     },
 
@@ -132,7 +132,7 @@ export const cronJobs = {
      * Check for overdue invoices
      */
     checkOverdueInvoices: async () => {
-        console.log(`[${new Date().toISOString()}] 🔍 Checking for overdue invoices...`);
+
 
         const result = await invoiceNotificationService.processOverdueInvoices();
 
@@ -148,17 +148,17 @@ export const cronJobs = {
      * @returns 
      */
     sendDailyPaymentSummary: async () => {
-        console.log(`[${new Date().toISOString()}] 📊 Sending daily payment summary...`);
+
 
         const invoices = await invoiceNotificationService.findInvoicesWithRestAmount();
 
         if (invoices.length === 0) {
-            console.log('✅ No pending payments today');
+
             return;
         }
 
-        console.log(`📋 Total pending invoices: ${invoices.length}`);
-        console.log(`💰 Total outstanding: ${invoices.reduce((sum, inv) => sum + (inv.rest_amount || 0), 0).toFixed(2)}`);
+
+
 
         const adminPhone = envConfig.WHATSAPP_NUMBER;
         if (adminPhone) {
@@ -170,7 +170,7 @@ export const cronJobs = {
      * Check invoices with rest amount and send reminders
      */
     checkInvoiceRestAmounts: async () => {
-        console.log(`[${new Date().toISOString()}] 🔍 Checking invoices with remaining balance...`);
+
         
         const result = await invoiceNotificationService.processAllRestAmountInvoices();
         

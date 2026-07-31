@@ -51,7 +51,7 @@ class UserCredentialsService {
     constructor() {
         this.service = getWhatsAppService();
         if (!this.service) {
-            console.log('❌ WhatsApp number not configured in .env');
+
         }
     }
 
@@ -104,7 +104,7 @@ class UserCredentialsService {
                 };
             }
         } catch (error: any) {
-            console.error('Error sending credentials email:', error);
+
             return {
                 sent: false,
                 error: error.message || 'Unknown error sending email',
@@ -159,7 +159,7 @@ class UserCredentialsService {
                 };
             }
         } catch (error: any) {
-            console.error('Error sending credentials via WhatsApp:', error);
+
             return {
                 sent: false,
                 error: error.message || 'Unknown error sending WhatsApp',
@@ -178,15 +178,15 @@ class UserCredentialsService {
             timestamp: new Date().toISOString()
         };
 
-        console.log(`📧 Sending credentials for user: ${payload.name} (ID: ${payload.userId})`);
-        console.log(`👤 Role: ${payload.role || 'User'}`);
-        console.log(`👑 Created by: ${payload.createdBy || 'Superadmin'}`);
+
+
+
 
         let anySuccess = false;
 
         // Send via email (always try if email is provided)
         if (payload.email) {
-            console.log(`📧 Attempting email delivery to ${payload.email}...`);
+
             const emailResult = await this.sendCredentialsViaEmail(payload);
 
             result.email = {
@@ -198,16 +198,16 @@ class UserCredentialsService {
 
             if (emailResult.sent) {
                 anySuccess = true;
-                console.log('✅ Credentials email sent successfully');
+
             } else {
-                console.log(`❌ Failed to send credentials email: ${emailResult.error}`);
+
             }
         } else {
-            console.log('⚠️ No email address provided, skipping email delivery');
+
         }
 
         if (payload.phoneNumber) {
-            console.log(`📱 Attempting WhatsApp delivery to ${payload.phoneNumber}...`);
+
             const whatsappResult = await this.sendCredentialsViaWhatsApp(payload);
 
             result.whatsapp = {
@@ -218,12 +218,12 @@ class UserCredentialsService {
 
             if (whatsappResult.sent) {
                 anySuccess = true;
-                console.log('✅ Credentials sent via WhatsApp successfully');
+
             } else {
-                console.log(`❌ Failed to send credentials via WhatsApp: ${whatsappResult.error}`);
+
             }
         } else {
-            console.log('⚠️ No phone number provided, skipping WhatsApp delivery');
+
         }
 
         result.success = anySuccess;
@@ -234,7 +234,7 @@ class UserCredentialsService {
             result.message = 'Failed to deliver credentials via any channel';
         }
 
-        console.log(`📊 Credentials delivery complete. Success: ${result.success}`);
+
         return result;
     }
 
@@ -245,7 +245,7 @@ class UserCredentialsService {
         payload: UserCredentialsPayload,
         priority: 'email' | 'whatsapp'
     ): Promise<CredentialsDeliveryResult> {
-        console.log(`🎯 Sending credentials with ${priority} priority`);
+
 
         if (priority === 'email' && payload.email) {
             const emailResult = await this.sendCredentialsViaEmail(payload);
@@ -258,7 +258,7 @@ class UserCredentialsService {
                 };
             } else if (payload.phoneNumber) {
                 // Fallback to WhatsApp
-                console.log('⚠️ Email failed, falling back to WhatsApp');
+
                 const whatsappResult = await this.sendCredentialsViaWhatsApp(payload);
                 return {
                     success: whatsappResult.sent,
@@ -282,7 +282,7 @@ class UserCredentialsService {
                 };
             } else if (payload.email) {
                 // Fallback to email
-                console.log('⚠️ WhatsApp failed, falling back to email');
+
                 const emailResult = await this.sendCredentialsViaEmail(payload);
                 return {
                     success: emailResult.sent,
@@ -322,7 +322,7 @@ class UserCredentialsService {
         let successful = 0;
         let failed = 0;
 
-        console.log(`📦 Sending credentials to ${users.length} users...`);
+
 
         for (const user of users) {
             let result: CredentialsDeliveryResult;
@@ -354,7 +354,7 @@ class UserCredentialsService {
             }
         }
 
-        console.log(`✅ Bulk credentials delivery complete: ${successful} successful, ${failed} failed`);
+
 
         return {
             total: users.length,

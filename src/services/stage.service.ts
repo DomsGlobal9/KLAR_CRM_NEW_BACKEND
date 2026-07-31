@@ -163,7 +163,7 @@ export const stageService = {
         const createdStage = await stageRepository.createStage(stage, userId);
         createdStages.push(createdStage);
       } catch (error) {
-        console.error(`Failed to create default stage ${stage.name}:`, error);
+
       }
     }
 

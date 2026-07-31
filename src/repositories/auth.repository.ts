@@ -53,7 +53,7 @@ export const AuthRepository = {
             return { user: null, error: null };
 
         } catch (err: any) {
-            console.error("❌ Exception in getUserByEmail:", err.message);
+
             return {
                 user: null,
                 error: { message: err.message || "Failed to fetch user" }
@@ -139,7 +139,7 @@ export const AuthRepository = {
                 .in('id', userIds);
 
             if (error) {
-                console.error(`❌ Error fetching users:`, error.message);
+
                 return new Map();
             }
 
@@ -162,7 +162,7 @@ export const AuthRepository = {
             return userMap;
 
         } catch (error: any) {
-            console.error(`❌ Exception in getUsernamesByIdsSql:`, error.message);
+
             return new Map();
         }
     },

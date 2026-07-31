@@ -10,7 +10,7 @@ export const invoiceService = {
         try {
             return await invoiceRepository.getAll(userRole, userId);
         } catch (error: any) {
-            console.error('Error fetching invoices:', error);
+
             throw new Error(error.message || 'Failed to fetch invoices');
         }
     },
@@ -19,7 +19,7 @@ export const invoiceService = {
         try {
             return await invoiceRepository.getPaidCustomers();
         } catch (error: any) {
-            console.error('Error fetching paid customers:', error);
+
             throw new Error(error.message || 'Failed to fetch paid customers');
         }
     },

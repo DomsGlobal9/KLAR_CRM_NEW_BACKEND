@@ -7,7 +7,7 @@ class TravelPlanService {
     async generateTravelPlan(leadData: any): Promise<any> {
         try {
             const travelRequest = this.prepareTravelRequest(leadData);
-            console.log("@@@@@@@@@@@@@@@@ The travel request we get\n", JSON.stringify(travelRequest, null, 2));
+
 
             const response = await axios.post(
                 this.PLAN_API_URL,
@@ -21,9 +21,9 @@ class TravelPlanService {
 
             return response.data;
         } catch (error: any) {
-            console.error('❌ Travel plan generation error:', error.message);
+
             if (error.response) {
-                console.error('API Error Response:', error.response.data);
+
             }
             throw new Error(`Failed to generate travel plan: ${error.message}`);
         }
@@ -31,7 +31,7 @@ class TravelPlanService {
 
     private prepareTravelRequest(leadData: any): any {
 
-        console.log("############# LEad data we get", JSON.stringify(leadData, null, 2));
+
         const budget = this.extractBudget(leadData);
         const selectedPlanType = this.extractTravelType(leadData);
         const from = this.extractFromLocation(leadData);

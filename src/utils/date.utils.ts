@@ -41,7 +41,7 @@ export function calculateDueDateWithTime(
             dueDateTime: timeStr
         };
     } catch (error) {
-        console.error('Error calculating due date:', error);
+
 
 
         const invoiceDateObj = new Date(invoiceDate);
@@ -133,7 +133,7 @@ export function calculateDueDateWithTimeFromCurrentDate(
         };
 
     } catch (error) {
-        console.error('Error calculating due date:', error);
+
         const currentDate = new Date();
         const dueDate = new Date(currentDate);
         dueDate.setDate(dueDate.getDate() + 14);
@@ -201,7 +201,7 @@ export function parsePaymentDeadline(paymentDeadline: string): {
         minute = Math.min(59, Math.max(0, minute));
 
     } catch (error) {
-        console.error('Error parsing payment deadline:', error);
+
     }
 
     return { daysToAdd, hour, minute };
@@ -250,7 +250,7 @@ export function calculateDueDateFromCurrentDate(
         };
 
     } catch (error) {
-        console.error('Error calculating due date:', error);
+
 
 
         const currentDate = new Date();

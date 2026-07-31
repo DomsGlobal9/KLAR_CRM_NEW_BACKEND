@@ -11,15 +11,15 @@ import {
 try {
     validateConfig();
 } catch (error) {
-    console.error('❌ Configuration validation failed:');
-    console.error(error);
+
+
     process.exit(1);
 }
 
 /**
  * Log which environment we're using
  */
-console.log(`🚀 Initializing Supabase client for ${envConfig.NODE_ENV} environment`);
+
 
 /**
  * Initialize Supabase client with environment-specific configuration
@@ -81,27 +81,27 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
-            console.error(`❌ Supabase connection test failed for ${envConfig.NODE_ENV}:`, sessionError.message);
+
             return false;
         }
 
-        console.log(`✅ Successfully connected to Supabase (${envConfig.NODE_ENV})`);
+
 
         // Also test admin connection
         try {
             const { data: adminData, error: adminError } = await supabaseAdmin.auth.getSession();
             if (adminError) {
-                console.warn(`⚠️ Admin client connection issue: ${adminError.message}`);
+
             } else {
-                console.log(`✅ Admin client also connected successfully`);
+
             }
         } catch (adminTestError) {
-            console.warn(`⚠️ Admin client test skipped or failed:`, adminTestError);
+
         }
 
         return true;
     } catch (error) {
-        console.error(`❌ Supabase connection test failed for ${envConfig.NODE_ENV}:`, error);
+
         return false;
     }
 };
@@ -137,15 +137,15 @@ export const testAdminPrivileges = async () => {
 
 
         if (error) {
-            console.warn(`⚠️ Admin privileges test: ${error.message}`);
+
 
             const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
-            console.log(`✅ Admin client has proper privileges (can list users)`);
+
         } else {
-            console.log(`✅ Admin client has proper privileges`);
+
         }
     } catch (error) {
-        console.warn(`⚠️ Admin privileges test failed:`, error);
+
     }
 };
 

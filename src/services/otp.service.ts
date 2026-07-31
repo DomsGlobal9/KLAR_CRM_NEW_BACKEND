@@ -16,7 +16,7 @@ export const otpService = {
 
             // Development mode bypass
             if (isDevelopment() && envConfig.OTP.BYPASS_IN_DEV) {
-                console.log(`🧪 DEV OTP for ${email} (${type}): ${envConfig.OTP.DEV_STATIC_CODE}`);
+
                 return {
                     success: true,
                     message: 'OTP sent (development mode)',
@@ -35,7 +35,7 @@ export const otpService = {
             } else {
                 // For login: Always allow new OTP, but clean up old ones first
                 if (existing) {
-                    console.log(`🧹 Cleaning up existing OTP for ${email} (new login device request)`);
+
                     await otpRepository.deleteByEmailAndType(email, type);
                 }
             }
@@ -47,7 +47,7 @@ export const otpService = {
             const otp_code = OTPGenerator.generate(envConfig.OTP.LENGTH);
             const expires_at = OTPGenerator.getExpirationTime(envConfig.OTP.EXPIRY_MINUTES);
 
-            console.log(`OTP for ${email} (${type}): ${otp_code}`);
+
 
             const isOtpStored = await otpRepository.create({
                 email,
@@ -100,7 +100,7 @@ export const otpService = {
 
             // Development mode bypass
             if (isDevelopment() && envConfig.OTP.BYPASS_IN_DEV) {
-                console.log(`🧪 DEV Resend OTP for ${email} (${type}): ${envConfig.OTP.DEV_STATIC_CODE}`);
+
                 return {
                     success: true,
                     message: 'OTP resent (development mode)',

@@ -30,7 +30,7 @@ export const reminderService = {
     
     if (data.sendVia.whatsapp && clientPhone) {
       if (!messageService) {
-        console.log('❌ WhatsApp service not configured');
+
         results.whatsapp = { success: false, error: 'WhatsApp service not configured' };
       } else {
         const waMessage = pdfDeliveryService.createReminderWhatsApp(clientName, data.title, data.content);

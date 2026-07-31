@@ -109,7 +109,7 @@ export const userItineraryFilesController = {
             });
 
         } catch (error: any) {
-            console.error('Error in getAllFileItineraries:', error);
+
             return res.status(500).json({ success: false, message: error.message });
         }
     },
@@ -165,7 +165,7 @@ export const userItineraryFilesController = {
                 .maybeSingle();
 
             if (leadError) {
-                console.error('Error fetching lead:', leadError);
+
             }
 
             // Return the data with files in the format frontend expects
@@ -180,7 +180,7 @@ export const userItineraryFilesController = {
                 itineraryType: 'file-only'
             });
         } catch (error: any) {
-            console.error('Error in getFileOnlyItineraryById:', error);
+
             return res.status(500).json({ success: false, message: error.message });
         }
     },
@@ -211,7 +211,7 @@ async getFileOnlyItinerary(req: Request, res: Response) {
         });
 
     } catch (error) {
-        console.error('Error in getFileOnlyItinerary:', error);
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -243,7 +243,7 @@ async checkFileOnlyItinerary(req: Request, res: Response) {
         });
 
     } catch (error) {
-        console.error('Error in checkFileOnlyItinerary:', error);
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -293,7 +293,7 @@ async createFileOnlyItinerary(req: Request, res: Response) {
         });
 
     } catch (error) {
-        console.error('Error in createFileOnlyItinerary:', error);
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -325,7 +325,7 @@ async deleteFileOnlyItinerary(req: Request, res: Response) {
         return res.status(200).json(result);
 
     } catch (error) {
-        console.error('Error in deleteFileOnlyItinerary:', error);
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -385,7 +385,7 @@ async uploadMultipleFiles(req: Request, res: Response) {
         });
 
     } catch (error: any) {
-        console.error('Error in uploadMultipleFiles:', error);
+
         return res.status(500).json({
             success: false,
             error: error.message
@@ -460,7 +460,7 @@ async saveUploadedFileUrls(req: Request, res: Response) {
         });
 
     } catch (error: any) {
-        console.error('Error in saveUploadedFileUrls:', error);
+
         return res.status(500).json({
             success: false,
             error: error.message
@@ -504,7 +504,7 @@ async uploadPdfFile(req: Request, res: Response) {
             }
         });
     } catch (error: any) {
-        console.error('Error in uploadPdfFile:', error);
+
         return res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -549,7 +549,7 @@ async uploadImageFile(req: Request, res: Response) {
             }
         });
     } catch (error: any) {
-        console.error('Error in uploadImageFile:', error);
+
         return res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -565,7 +565,7 @@ async sendFileItineraryPDF(req: Request, res: Response) {
         const { itineraryId } = req.params;
         const { sendVia } = req.body;
 
-        console.log('Sending file itinerary PDF:', { itineraryId, sendVia });
+
 
         // 1. Get file itinerary with lead details
         const { data: fileRecord, error: fileError } = await supabaseAdmin
@@ -647,7 +647,7 @@ async sendFileItineraryPDF(req: Request, res: Response) {
         // 5. Upload to S3
         const pdfUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
         
-        console.log('PDF uploaded to S3:', pdfUrl);
+
 
         // 6. Update status to 'Itinerary_send'
         // await supabaseAdmin
@@ -679,7 +679,7 @@ async sendFileItineraryPDF(req: Request, res: Response) {
         });
 
     } catch (error: any) {
-        console.error('Error sending file itinerary PDF:', error);
+
         return res.status(500).json({
             success: false,
             message: error.message || 'Failed to send file itinerary PDF'

@@ -128,7 +128,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error generating quote from file itinerary:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to generate quote'
@@ -169,7 +169,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error getting file quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to get quote'
@@ -203,7 +203,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error updating file quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to update quote'
@@ -236,7 +236,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error deleting file quote:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to delete quote'
@@ -265,7 +265,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error getting file quotes:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to get quotes'
@@ -338,7 +338,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error sharing file quote PDF:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to share quote PDF'
@@ -378,7 +378,7 @@ export const fileQuoteService = {
             };
 
         } catch (error: any) {
-            console.error('Error downloading file quote PDF:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to download quote PDF'

@@ -47,7 +47,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in getPreferences controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -83,7 +83,7 @@ export const itineraryPreferencesController = {
             });
 
         } catch (error) {
-            console.error('Error in savePreferences controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -128,7 +128,7 @@ export const itineraryPreferencesController = {
                 message: 'Preferences updated successfully'
             });
         } catch (error) {
-            console.error('Error in updatePreferences controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -158,7 +158,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in deletePreferences controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -184,7 +184,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in checkPreferencesExist controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -247,7 +247,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in getFlightPreferenceById controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -277,7 +277,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in getHotelPreferenceById controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -307,7 +307,7 @@ export const itineraryPreferencesController = {
 
             return res.status(200).json(result);
         } catch (error) {
-            console.error('Error in getVisaPreferenceById controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -418,7 +418,7 @@ export const itineraryPreferencesController = {
             return res.status(200).json(result);
 
         } catch (error: any) {
-            console.error('Error in getAllLeads:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Internal server error'
@@ -452,7 +452,7 @@ export const itineraryPreferencesController = {
                 message: validation.isValid ? 'Form data is valid' : 'Form data validation failed'
             });
         } catch (error) {
-            console.error('Error in validatePreferences controller:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error'
@@ -467,7 +467,7 @@ export const itineraryPreferencesController = {
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
         const { itinerary_id } = req.params;
         const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
-        console.log("469 itinerary-preferences.controller.ts-PDF Generation Data:", itinResult.data);
+
         const html = await itineraryPdfService.generateHTML(itinResult.data);
         const buffer = await itineraryPdfService.generateBuffer(html);
 
@@ -551,7 +551,7 @@ export const itineraryPreferencesController = {
             });
 
         } catch (error: any) {
-            console.error("❌ S3 Workflow Error:", error);
+
             return sendErrorResponse(res, error);
         }
     },

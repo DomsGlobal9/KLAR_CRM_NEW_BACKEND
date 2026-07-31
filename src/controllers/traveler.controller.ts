@@ -20,7 +20,7 @@ export const travelerController = {
                 data: traveler
             });
         } catch (error: any) {
-            console.error("❌ Traveler creation error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -50,7 +50,7 @@ export const travelerController = {
                 count: travelers.length
             });
         } catch (error: any) {
-            console.error("❌ Get all travelers error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -81,7 +81,7 @@ export const travelerController = {
                 data: traveler
             });
         } catch (error: any) {
-            console.error("❌ Get traveler by ID error:", error);
+
             res.status(404).json({
                 success: false,
                 error: error.message
@@ -114,7 +114,7 @@ export const travelerController = {
                 message: 'Traveler updated successfully'
             });
         } catch (error: any) {
-            console.error("❌ Update traveler error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -145,7 +145,7 @@ export const travelerController = {
                 message: 'Traveler deleted successfully'
             });
         } catch (error: any) {
-            console.error("❌ Delete traveler error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -175,7 +175,7 @@ export const travelerController = {
                 count: travelers.length
             });
         } catch (error: any) {
-            console.error("❌ Search travelers error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -205,7 +205,7 @@ export const travelerController = {
                 sort: sort || { field: 'created_at', order: 'desc' }
             });
         } catch (error: any) {
-            console.error("❌ Filter and sort travelers error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -221,7 +221,7 @@ export const travelerController = {
         try {
             const { travelers } = req.body;
 
-            console.log(`📊 Received bulk upload request with ${travelers?.length || 0} travelers`);
+
 
             if (!travelers || !Array.isArray(travelers) || travelers.length === 0) {
                 return res.status(400).json({
@@ -244,11 +244,11 @@ export const travelerController = {
                 phone: t.travelerPhone,
                 name: t.travelerName
             }));
-            console.log('📝 Sample records:', sample);
+
 
             const result = await travelerService.bulkCreateTravelers(travelers);
 
-            console.log(`✅ Bulk upload complete: ${result.created} created, ${result.skipped} skipped, ${result.errors.length} errors`);
+
 
             res.json({
                 success: true,
@@ -256,7 +256,7 @@ export const travelerController = {
                 message: `Upload complete: ${result.created} created, ${result.skipped} skipped, ${result.errors.length} errors`
             });
         } catch (error: any) {
-            console.error("❌ Bulk create travelers error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message || 'Failed to process bulk upload'

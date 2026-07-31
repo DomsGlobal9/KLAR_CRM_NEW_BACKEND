@@ -31,7 +31,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error getting lead preferences:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get preferences'
@@ -86,7 +86,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error saving lead preferences:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to save preferences'
@@ -119,7 +119,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error updating lead preferences:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to update preferences'
@@ -141,7 +141,7 @@ export const itineraryPreferencesService = {
                 message: 'Preferences deleted successfully'
             };
         } catch (error) {
-            console.error('Error deleting lead preferences:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to delete preferences'
@@ -164,7 +164,7 @@ export const itineraryPreferencesService = {
                 exists
             };
         } catch (error) {
-            console.error('Error checking preferences:', error);
+
             return {
                 success: false,
                 exists: false,
@@ -196,7 +196,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error getting flight preference by ID:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get flight preference'
@@ -227,7 +227,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error getting hotel preference by ID:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get hotel preference'
@@ -258,7 +258,7 @@ export const itineraryPreferencesService = {
                 data
             };
         } catch (error) {
-            console.error('Error getting visa preference by ID:', error);
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : 'Failed to get visa preference'
@@ -320,7 +320,7 @@ export const itineraryPreferencesService = {
                 }
             };
         } catch (error) {
-            console.error('Error in getAllLeads service:', error);
+
             return {
                 success: false,
                 data: {
@@ -393,7 +393,7 @@ export const itineraryPreferencesService = {
                 }
             };
         } catch (error) {
-            console.error('Error in getAllLeadsBasic service:', error);
+
             return {
                 success: false,
                 data: {
@@ -490,7 +490,7 @@ export const itineraryPreferencesService = {
 
             return data.assigned_to === userId;
         } catch (error) {
-            console.error('Error checking lead access:', error);
+
             return false;
         }
     },
@@ -612,7 +612,7 @@ export const itineraryPreferencesService = {
             };
 
         } catch (error) {
-            console.error('Error in getAllItinerariesCombined:', error);
+
             return {
                 success: false,
                 data: {

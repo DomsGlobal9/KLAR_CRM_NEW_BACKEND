@@ -17,12 +17,12 @@ export class EmailReaderService {
         });
 
         this.client.on('error', (err) => {
-            console.error('IMAP Client Error:', err);
+
             this.isConnected = false;
         });
 
         this.client.on('close', () => {
-            console.warn('IMAP connection closed');
+
             this.isConnected = false;
         });
     }
@@ -90,7 +90,7 @@ export class EmailReaderService {
 
         this.isConnected = true;
 
-        console.log("✅ IMAP Connected");
+
     }
 
     private startKeepAlive(): void {
@@ -100,7 +100,7 @@ export class EmailReaderService {
                 try {
                     await this.client.noop();
                 } catch (err) {
-                    console.error('Keep-alive failed:', err);
+
                     this.isConnected = false;
                     await this.connect();
                 }
@@ -125,7 +125,7 @@ export class EmailReaderService {
 
             return await simpleParser(raw);
         } catch (err) {
-            console.error('Failed to parse email source:', err);
+
             return null;
         }
     }
@@ -151,110 +151,110 @@ export class EmailReaderService {
     }
 
     async readEmails(): Promise<void> {
-    console.log("📩 readEmails() called");
+
 
     try {
 
         if (!this.isConnected) {
-            console.log("🔄 IMAP not connected. Reconnecting...");
+
             await this.connect();
 
             if (!this.isConnected) {
-                console.log("❌ Reconnection failed.");
+
                 return;
             }
 
-            console.log("✅ Reconnected successfully.");
+
         }
 
-        console.log("🔍 Searching for unread emails...");
+
 
         const result = await this.client.search({ seen: false });
 
-        console.log("📋 Search Result:", result);
+
 
         const uids: number[] = Array.isArray(result) ? result : [];
 
-        console.log(`📨 Total unread emails found: ${uids.length}`);
+
 
         if (uids.length === 0) {
-            console.log("📭 No unread emails found.");
+
             return;
         }
 
         for (const uid of uids) {
 
-            console.log(`\n==============================`);
-            console.log(`📧 Processing UID: ${uid}`);
-            console.log(`==============================`);
+
+
+
 
             try {
 
-                console.log("📥 Fetching email...");
+
 
                 const msg = await this.client.fetchOne(uid, {
                     source: true,
                 });
 
                 if (!msg || !msg.source) {
-                    console.log(`❌ No source found for UID ${uid}`);
+
                     continue;
                 }
 
-                console.log("✅ Email fetched successfully.");
 
-                console.log("📝 Parsing email...");
+
+
 
                 const parsed = await this.parseEmailSource(msg.source);
 
                 if (!parsed) {
-                    console.log("❌ Email parsing failed.");
+
 
                     await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
-                    console.log("✔️ Email marked as read.");
+
 
                     continue;
                 }
 
-                console.log("✅ Email parsed.");
+
 
                 const subject = parsed.subject ?? '';
                 const from = parsed.from?.text ?? '';
                 const messageId = parsed.messageId;
                 const inReplyTo = parsed.inReplyTo?.[0] || null;
 
-                console.log("Subject:", subject);
-                console.log("From:", from);
-                console.log("Message ID:", messageId);
-                console.log("In Reply To:", inReplyTo);
+
+
+
+
 
                 const toRecipients = this.extractRecipients(parsed);
 
-                console.log("Recipients:", toRecipients);
+
 
                 const { text, html } = this.extractBody(parsed);
 
-                console.log("Body Length:", text?.length || 0);
-                console.log("HTML Length:", html?.length || 0);
+
+
 
                 if (messageId) {
 
-                    console.log("🔎 Checking duplicate by Message ID...");
+
 
                     const existingMessage =
                         await emailMessageRepository.getByMessageId(messageId);
 
                     if (existingMessage) {
 
-                        console.log("⚠️ Duplicate Message ID found. Skipping.");
+
 
                         await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
                         continue;
                     }
 
-                    console.log("✅ Message ID is unique.");
+
                 }
 
                 let trackingId: string | null = null;
@@ -265,20 +265,20 @@ export class EmailReaderService {
 
                 if (tidMatch) {
                     trackingId = tidMatch[1];
-                    console.log("Tracking ID from subject:", trackingId);
+
                 } else {
 
                     const trkMatch = subject.match(/\[(trk_[^\]]+)\]/);
 
                     if (trkMatch) {
                         trackingId = trkMatch[1];
-                        console.log("Tracking ID (legacy):", trackingId);
+
                     }
                 }
 
                 if (!trackingId && parsed.inReplyTo && parsed.inReplyTo.length > 0) {
 
-                    console.log("Looking up parent message...");
+
 
                     const parentMessage =
                         await emailMessageRepository.getByMessageId(parsed.inReplyTo[0]);
@@ -289,7 +289,7 @@ export class EmailReaderService {
                         parentTrackingId = parentMessage.tracking_id;
                         leadId = parentMessage.lead_id;
 
-                        console.log("Parent Tracking ID:", trackingId);
+
                     }
                 }
 
@@ -297,14 +297,14 @@ export class EmailReaderService {
 
                     trackingId = uuidv4();
 
-                    console.log("Generated new Tracking ID:", trackingId);
+
 
                     parentTrackingId = null;
                 }
 
                 if (trackingId) {
 
-                    console.log("Checking duplicate by Tracking ID...");
+
 
                     const existingMessage =
                         await emailMessageRepository.getByTrackingIdAndDirection(
@@ -317,14 +317,14 @@ export class EmailReaderService {
                         existingMessage.message_id === messageId
                     ) {
 
-                        console.log("⚠️ Duplicate incoming email found.");
+
 
                         await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
                         continue;
                     }
 
-                    console.log("💾 Saving email to database...");
+
 
                     await emailMessageRepository.createIncomingEmail({
                         tracking_id: trackingId,
@@ -345,39 +345,39 @@ export class EmailReaderService {
                         lead_id: leadId,
                     });
 
-                    console.log("✅ Email saved successfully.");
+
                 }
 
-                console.log("✔️ Marking email as read...");
+
 
                 await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
-                console.log(`✅ UID ${uid} processed successfully.`);
+
 
             } catch (err) {
 
-                console.error(`❌ Error processing UID ${uid}:`, err);
+
 
                 try {
 
-                    console.log("Marking failed email as read...");
+
 
                     await this.client.messageFlagsAdd(uid, ['\\Seen']);
 
-                    console.log("✔️ Marked as read.");
+
 
                 } catch (flagErr) {
 
-                    console.error("Failed to mark email as read:", flagErr);
+
                 }
             }
         }
 
-        console.log("🎉 Poll cycle completed.");
+
 
     } catch (error) {
 
-        console.error("💥 Fatal error in readEmails():", error);
+
 
         this.isConnected = false;
     }
@@ -390,12 +390,12 @@ export class EmailReaderService {
                     await this.connect();
                 }
 
-                console.log("📨 Checking for new emails...");
+
 
                 await this.readEmails();
 
             } catch (err) {
-                console.error("Email polling failed:", err);
+
 
                 this.isConnected = false;
 
@@ -425,7 +425,7 @@ export class EmailReaderService {
                 this.isConnected = false;
             }
         } catch (error) {
-            console.error('Error closing IMAP:', error);
+
         }
     }
 }

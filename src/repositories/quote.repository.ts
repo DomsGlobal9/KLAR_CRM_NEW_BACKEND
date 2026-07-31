@@ -38,7 +38,7 @@ export const quoteRepository = {
      * Create a new quote
      */
     async createQuote(payload: ICreateQuoteDTO): Promise<IQuote> {
-        console.log("^^^^^^^^^^^^^^^^^Repository Payload we get", JSON.stringify(payload, null, 2));
+
 
         // Always use the quote_number from the transformed DTO
         const quoteNumber = payload.quote_number;
@@ -126,7 +126,7 @@ export const quoteRepository = {
             created_at: new Date().toISOString()
         };
 
-        console.log("Inserting quote data (database compatible):", JSON.stringify(quoteData, null, 2));
+
 
         // Insert into database
         const { data, error } = await supabaseAdmin
@@ -136,7 +136,7 @@ export const quoteRepository = {
             .single();
 
         if (error || !data) {
-            console.error('Failed to create quote:', error);
+
             throw new Error(`Failed to create quote: ${error?.message || 'Unknown error'}`);
         }
 
@@ -496,7 +496,7 @@ async updateQuote(id: string, payload: IUpdateQuoteDTO): Promise<IQuote> {
         .single();
 
     if (error) {
-        console.error('Failed to update quote:', error);
+
         throw new Error(`Failed to update quote: ${error.message}`);
     }
 
@@ -546,7 +546,7 @@ async updateQuote(id: string, payload: IUpdateQuoteDTO): Promise<IQuote> {
             .select()
             .single();
 
-        console.log("Updated quote we got", data.status);
+
 
         if (error) {
             throw new Error(`Failed to update quote status: ${error.message}`);

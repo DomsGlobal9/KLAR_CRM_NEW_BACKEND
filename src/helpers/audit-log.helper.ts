@@ -20,6 +20,6 @@ export async function createLeadAuditLog(data: AuditLogData): Promise<void> {
                 created_at: new Date().toISOString()
             });
     } catch (error) {
-        console.error('Failed to create audit log:', error);
+
     }
 }

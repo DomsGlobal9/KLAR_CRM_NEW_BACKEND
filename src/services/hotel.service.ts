@@ -97,7 +97,7 @@ export const getAllB2CHotelsWithUsers = async (page: number = 1, limit: number =
     }
 
     const userMap = await compileUserLookupsMap(bookings);
-        console.log("hotel.service.ts -> getAllB2CHotelsWithUsers -> userMap", userMap);
+
     const transformedBookings = bookings.map(booking => {
         const userIdStr = (booking as any).userInfo?.id?.toString() || (booking as any).agentId?.toString();
         const user = userIdStr ? userMap[userIdStr] : null;

@@ -17,7 +17,7 @@ export const leadStageInvoiceController = {
         data: result
       });
     } catch (error: any) {
-      console.error("❌ Lead Stage Invoice conversion fault:", error);
+
       return res.status(400).json({
         success: false,
         error: error.message || 'An error occurred during invoice persistence pipeline maps'
@@ -48,7 +48,7 @@ export const leadStageInvoiceController = {
         pagination: result.pagination
       });
     } catch (error: any) {
-      console.error("❌ Fetch all invoices layer failure:", error);
+
       return res.status(500).json({
         success: false,
         error: error.message || 'An error occurred during invoice stream lookups.'
@@ -75,7 +75,7 @@ export const leadStageInvoiceController = {
         data: invoice
       });
     } catch (error: any) {
-      console.error("❌ Single invoice lookup fault layer exception:", error);
+
       
       const status = error.message.includes('not found') ? 404 : 500;
       return res.status(status).json({
@@ -103,7 +103,7 @@ export const leadStageInvoiceController = {
       res.setHeader('Content-Disposition', `attachment; filename="Invoice_${invoiceNumber}.pdf"`);
       return res.send(buffer);
     } catch (error: any) {
-      console.error("❌ Invoice PDF extraction stream failure:", error);
+
       return res.status(500).json({ success: false, error: error.message || 'PDF Generation Fault' });
     }
   },
@@ -131,7 +131,7 @@ export const leadStageInvoiceController = {
         deliveryResult: result.deliveryResult
       });
     } catch (error: any) {
-      console.error("❌ Invoice asset distribution workflow fault:", error);
+
       return sendErrorResponse(res, error);
     }
   },
@@ -154,7 +154,7 @@ export const leadStageInvoiceController = {
         message: 'Lead stage invoice asset deleted permanently from cloud clusters'
       });
     } catch (error: any) {
-      console.error("❌ Delete tracking pipeline map failure:", error);
+
       return res.status(400).json({ success: false, error: error.message || 'Deletion Exception Execute.' });
     }
   },
@@ -191,7 +191,7 @@ export const leadStageInvoiceController = {
       return res.send(buffer);
 
     } catch (error: any) {
-      console.error("❌ Lead Stage Invoice PDF retrieval fault:", error);
+
       return res.status(500).json({
         success: false,
         error: error.message || 'An error occurred during template calculation matrices.'

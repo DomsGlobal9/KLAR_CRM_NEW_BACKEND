@@ -69,7 +69,7 @@ class PerformanceLogger {
         const icon = metrics.success ? '✅' : '❌';
         const level = metrics.duration > 1000 ? '🚨' : metrics.duration > 500 ? '⚠️' : '📊';
 
-        console.log(`${icon} ${level} [PERF] ${metrics.operation}: ${metrics.duration}ms`);
+
 
         // Keep only last 1000 metrics
         if (this.metrics.length > 1000) {

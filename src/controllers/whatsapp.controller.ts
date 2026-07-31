@@ -4,7 +4,7 @@ import getWhatsAppService from '../services/whatsapp.service';
 export const getQrJson = async (_req: Request, res: Response) => {
   const service = getWhatsAppService();
   if (!service) {
-    console.log('❌ WhatsApp number not configured in .env');
+
     return;
   }
 
@@ -21,7 +21,7 @@ export const getQrJson = async (_req: Request, res: Response) => {
 export const getQrPage = async (_req: Request, res: Response) => {
   const service = getWhatsAppService();
   if (!service) {
-    console.log('❌ WhatsApp number not configured in .env');
+
     return;
   }
 

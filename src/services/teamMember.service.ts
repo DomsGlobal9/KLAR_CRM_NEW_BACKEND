@@ -274,7 +274,7 @@ export const teamMemberService = {
                 newTeamId = null; // or undefined, or '' based on your schema
                 // Also ensure payload team_id is ignored
                 if (payload.team_id !== undefined) {
-                    console.log("Admin role detected - ignoring team_id assignment");
+
                 }
             }
         }
@@ -491,10 +491,10 @@ export const teamMemberService = {
         if (!role) throw new Error('Role not found');
         if (role.name === 'superadmin') throw new Error('Cannot assign superadmin role');
 
-        console.log(`Sending OTP for: ${email}, role: ${role.name}, team: ${team_id}`);
+
 
         if (role.name === 'tl' && team_id) {
-            console.log(`Validating TL limit for team: ${team_id}`);
+
             await this.validateTeamLeadLimit(team_id);
         }
 
@@ -535,7 +535,7 @@ export const teamMemberService = {
         phone?: string | null;
         created_by: string;
     }) {
-        console.log("The verify otp payload we get", payload);
+
         const { email, password, otp_code, username, full_name, phone } = payload;
 
         const isValid = await otpService.verifyOTP(email, otp_code, 'registration');
@@ -554,7 +554,7 @@ export const teamMemberService = {
         if (!role) throw new Error('Role no longer valid');
 
         if (role.name === 'tl' && team_id) {
-            console.log(`Double-checking TL limit for team: ${team_id} before creation`);
+
             await this.validateTeamLeadLimit(team_id);
         }
 

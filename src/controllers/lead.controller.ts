@@ -27,7 +27,7 @@ export const leadController = {
             });
 
         } catch (error: any) {
-            console.error("❌ Quick Lead creation error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -55,7 +55,7 @@ export const leadController = {
                 data: frontendLead
             });
         } catch (error: any) {
-            console.error("❌ Lead creation error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -140,7 +140,7 @@ export const leadController = {
             });
 
         } catch (error: any) {
-            console.error("❌ Get all leads error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message
@@ -163,7 +163,7 @@ export const leadController = {
                 data: frontendLead
             });
         } catch (error: any) {
-            console.error("❌ Get lead by ID error:", error);
+
             res.status(404).json({
                 success: false,
                 error: error.message
@@ -180,7 +180,7 @@ export const leadController = {
             const { id } = req.params;
             const payload: UpdateLeadPayload = req.body;
 
-            console.log("📥 Update payload received:", JSON.stringify(payload, null, 2));
+
 
             const mappedPayload = LeadDataMapper.mapFrontendToDatabaseForUpdate(payload);
 
@@ -200,7 +200,7 @@ export const leadController = {
             });
 
         } catch (error: any) {
-            console.error("❌ Update lead error:", error);
+
             res.status(400).json({
                 success: false,
                 error: error.message

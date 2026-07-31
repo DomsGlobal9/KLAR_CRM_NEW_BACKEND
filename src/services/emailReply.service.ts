@@ -122,7 +122,7 @@ export const emailReplyService = {
             };
 
         } catch (error: any) {
-            console.error('EmailReplyService.sendReply error:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to send reply'

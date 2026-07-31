@@ -10,7 +10,7 @@ export const travelPlanController = {
     async generateTravelPlan(req: AuthRequest, res: Response) {
         try {
             const leadData = req.body;
-            console.log("THe AI travel plan generate data we get", JSON.stringify(leadData, null, 2));
+
 
             const travelPlan = await travelPlanService.generateTravelPlan(leadData);
 
@@ -21,7 +21,7 @@ export const travelPlanController = {
             });
 
         } catch (error: any) {
-            console.error('❌ Travel plan generation controller error:', error);
+
             
             // Check if it's a validation error
             if (error.message.includes('required')) {
@@ -66,7 +66,7 @@ export const travelPlanController = {
             // This is a placeholder - you'll need to implement lead fetching
             const leadData = { id: leadId }; // Replace with actual lead fetch
             
-            console.log('📝 Generating travel plan for lead ID:', leadId);
+
             
             const travelPlan = await travelPlanService.generateTravelPlan(leadData);
             
@@ -77,7 +77,7 @@ export const travelPlanController = {
             });
 
         } catch (error: any) {
-            console.error('❌ Travel plan generation by lead ID error:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to generate travel plan'
@@ -148,7 +148,7 @@ export const travelPlanController = {
             });
 
         } catch (error: any) {
-            console.error('❌ Test travel plan generation error:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to generate test travel plan'
@@ -185,7 +185,7 @@ export const travelPlanController = {
             });
             
         } catch (error: any) {
-            console.error('❌ Get travel plan error:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to retrieve travel plan'
@@ -218,7 +218,7 @@ export const travelPlanController = {
             
             // You'll need to implement saving travel plan to lead
             // This could be updating the lead's travel_plan field in your database
-            console.log(`💾 Saving travel plan to lead ${leadId}`);
+
             
             res.status(200).json({
                 success: true,
@@ -230,7 +230,7 @@ export const travelPlanController = {
             });
             
         } catch (error: any) {
-            console.error('❌ Save travel plan error:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to save travel plan'

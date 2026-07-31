@@ -4,7 +4,7 @@ import { envConfig } from './src/config/env.config';
 const isProduction = envConfig.NODE_ENV === "production";
 let supabaseUrl = '';
 
-console.log("[DEBUG] Is Production", isProduction);
+
 
 if (isProduction) {
   supabaseUrl = envConfig.SUPABASE_PRODUCTION_DATABASE_URL

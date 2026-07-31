@@ -20,7 +20,7 @@ export const leadStageVoucherRepository = {
       .single();
 
     if (error) {
-      console.error("❌ Supabase lead voucher insertion error:", error);
+
       throw new Error(`Failed to save lead voucher: ${error.message}`);
     }
 
@@ -43,7 +43,7 @@ export const leadStageVoucherRepository = {
       .range(offset, toRange);
 
     if (error) {
-      console.error("❌ Supabase fetch records pagination failure:", error);
+
       throw new Error(`Failed to retrieve vouchers: ${error.message}`);
     }
 
@@ -67,7 +67,7 @@ export const leadStageVoucherRepository = {
       .maybeSingle(); // Prevents throwing an error if 0 records match
 
     if (error) {
-      console.error(`❌ Supabase getVoucherById error [ID: ${id}]:`, error);
+
       throw new Error(`Failed to retrieve voucher record: ${error.message}`);
     }
 

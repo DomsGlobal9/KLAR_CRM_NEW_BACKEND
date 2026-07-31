@@ -37,7 +37,7 @@ import { sendErrorResponse } from '../helpers/response.helper';
 export const reminderController = {
   async setReminder(req: Request, res: Response) {
     try {
-      console.log("The set reminder data we get", JSON.stringify(req.body, null, 2));
+
       const { lead_id, assigned_to, title, message, sendVia } = req.body;
 
       // Validation
@@ -67,7 +67,7 @@ export const reminderController = {
 
       return res.status(200).json(result);
     } catch (error: any) {
-      console.error("Reminder Controller Error:", error);
+
       return res.status(500).json({
         success: false,
         message: error.message || "Internal Server Error"

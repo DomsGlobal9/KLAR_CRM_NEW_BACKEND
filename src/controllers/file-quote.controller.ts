@@ -35,7 +35,7 @@ export const fileQuoteController = {
 
             return res.status(201).json(result);
         } catch (error: any) {
-            console.error('Error generating quote from file itinerary:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -69,7 +69,7 @@ export const fileQuoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error getting file quote:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -105,7 +105,7 @@ export const fileQuoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error updating file quote:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -139,7 +139,7 @@ export const fileQuoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error deleting file quote:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -170,7 +170,7 @@ export const fileQuoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error getting file quotes:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -206,7 +206,7 @@ export const fileQuoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error sharing file quote PDF:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -257,7 +257,7 @@ export const fileQuoteController = {
             return res.send(pdfBuffer);
 
         } catch (error: any) {
-            console.error('Error downloading file quote PDF:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'

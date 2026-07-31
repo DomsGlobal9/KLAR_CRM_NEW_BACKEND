@@ -102,7 +102,7 @@ export const getSingleFlightDetails = async (bookingId: string) => {
                 };
             }
         } catch (error) {
-            console.error(`Error fetching user ${userId}:`, error);
+
         }
     }
 
@@ -243,7 +243,7 @@ export const getSingleB2CFlightDetails = async (bookingId: string) => {
                 };
             }
         } catch (error) {
-            console.error(`Error fetching B2C user ${userId}:`, error);
+
         }
     }
 
