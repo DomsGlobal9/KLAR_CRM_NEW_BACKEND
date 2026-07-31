@@ -5,26 +5,8 @@ import { Team } from '../interfaces/team.interface';
 export const teamRepository = {
 
     async validateServiceIds(service_ids: string[], currentTeamId?: string): Promise<void> {
-        if (!service_ids || service_ids.length === 0) return;
-
-        const { data: existingTeams, error } = await supabaseAdmin
-            .from('teams')
-            .select('id, name, service_ids')
-            .contains('service_ids', service_ids);
-
-        if (error) throw error;
-
-        const conflictingTeams = currentTeamId
-            ? existingTeams?.filter(team => team.id !== currentTeamId)
-            : existingTeams;
-
-        if (conflictingTeams && conflictingTeams.length > 0) {
-            const assignedServices = conflictingTeams.flatMap(team =>
-                team.service_ids.filter((id: string) => service_ids.includes(id))
-            );
-
-            throw new Error(`Services ${assignedServices.join(', ')} are already assigned to other teams`);
-        }
+        // Multi-team service access is permitted; no exclusivity check required.
+        return;
     },
 
     /**

@@ -18,3 +18,9 @@ whatsapp-session/
 # Windows system files
 desktop.ini
 Thumbs.db
+
+
+# Scratch/test files
+scratch_test_assign.ts
+*.scratch.ts
+*.test.local.ts

@@ -1,29 +1,28 @@
 import { defineConfig } from 'drizzle-kit';
-import { envConfig } from './src/config/env.config';
-
-const isProduction = envConfig.NODE_ENV === "production";
-let supabaseUrl = '';
+import * as dotenv from 'dotenv';
 
 
+dotenv.config();
+let databaseUrl: string;
 
-if (isProduction) {
-  supabaseUrl = envConfig.SUPABASE_PRODUCTION_DATABASE_URL
+if (process.env.NODE_ENV === 'production') {
+  databaseUrl = process.env.SUPABASE_PRODUCTION_DATABASE_URL!;
+} else if (process.env.NODE_ENV === 'development') {
+  databaseUrl = process.env.SUPABASE_DATABASE_URL!;
+} else {
+  throw new Error('NODE_ENV is not set or DATABASE_URL is not defined');
 }
-else {
-  supabaseUrl = envConfig.SUPABASE_DATABASE_URL
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not defined in environment variables');
 }
 
 export default defineConfig({
+  out: './src/db/drizzle',
   schema: './src/db/schema/index.ts',
-  out: './src/db/drizzle/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: supabaseUrl,
-    ssl: true,
+    url: databaseUrl,
   },
-  migrations: {
-    table: 'migrations',
-    schema: 'public',
-  },
-  breakpoints: false,
+  breakpoints: true,
 });
