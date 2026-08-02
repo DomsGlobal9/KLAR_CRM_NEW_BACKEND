@@ -4,7 +4,7 @@ export interface Team {
   description?: string;
   members_count: number;
   is_active: boolean; 
-  service_ids: string[];
+  department_ids?: string[];
   created_at: string;
   updated_at: string;
 }

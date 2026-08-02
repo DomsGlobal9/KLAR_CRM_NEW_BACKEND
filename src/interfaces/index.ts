@@ -103,3 +103,4 @@ export {
 
 
  export * from "./leadStageVoucher.interface";
+ export * from "./department.interface";

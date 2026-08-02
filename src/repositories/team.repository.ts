@@ -1,13 +1,7 @@
 import { supabaseAdmin } from '../config';
-import { IService } from '../interfaces';
 import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
-
-    async validateServiceIds(service_ids: string[], currentTeamId?: string): Promise<void> {
-        // Multi-team service access is permitted; no exclusivity check required.
-        return;
-    },
 
     /**
      * Create a new team
@@ -15,16 +9,13 @@ export const teamRepository = {
      * @param description 
      * @returns   
      */
-    async createTeam(name: string, description?: string, service_ids: string[] = []) {
-        await this.validateServiceIds(service_ids);
-
+    async createTeam(name: string, description?: string) {
         const { data, error } = await supabaseAdmin
             .from('teams')
             .insert({
                 name,
                 description,
-                members_count: 0,
-                service_ids: service_ids
+                members_count: 0
             })
             .select()
             .single();
@@ -45,7 +36,6 @@ export const teamRepository = {
         if (error) throw error;
         return data ?? [];
     },
-
 
     /**
      * Get team by ID
@@ -92,36 +82,13 @@ export const teamRepository = {
         return data as Team[];
     },
 
-    async getServicesByIds(serviceIds: string[]): Promise<{ id: string; name: string }[]> {
-        if (!serviceIds || serviceIds.length === 0) {
-            return [];
-        }
-
-        const { data, error } = await supabaseAdmin
-            .from('services')
-            .select('id, name')
-            .in('id', serviceIds);
-
-        if (error) {
-            throw new Error(`Failed to fetch services: ${error.message}`);
-        }
-
-        return data || [];
-    },
-
     /**
      * Update team details
      * @param id 
      * @param updates 
      * @returns 
      */
-    async updateTeam(id: string, updates: { name?: string; description?: string; service_ids?: string[] }) {
-        if (updates.service_ids) {
-            await this.validateServiceIds(updates.service_ids, id);
-        }
-
-
-
+    async updateTeam(id: string, updates: { name?: string; description?: string; is_active?: boolean }) {
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)

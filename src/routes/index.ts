@@ -31,6 +31,7 @@ import leadStageInvoiceRoutes from "./leadStageInvoice.routes"
 import travelerRoutes from './traveler.routes';
 import emailReplyRoutes from './emailReply.routes';
 import tourRoutes from "./tour.routes"
+import departmentRoutes from "./department.routes";
 
 const router = Router();
 
@@ -57,8 +58,14 @@ router.use('/travel-plans', travelPlanRoutes);
 router.use('/whatsapp', whatsappRoutes);
 router.use("/set-reminder", setReminder);
 router.use('/email-reply', emailReplyRoutes);
+router.use('/department', departmentRoutes);
 
 
+/**
+ * OTA Section
+ * -------------------------------- 
+ * All OTA related routes will be defined here
+ */
 router.use("/flights", flight)
 router.use("/hotel", hotel)
 router.use('/payment', paymentRoutes);

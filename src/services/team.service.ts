@@ -1,73 +1,47 @@
-import { IService } from '../interfaces';
-import { serviceRepository, teamRepository } from '../repositories';
+import { teamRepository } from '../repositories';
 
 export const teamService = {
 
     /**
      * Create a new team
      * @param payload 
-     * @param requester 
      * @returns 
      */
     async createTeam(payload: {
         name: string;
         description?: string;
-        service_ids?: string[]
     }) {
         try {
             return await teamRepository.createTeam(
                 payload.name,
-                payload.description,
-                payload.service_ids || []
+                payload.description
             );
         } catch (error: any) {
-            if (error.message?.includes('already assigned to other teams')) {
-                throw new Error(`Cannot create team: ${error.message}`);
-            }
             throw error;
         }
     },
 
     /**
-     * Get team by ID
+     * List all teams
      * @returns 
      */
     async listTeams() {
-        const teams = await teamRepository.listTeams();
-
-        const enrichedTeams = await Promise.all(
-            teams.map(async (team) => {
-                let services: { id: string; name: string }[] = [];
-
-                if (team.service_ids && team.service_ids.length > 0) {
-                    services = await teamRepository.getServicesByIds(team.service_ids);
-                }
-
-                // Return team with services array (only id and name)
-                return {
-                    ...team,
-                    services: services.map(service => ({
-                        id: service.id,
-                        name: service.name
-                    })),
-                    service_names: services.map(s => s.name).join(', '),
-                    service_count: services.length
-                };
-            })
-        );
-
-        return enrichedTeams;
-    },
-
-    async getTeamById(id: string) {
-        return teamRepository.getTeamById(id);
+        return await teamRepository.listTeams();
     },
 
     /**
-     * 
+     * Get team by ID
+     * @param id
+     * @returns 
+     */
+    async getTeamById(id: string) {
+        return await teamRepository.getTeamById(id);
+    },
+
+    /**
+     * Update team details
      * @param id 
      * @param payload 
-     * @param requester 
      * @returns 
      */
     async updateTeam(
@@ -76,11 +50,9 @@ export const teamService = {
             name?: string;
             description?: string;
             is_active?: boolean;
-            service_ids: string[];
-        }) {
-
-
-        return teamRepository.updateTeam(id, payload);
+        }
+    ) {
+        return await teamRepository.updateTeam(id, payload);
     },
 
     /**
@@ -93,6 +65,6 @@ export const teamService = {
         if (requester?.role_name !== 'superadmin') {
             throw new Error('Unauthorized: Only superadmin can delete teams');
         }
-        return teamRepository.deleteTeam(id);
+        return await teamRepository.deleteTeam(id);
     }
 };

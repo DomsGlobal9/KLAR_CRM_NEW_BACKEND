@@ -6,7 +6,7 @@ export const teams = pgTable("teams", {
     description: text("description"),
     membersCount: integer("members_count").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
-    serviceIds: pgUuid("service_ids").array().default([]),
+    departmentIds: pgUuid("department_ids").array().default([]),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
