@@ -7,7 +7,7 @@ const router = Router();
 /**
  * Apply authentication and authorization middleware
  */
-// router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 /**
  * Department routes
