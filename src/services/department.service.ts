@@ -25,11 +25,12 @@ export const departmentService = {
     },
 
     /**
-     * List all departments with enriched admin, team & service details
+     * List departments with enriched admin, team & service details, plus pagination & stats
+     * @param params 
      * @returns 
      */
-    async listDepartments(): Promise<EnrichedDepartment[]> {
-        const rawDepartments = await departmentRepository.listDepartments();
+    async listDepartments(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+        const { departments: rawDepartments, pagination, stats } = await departmentRepository.listDepartments(params);
 
         const enrichedDepartments = await Promise.all(
             rawDepartments.map(async (dept) => {
@@ -56,7 +57,11 @@ export const departmentService = {
             })
         );
 
-        return enrichedDepartments;
+        return {
+            departments: enrichedDepartments,
+            pagination,
+            stats
+        };
     },
 
     /**

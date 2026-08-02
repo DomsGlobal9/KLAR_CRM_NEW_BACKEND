@@ -37,15 +37,27 @@ export const departmentController = {
     },
 
     /**
-     * List all departments with enriched details
+     * List all departments with enriched details and optional pagination
      */
     async list(req: AuthRequest, res: Response) {
         try {
-            const departments = await departmentService.listDepartments();
+            const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+            const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+            const search = req.query.search ? (req.query.search as string) : undefined;
+            const status = req.query.status ? (req.query.status as string) : undefined;
+
+            const { departments, pagination, stats } = await departmentService.listDepartments({
+                page,
+                limit,
+                search,
+                status
+            });
 
             return res.status(200).json({
                 success: true,
-                data: departments
+                data: departments,
+                pagination,
+                stats
             });
         } catch (err: any) {
             return res.status(500).json({

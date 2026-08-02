@@ -53,17 +53,63 @@ export const departmentRepository = {
     },
 
     /**
-     * List all departments
-     * @returns 
+     * List departments with pagination and optional search/status filters
      */
-    async listDepartments() {
-        const { data, error } = await supabaseAdmin
+    async listDepartments(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+        let query = supabaseAdmin
             .from('departments')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*', { count: 'exact' });
+
+        if (params?.search && params.search.trim() !== '') {
+            const term = params.search.trim();
+            query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
+        }
+
+        if (params?.status === 'active') {
+            query = query.eq('is_active', true);
+        } else if (params?.status === 'inactive') {
+            query = query.eq('is_active', false);
+        }
+
+        const page = Math.max(1, Number(params?.page) || 1);
+        const limit = Math.max(1, Number(params?.limit) || 10);
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+
+        const { data, count, error } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
         if (error) throw error;
-        return (data || []) as Department[];
+
+        const totalCount = count || 0;
+        const totalPages = Math.ceil(totalCount / limit) || 1;
+
+        // Fetch aggregate stats across all departments for header cards
+        const { data: allDepts } = await supabaseAdmin
+            .from('departments')
+            .select('is_active, admin_ids, team_ids');
+
+        const totalDepartments = allDepts ? allDepts.length : totalCount;
+        const activeDepartmentsCount = allDepts ? allDepts.filter(d => d.is_active).length : 0;
+        const totalHeadsCount = allDepts ? new Set(allDepts.flatMap(d => d.admin_ids || [])).size : 0;
+        const totalTeamsCount = allDepts ? new Set(allDepts.flatMap(d => d.team_ids || [])).size : 0;
+
+        return {
+            departments: (data || []) as Department[],
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages
+            },
+            stats: {
+                totalDepartments,
+                activeDepartmentsCount,
+                totalHeadsCount,
+                totalTeamsCount
+            }
+        };
     },
 
     /**
