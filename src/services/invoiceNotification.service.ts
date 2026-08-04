@@ -20,7 +20,7 @@ class InvoiceNotificationService {
     constructor() {
         this.service = getWhatsAppService();
         if (!this.service) {
-            console.log('❌ WhatsApp number not configured in .env');
+
         }
     }
 
@@ -57,22 +57,22 @@ class InvoiceNotificationService {
                 .order('due_date', { ascending: true });
 
             if (error) {
-                console.error('Error fetching invoices with rest amount:', error);
+
                 return [];
             }
 
-            console.log(`📊 Found ${data?.length || 0} invoices with rest_amount > 0`);
+
 
             // Log the invoices found for debugging
             if (data && data.length > 0) {
                 data.forEach(inv => {
-                    console.log(`- ${inv.invoice_number}: rest_amount=${inv.rest_amount}, status=${inv.status}, phone=${inv.client_phone}`);
+
                 });
             }
 
             return data as InvoiceWithRestAmount[];
         } catch (error) {
-            console.error('Error in findInvoicesWithRestAmount:', error);
+
             return [];
         }
     }
@@ -103,13 +103,13 @@ class InvoiceNotificationService {
                 .not('client_phone', 'is', null);
 
             if (error) {
-                console.error('Error fetching overdue invoices:', error);
+
                 return [];
             }
 
             return data as InvoiceWithRestAmount[];
         } catch (error) {
-            console.error('Error in findOverdueInvoices:', error);
+
             return [];
         }
     }
@@ -119,7 +119,7 @@ class InvoiceNotificationService {
      */
     async sendInvoiceReminder(invoice: InvoiceWithRestAmount): Promise<boolean> {
         if (!invoice.client_phone) {
-            console.log(`❌ No phone number for invoice ${invoice.invoice_number}`);
+
             return false;
         }
 
@@ -148,7 +148,7 @@ class InvoiceNotificationService {
      */
     async sendOverdueNotification(invoice: InvoiceWithRestAmount): Promise<boolean> {
         if (!invoice.client_phone) {
-            console.log(`❌ No phone number for invoice ${invoice.invoice_number}`);
+
             return false;
         }
 
@@ -181,7 +181,7 @@ class InvoiceNotificationService {
     }> {
         const invoices = await this.findInvoicesWithRestAmount();
 
-        console.log(`📊 Processing ${invoices.length} invoices with remaining balance`);
+
 
         let sent = 0;
         let failed = 0;
@@ -190,18 +190,18 @@ class InvoiceNotificationService {
         for (const invoice of invoices) {
             try {
                 if (!invoice.client_phone) {
-                    console.log(`⏭️ Skipping invoice ${invoice.invoice_number} - no phone number`);
+
                     skipped++;
                     continue;
                 }
 
-                console.log(`📤 Sending reminder for invoice ${invoice.invoice_number} to ${invoice.client_phone}`);
+
 
                 const success = await this.sendInvoiceReminder(invoice);
 
                 if (success) {
                     sent++;
-                    console.log(`✅ Reminder sent for invoice ${invoice.invoice_number}`);
+
 
                     await supabaseAdmin
                         .from('invoices')
@@ -209,19 +209,19 @@ class InvoiceNotificationService {
                         .eq('id', invoice.id);
                 } else {
                     failed++;
-                    console.log(`❌ Failed to send reminder for invoice ${invoice.invoice_number}`);
+
                 }
 
                 // Small delay between messages
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
             } catch (error) {
-                console.error(`Error processing invoice ${invoice.invoice_number}:`, error);
+
                 failed++;
             }
         }
 
-        console.log(`📊 Summary: Total=${invoices.length}, Sent=${sent}, Failed=${failed}, Skipped=${skipped}`);
+
 
         return {
             total: invoices.length,
@@ -241,7 +241,7 @@ class InvoiceNotificationService {
     }> {
         const invoices = await this.findOverdueInvoices();
 
-        console.log(`📊 Found ${invoices.length} overdue invoices`);
+
 
         let sent = 0;
         let failed = 0;
@@ -249,14 +249,14 @@ class InvoiceNotificationService {
         for (const invoice of invoices) {
             try {
                 if (!invoice.client_phone) {
-                    console.log(`⏭️ Skipping overdue invoice ${invoice.invoice_number} - no phone number`);
+
                     continue;
                 }
 
                 const success = await this.sendOverdueNotification(invoice);
                 if (success) {
                     sent++;
-                    console.log(`✅ Overdue notification sent for invoice ${invoice.invoice_number}`);
+
 
                     await supabaseAdmin
                         .from('invoices')
@@ -272,7 +272,7 @@ class InvoiceNotificationService {
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
             } catch (error) {
-                console.error(`Error processing overdue invoice ${invoice.invoice_number}:`, error);
+
                 failed++;
             }
         }

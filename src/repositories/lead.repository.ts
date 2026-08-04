@@ -34,7 +34,7 @@ export const leadRepository = {
      * Create a new lead with requirements
      */
     async createLeadWithRequirements(payload: any): Promise<LeadWithRequirements> {
-        console.log("🗄️ Repository payload:", JSON.stringify(payload, null, 2));
+
 
         /**
          * Create lead first
@@ -63,12 +63,12 @@ export const leadRepository = {
             .single();
 
         if (leadError) {
-            console.error("❌ Lead creation error:", leadError);
+
             throw new Error(`Failed to create lead: ${leadError.message}`);
         }
 
         const lead = leadData as Lead;
-        console.log("✅ Lead created with ID:", lead.id);
+
 
         /**
          * Create requirements - use to_location (mapped from destination)
@@ -140,13 +140,13 @@ export const leadRepository = {
             .single();
 
         if (reqError) {
-            console.error("❌ Requirements creation error:", reqError);
+
 
             await supabaseAdmin.from('leads').delete().eq('id', lead.id);
             throw new Error(`Failed to create lead requirements: ${reqError.message}`);
         }
 
-        console.log("✅ Requirements created successfully");
+
         const requirements = reqData as LeadRequirements;
 
         return {
@@ -330,7 +330,7 @@ export const leadRepository = {
             let assignedToUsername = null;
             if (leadData.assigned_to) {
                 assignedToUsername = await AuthRepository.getUsernameById(leadData.assigned_to);
-                console.log("Assigned to data:  ", assignedToUsername);
+
             }
 
             const lead: Lead = {
@@ -729,7 +729,7 @@ export const leadRepository = {
                     Math.round((leadsWithPreferencesCount / totalData.length) * 100) : 0
             };
         } catch (error) {
-            console.error('Error in getLeadStats repository:', error);
+
             throw error;
         }
     },
@@ -847,7 +847,7 @@ export const leadRepository = {
             .order('display_order', { ascending: true });
 
         if (error) {
-            console.error('❌ Failed to fetch service relationships:', error);
+
             return [];
         }
 
@@ -870,7 +870,7 @@ export const leadRepository = {
     ): Promise<boolean> {
 
         if (!relationships || relationships.length === 0) {
-            console.log("⚠️ No relationships to update, skipping...");
+
             return true;
         }
 
@@ -882,14 +882,14 @@ export const leadRepository = {
                 .eq('lead_id', leadId);
 
             if (deleteError) {
-                console.error("❌ Failed to delete existing relationships:", deleteError);
+
                 throw new Error(`Failed to delete existing relationships: ${deleteError.message}`);
             }
             
             const uniqueRelationships = this.removeDuplicateRelationships(relationships);
 
             if (uniqueRelationships.length === 0) {
-                console.log("⚠️ No unique relationships to insert");
+
                 return true;
             }
 
@@ -911,7 +911,7 @@ export const leadRepository = {
                 .insert(relationshipsToInsert);
 
             if (insertError) {
-                console.error("❌ Failed to insert relationships:", insertError);
+
 
                 
                 if (insertError.message?.includes('duplicate key') ||
@@ -927,7 +927,7 @@ export const leadRepository = {
                             });
 
                         if (singleInsertError) {
-                            console.error(`❌ Failed to insert relationship:`, singleInsertError);
+
                         }
                     }
                     return true;
@@ -938,7 +938,7 @@ export const leadRepository = {
             return true;
 
         } catch (error) {
-            console.error("❌ Error updating service relationships:", error);
+
             throw error;
         }
     },
@@ -1027,11 +1027,11 @@ export const leadRepository = {
             .single();
 
         if (leadError) {
-            console.error("❌ Lead creation error:", leadError);
+
             throw new Error(`Failed to create lead: ${leadError.message}`);
         }
 
-        console.log("✅ Lead created with ID:", lead.id);
+
 
         // 2. Create lead requirements
         const requirementsData = LeadDataMapper.prepareRequirements(payload);
@@ -1046,14 +1046,14 @@ export const leadRepository = {
             .single();
 
         if (reqError) {
-            console.error("❌ Requirements creation error:", reqError);
+
 
             // Rollback: delete the lead
             await supabaseAdmin.from('leads').delete().eq('id', lead.id);
             throw new Error(`Failed to create lead requirements: ${reqError.message}`);
         }
 
-        console.log("✅ Requirements created successfully");
+
 
         // 3. Create service relationships
         if (payload.service_selections && payload.service_selections.length > 0) {
@@ -1061,9 +1061,9 @@ export const leadRepository = {
 
             try {
                 await this.createLeadServiceRelationships(lead.id, relationships);
-                console.log("✅ Service relationships created successfully");
+
             } catch (error) {
-                console.error("❌ Service relationships error:", error);
+
                 // Optional: decide whether to rollback or continue
             }
         }
@@ -1150,7 +1150,7 @@ export const leadRepository = {
         leadId: string,
         payload: any
     ): Promise<boolean> {
-        console.log("🗄️ Updating lead with full details:", leadId);
+
 
 
         const metadata = {
@@ -1190,11 +1190,11 @@ export const leadRepository = {
             .eq('id', leadId);
 
         if (leadError) {
-            console.error("❌ Lead update error:", leadError);
+
             throw new Error(`Failed to update lead: ${leadError.message}`);
         }
 
-        console.log("✅ Lead updated successfully");
+
 
 
         const requirementsData = LeadDataMapper.prepareRequirements(payload);
@@ -1214,7 +1214,7 @@ export const leadRepository = {
                     .eq('lead_id', leadId);
 
                 if (reqError) {
-                    console.error("❌ Requirements update error:", reqError);
+
                     throw new Error(`Failed to update requirements: ${reqError.message}`);
                 }
             } else {
@@ -1227,18 +1227,18 @@ export const leadRepository = {
                     });
 
                 if (reqError) {
-                    console.error("❌ Requirements creation error:", reqError);
+
                     throw new Error(`Failed to create requirements: ${reqError.message}`);
                 }
             }
-            console.log("✅ Requirements updated successfully");
+
         }
 
 
         if (payload.service_selections) {
             const relationships = LeadDataMapper.prepareServiceRelationships(leadId, payload);
             await this.updateLeadServiceRelationships(leadId, relationships);
-            console.log("✅ Service relationships updated successfully");
+
         }
 
         return true;

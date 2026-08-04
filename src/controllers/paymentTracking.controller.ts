@@ -24,7 +24,7 @@ export class PaymentTrackingController {
                 message: 'Total payments retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting total payments:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get total payments'
@@ -65,7 +65,7 @@ export class PaymentTrackingController {
                 message: 'Payments retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting payments in range:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get payments'
@@ -105,7 +105,7 @@ export class PaymentTrackingController {
                 message: 'Payment summary retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting payment summary:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get payment summary'
@@ -133,7 +133,7 @@ export class PaymentTrackingController {
                 message: 'Cumulative payments retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting cumulative payments:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get cumulative payments'
@@ -171,7 +171,7 @@ export class PaymentTrackingController {
                 message: 'Payment analytics retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting payment analytics:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get payment analytics'
@@ -246,7 +246,7 @@ export class PaymentTrackingController {
                 message: 'Dashboard overview retrieved successfully'
             });
         } catch (error: any) {
-            console.error('Error getting dashboard overview:', error);
+
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to get dashboard overview'

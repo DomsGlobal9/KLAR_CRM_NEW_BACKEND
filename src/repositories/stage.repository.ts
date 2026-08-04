@@ -105,7 +105,7 @@ export const stageRepository = {
       if (error.code === 'PGRST116') {
         return null;
       }
-      console.error(`Stage name query error for ${id}:`, error.message);
+
       return null;
     }
 
@@ -250,7 +250,7 @@ export const stageRepository = {
         .eq('stage_id', stage.id);
 
       if (dealsError) {
-        console.error(`Failed to fetch deals for stage ${stage.id}:`, dealsError.message);
+
         continue;
       }
 

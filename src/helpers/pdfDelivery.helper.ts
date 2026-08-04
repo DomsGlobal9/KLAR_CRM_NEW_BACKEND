@@ -24,7 +24,7 @@ export async function processPDFDelivery(
     sendVia?: SendViaOptions
 ) {
     const { clientPhone, clientEmail } = options;
-    console.log('Processing PDF delivery with options:', options.clientEmail, options.clientPhone, sendVia);
+
 
 
     if (!clientPhone && !clientEmail) {
@@ -36,10 +36,10 @@ export async function processPDFDelivery(
         };
     }
 
-    console.log('📬 Attempting PDF delivery for lead:', options.leadId);
-    console.log('📱 Phone available:', !!clientPhone);
-    console.log('📧 Email available:', !!clientEmail);
-    console.log('📨 Send via options:', sendVia || 'both (default)');
+
+
+
+
 
 
     let channels = { whatsapp: true, email: true };
@@ -64,7 +64,7 @@ export async function processPDFDelivery(
         deliveryResult = await pdfDeliveryService.deliverPDFViaChannels(options, channels);
     }
 
-    console.log('📊 Delivery result:', deliveryResult);
+
     return deliveryResult;
 }
 

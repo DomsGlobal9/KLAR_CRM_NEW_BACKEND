@@ -120,7 +120,7 @@ export const userItineraryFilesService = {
             };
 
         } catch (error: any) {
-            console.error('Error in saveFileItinerary:', error);
+
             return { success: false, message: error.message };
         }
     },

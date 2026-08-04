@@ -473,14 +473,14 @@ export const travelerService = {
         }
 
         if (toCreate.length > 0) {
-            console.log(`📝 Attempting to create ${toCreate.length} travelers...`);
+
 
             try {
                 await travelerRepository.bulkCreateTravelers(toCreate);
                 results.created = toCreate.length;
-                console.log(`✅ Successfully created ${toCreate.length} travelers via bulk insert`);
+
             } catch (bulkError: any) {
-                console.error('❌ Bulk insert failed, falling back to individual inserts:', bulkError.message);
+
 
                 let createdCount = 0;
 

@@ -13,7 +13,7 @@ class InquirySourceController {
                 data: sources
             });
         } catch (error: any) {
-            console.error('Error fetching inquiry sources:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message
@@ -30,7 +30,7 @@ class InquirySourceController {
                 data: grouped
             });
         } catch (error: any) {
-            console.error('Error fetching grouped sources:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message
@@ -65,7 +65,7 @@ class InquirySourceController {
                 data: source
             });
         } catch (error: any) {
-            console.error('Error creating inquiry source:', error);
+
 
             // Handle specific errors
             if (error.message === 'Source with this value already exists') {
@@ -96,7 +96,7 @@ class InquirySourceController {
                 data: source
             });
         } catch (error: any) {
-            console.error('Error updating inquiry source:', error);
+
 
             if (error.message === 'Source not found') {
                 return res.status(404).json({
@@ -132,7 +132,7 @@ class InquirySourceController {
                 data: result.data
             });
         } catch (error: any) {
-            console.error('Error deleting inquiry source:', error);
+
 
             if (error.message === 'Source not found') {
                 return res.status(404).json({
@@ -161,7 +161,7 @@ class InquirySourceController {
                 data: source
             });
         } catch (error: any) {
-            console.error('Error toggling source status:', error);
+
 
             if (error.message === 'Source not found') {
                 return res.status(404).json({
@@ -196,7 +196,7 @@ class InquirySourceController {
                 message: 'Display order updated successfully'
             });
         } catch (error: any) {
-            console.error('Error updating display order:', error);
+
             res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to update display order'

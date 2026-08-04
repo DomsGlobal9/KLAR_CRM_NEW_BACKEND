@@ -179,7 +179,7 @@ export const teamLeadRepository = {
         const teamLead = users.find(u => u.id === tlId);
         
         if (!teamLead) {
-            console.log("Error: No user found with ID:", tlId);
+
             return [];
         }
 
@@ -197,10 +197,10 @@ export const teamLeadRepository = {
         };
 
         const tlTeamId = extractTeamId(teamLead);
-        console.log(`Targeting Team ID: ${tlTeamId} (Extracted from TL: ${teamLead.email})`);
+
 
         if (!tlTeamId) {
-            console.log("Warning: This TL has no team_id in their metadata.");
+
             return [];
         }
 
@@ -211,12 +211,12 @@ export const teamLeadRepository = {
             const memberTeamId = extractTeamId(user);
             
             // Log every user's team ID to the console so you can see the match
-            console.log(`User: ${user.email} | TeamID: ${memberTeamId} | Match: ${memberTeamId === tlTeamId}`);
+
 
             return String(memberTeamId) === String(tlTeamId);
         });
 
-        console.log(`Total members found in team: ${teamMembers.length}`);
+
 
         return teamMembers.map(user => {
             const teamId = extractTeamId(user);

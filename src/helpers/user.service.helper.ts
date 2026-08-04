@@ -35,7 +35,7 @@ export const getUserById = async (id: string) => {
 
         return formatAuthUser(data.user);
     } catch (err) {
-        console.error('getUserById failed:', err);
+
         return null;
     }
 };
@@ -64,7 +64,7 @@ export const getUserByEmail = async (email: string) => {
 
         return null;
     } catch (err) {
-        console.error('getUserByEmail failed:', err);
+
         return null;
     }
 };
@@ -95,7 +95,7 @@ export const getUserByUsername = async (username: string) => {
 
         return null;
     } catch (err) {
-        console.error('getUserByUsername failed:', err);
+
         return null;
     }
 };
@@ -113,10 +113,10 @@ export const createAuditLog = async (logData: Record<string, any>): Promise<void
             });
 
         if (error) {
-            console.error('Failed to create audit log:', error.message);
+
         }
     } catch (err) {
-        console.error('Audit log error:', err);
+
     }
 };
 

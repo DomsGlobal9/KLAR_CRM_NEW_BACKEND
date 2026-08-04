@@ -116,7 +116,7 @@ export class EmailService {
             };
 
         } catch (error: any) {
-            console.error('EmailService.sendEmail error:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to send email',
@@ -176,7 +176,7 @@ export class EmailService {
 
             return await this.sendEmail(testPayload);
         } catch (error: any) {
-            console.error('EmailService.sendTestEmail error:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed to send test email',

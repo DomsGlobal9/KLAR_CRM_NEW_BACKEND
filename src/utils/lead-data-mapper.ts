@@ -80,7 +80,7 @@ export class LeadDataMapper {
         service_specific: Record<string, any>;
         attachments?: any[];
     }> {
-        console.log("🔄 Preparing service relationships for lead:", leadId);
+
 
         const relationships: Array<{
             service_id: string;
@@ -92,7 +92,7 @@ export class LeadDataMapper {
         }> = [];
 
         if (!payload.service_selections || !Array.isArray(payload.service_selections)) {
-            console.log("⚠️ No service_selections found in payload");
+
             return relationships;
         }
 
@@ -216,7 +216,7 @@ export class LeadDataMapper {
 
         relationships.forEach(rel => {
             if (!rel.service_id || !rel.sub_service_category_id || !rel.sub_service_id) {
-                console.warn("⚠️ Skipping invalid relationship:", rel);
+
                 return;
             }
 
@@ -270,7 +270,7 @@ export class LeadDataMapper {
         const result = Array.from(serviceGroups.values());
         
         result.forEach((group, idx) => {
-            console.log(`  Service ${idx + 1}: ${group.service_name}, ${group.categories.length} categories`);
+
         });
 
         return result;
@@ -372,7 +372,7 @@ export class LeadDataMapper {
      * Map frontend payload to database format for UPDATE
      */
     static mapFrontendToDatabaseForUpdate(payload: any): any {
-        console.log("🔄 Mapping frontend → db for UPDATE:", payload);
+
 
         const mapped: Record<string, any> = {};
 

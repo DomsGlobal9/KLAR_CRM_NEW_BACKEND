@@ -226,7 +226,7 @@ const validateRequiredFields = (): void => {
      */
     if (nodeEnv === 'development') {
         if (!process.env.OTP_DEV_STATIC_CODE) {
-            console.warn('⚠️  OTP_DEV_STATIC_CODE not set. Using default "123456" for development.');
+
         }
     }
 };
@@ -432,8 +432,8 @@ export const validateConfig = (): void => {
      */
     const supabaseUrlRegex = /^https:\/\/[a-zA-Z0-9-]+\.supabase\.co$/;
     if (!supabaseUrlRegex.test(config.SUPABASE_URL)) {
-        console.warn(`⚠️  SUPABASE_URL may not be in correct format: ${config.SUPABASE_URL}`);
-        console.warn('Expected format: https://[project-id].supabase.co');
+
+
     }
 
     /**
@@ -441,34 +441,34 @@ export const validateConfig = (): void => {
      */
     const supabaseKeyRegex = /^eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\..+/;
     if (!supabaseKeyRegex.test(config.SUPABASE_ANON_KEY)) {
-        console.warn(`⚠️  SUPABASE_ANON_KEY may not be in correct format. Expected JWT token starting with 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'`);
+
     }
 
     /**
      * Validate OTP configuration
      */
     if (config.OTP.LENGTH < 4 || config.OTP.LENGTH > 8) {
-        console.warn(`⚠️  OTP_LENGTH is ${config.OTP.LENGTH}. Recommended length is between 4 and 8 characters.`);
+
     }
 
     if (config.OTP.EXPIRY_MINUTES < 1 || config.OTP.EXPIRY_MINUTES > 30) {
-        console.warn(`⚠️  OTP_EXPIRY_MINUTES is ${config.OTP.EXPIRY_MINUTES}. Recommended expiry is between 1 and 30 minutes.`);
+
     }
 
     if (config.OTP.RESEND_COOLDOWN_SECONDS < 30) {
-        console.warn(`⚠️  OTP_RESEND_COOLDOWN_SECONDS is ${config.OTP.RESEND_COOLDOWN_SECONDS}. Values less than 30 seconds may lead to spam.`);
+
     }
 
     if (config.OTP.MAX_RESEND_ATTEMPTS > 5) {
-        console.warn(`⚠️  OTP_MAX_RESEND_ATTEMPTS is ${config.OTP.MAX_RESEND_ATTEMPTS}. High values may lead to abuse.`);
+
     }
 
     if (config.NODE_ENV === 'production' && config.OTP.BYPASS_IN_DEV) {
-        console.warn(`⚠️  OTP_BYPASS_IN_DEV is true in production. This setting only affects development environment.`);
+
     }
 
     if (config.NODE_ENV === 'production' && config.OTP.DEV_STATIC_CODE) {
-        console.warn(`⚠️  OTP_DEV_STATIC_CODE is set in production. This is only meant for development.`);
+
     }
 };
 
@@ -488,14 +488,14 @@ export const getCurrentSupabaseServiceRole = (): string => {
  * Helper function to log current environment info
  */
 export const logEnvironmentInfo = (): void => {
-    console.log(`🚀 Environment: ${envConfig.NODE_ENV}`);
-    console.log(`🌐 CORS Origin: ${envConfig.CORS_ORIGIN.join(', ')}`);
 
-    console.log(`🔐 OTP Config: Length=${envConfig.OTP.LENGTH}, Expiry=${envConfig.OTP.EXPIRY_MINUTES}min, Cooldown=${envConfig.OTP.RESEND_COOLDOWN_SECONDS}s`);
+
+
+
 
     if (isDevelopment()) {
-        console.log(`🧪 Dev OTP Static Code: ${envConfig.OTP.DEV_STATIC_CODE}`);
-        console.log(`🧪 Dev OTP Bypass: ${envConfig.OTP.BYPASS_IN_DEV ? 'Enabled' : 'Disabled'}`);
+
+
     }
 };
 

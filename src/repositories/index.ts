@@ -14,3 +14,4 @@ export { itineraryPreferencesRepository } from "./itinerary-preferences.reposito
 export { inquirySourceRepository } from "./inquirySource.repository";
 
 export { leadStageVoucherRepository } from "./leadStageVoucher.repository";
+export { departmentRepository } from "./department.repository";

@@ -32,7 +32,7 @@ export class InvoiceController {
         try {
             const payload = req.body;
 
-            console.log(`[${requestId}] Processing invoice request for quote: ${payload.quote_number}`);
+
 
             if (!payload.quote_number) {
                 throw new AppError('Quote number is required', 400, 'MISSING_QUOTE_NUMBER');
@@ -61,7 +61,7 @@ export class InvoiceController {
                 // If quote was updated after invoice was created, create new invoice
                 if (quoteUpdatedAt > invoiceCreatedAt) {
                     shouldCreateNewInvoice = true;
-                    console.log(`[${requestId}] Quote updated after invoice, creating new invoice`);
+
                 }
             }
 
@@ -94,7 +94,7 @@ export class InvoiceController {
                 statusCode = 200;
                 action = 'updated';
 
-                console.log(`[${requestId}] Invoice updated: ${existingInvoice.id}`);
+
             } else {
                 // CREATE new invoice (either first time or quote was edited)
                 result = await this.createNewInvoice(
@@ -107,7 +107,7 @@ export class InvoiceController {
                 statusCode = 201;
                 action = 'created';
 
-                console.log(`[${requestId}] Invoice ${action}: ${result.id}`);
+
             }
 
             // Handle sending invoice if requested
@@ -131,7 +131,7 @@ export class InvoiceController {
             });
 
         } catch (error: any) {
-            console.error(`[${requestId}] Invoice processing failed:`, error);
+
 
             if (error instanceof AppError) {
                 return res.status(error.statusCode).json({
@@ -195,14 +195,14 @@ export class InvoiceController {
 
             // Smart Fallback: If this payload looks like a quote conversion (has quote_number and client string but no client_name)
             if (invoiceData.quote_number && !invoiceData.client_name && (invoiceData.client || invoiceData.quote_currency)) {
-                console.log('>>> Detected quote conversion payload in generic createInvoice endpoint. Redirecting to convertQuoteToInvoice...');
+
                 return await this.convertQuoteToInvoice(req, res);
             }
 
             const invoice = await invoiceService.createInvoice(invoiceData as ICreateInvoiceDTO);
             res.status(201).json({ success: true, data: invoice });
         } catch (error: any) {
-            console.error('Error in createInvoice:', error);
+
             res.status(400).json({
                 success: false,
                 message: error.message || 'Failed to create invoice'
@@ -476,7 +476,7 @@ export class InvoiceController {
             const { id } = req.params;
             const { sendVia } = req.body;
 
-            console.log(`Received request to share invoice ${id} via ${sendVia}`);
+
 
             const invoice = await invoiceService.getInvoiceById(id as string);
             if (!invoice) {
@@ -531,7 +531,7 @@ export class InvoiceController {
             });
 
         } catch (error: any) {
-            console.error("Invoice S3 Workflow Error:", error);
+
             res.status(500).json({
                 success: false,
                 message: "Internal server error during PDF sharing",

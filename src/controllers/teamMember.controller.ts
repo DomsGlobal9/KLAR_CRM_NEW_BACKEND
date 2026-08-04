@@ -16,7 +16,7 @@ export const teamMemberController = {
         try {
             const user = await teamMemberService.addTeamMember(req.body);
 
-            console.log("THe user details got", req.user);
+
 
             await createAuditLog({
                 user_id: req.user?.id,
@@ -47,7 +47,7 @@ export const teamMemberController = {
                 data: users
             });
         } catch (error: any) {
-            console.error('Error fetching team members:', error);
+
 
             return res.status(500).json({
                 success: false,
@@ -103,7 +103,7 @@ export const teamMemberController = {
                 data: user
             });
         } catch (error: any) {
-            console.error('Error updating team member:', error);
+
 
             return res.status(500).json({
                 success: false,
@@ -147,7 +147,7 @@ export const teamMemberController = {
                 data: user
             });
         } catch (error: any) {
-            console.error('Error updating team member status:', error);
+
             return res.status(500).json({
                 success: false,
                 error: error.message || 'Failed to update user status'
@@ -271,7 +271,7 @@ export const teamMemberController = {
                 data: users
             });
         } catch (error: any) {
-            console.error('Error fetching team members:', error);
+
             return res.status(500).json({
                 success: false,
                 message: 'Failed to fetch team members',

@@ -13,7 +13,7 @@ export const voucherController = {
             const result = await voucherService.generateVoucherNumber();
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in generateVoucherNumber controller:', error);
+
             return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     },
@@ -31,7 +31,7 @@ export const voucherController = {
             }
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getVoucherByQuoteId controller:', error);
+
             return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     },
@@ -55,7 +55,7 @@ export const voucherController = {
             res.setHeader('Content-Disposition', `attachment; filename="Voucher_${result.data.voucher_number}.pdf"`);
             return res.send(buffer);
         } catch (error: any) {
-            console.error("Direct voucher download execution fault:", error);
+
             return res.status(500).json({ success: false, message: error.message });
         }
     },
@@ -112,7 +112,7 @@ export const voucherController = {
             });
 
         } catch (error: any) {
-            console.error("Voucher pipeline processing error trace:", error);
+
             res.status(500).json({
                 success: false,
                 message: "Failed to cleanly execute sharing delivery sequence parameters",

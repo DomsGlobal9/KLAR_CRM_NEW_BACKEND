@@ -51,7 +51,7 @@ export const voucherService = {
                 data: voucherPayload
             };
         } catch (error: any) {
-            console.error('Error constructing composite voucher framework values:', error);
+
             return {
                 success: false,
                 error: error.message || 'Failed processing context mappings conversion'

@@ -44,7 +44,7 @@ export class EmailController {
                 });
             }
         } catch (error: any) {
-            console.error('EmailController.sendEmail error:', error);
+
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
@@ -91,7 +91,7 @@ export class EmailController {
                 },
             });
         } catch (error: any) {
-            console.error('EmailController.sendBulkEmails error:', error);
+
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
@@ -125,7 +125,7 @@ export class EmailController {
                 });
             }
         } catch (error: any) {
-            console.error('EmailController.sendTestEmail error:', error);
+
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
@@ -157,7 +157,7 @@ export class EmailController {
                 data: validationResult,
             });
         } catch (error: any) {
-            console.error('EmailController.validateEmails error:', error);
+
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
@@ -179,7 +179,7 @@ export class EmailController {
                 data: status,
             });
         } catch (error: any) {
-            console.error('EmailController.getServiceStatus error:', error);
+
             res.status(500).json({
                 success: false,
                 message: 'Failed to get service status',
@@ -204,7 +204,7 @@ export class EmailController {
                 version: '1.0.0',
             });
         } catch (error: any) {
-            console.error('EmailController.healthCheck error:', error);
+
             res.status(503).json({
                 success: false,
                 status: 'unhealthy',

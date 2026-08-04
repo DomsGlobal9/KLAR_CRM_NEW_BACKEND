@@ -54,7 +54,7 @@ export const itineraryPreferencesRepository = {
 
             return data.lead_id;
         } catch (error) {
-            console.error('Error in getLeadIdByUserPreferenceId:', error);
+
             throw new Error(
                 `Failed to get lead_id: ${error instanceof Error ? error.message : 'Unknown error'
                 }`
@@ -120,7 +120,7 @@ export const itineraryPreferencesRepository = {
             ]);
 
             if (servicePreferencesResult.error && servicePreferencesResult.error.code !== 'PGRST116') {
-                console.error('Error fetching service preferences:', servicePreferencesResult.error);
+
             }
 
             let leadDetails: ILeadDetails | undefined;
@@ -137,7 +137,7 @@ export const itineraryPreferencesRepository = {
                 lead_details: leadDetails
             };
         } catch (error) {
-            console.error('Error in getByItineraryId:', error);
+
             throw new Error(`Failed to fetch lead preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -250,7 +250,7 @@ export const itineraryPreferencesRepository = {
 
                     leadDetailsResult = detailsData as ILeadDetails;
                 } catch (error) {
-                    console.warn('Could not fetch lead details:', error);
+
                 }
             }
 
@@ -263,7 +263,7 @@ export const itineraryPreferencesRepository = {
                 lead_details: leadDetailsResult
             };
         } catch (error) {
-            console.error('Error in saveAllPreferences:', error);
+
             throw new Error(`Failed to save lead preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -371,7 +371,7 @@ export const itineraryPreferencesRepository = {
                     .eq('itinerary_id', itinerary_id);
 
                 if (deleteError) {
-                    console.error('Error deleting existing preferences:', deleteError);
+
                 }
 
                 // Insert all new preferences
@@ -405,7 +405,7 @@ export const itineraryPreferencesRepository = {
                         .insert(insertData);
 
                     if (insertError) {
-                        console.error('Insert error:', insertError);
+
                         throw new Error(`Failed to insert service preference: ${insertError.message}`);
                     }
                 }
@@ -414,7 +414,7 @@ export const itineraryPreferencesRepository = {
             return this.getByItineraryId(itinerary_id);
 
         } catch (error) {
-            console.error('Update error:', error);
+
             throw new Error(
                 `Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
@@ -493,7 +493,7 @@ export const itineraryPreferencesRepository = {
                     .eq('lead_id', leadId)
             ]);
         } catch (error) {
-            console.error('Error in deleteByLeadId:', error);
+
             throw new Error(`Failed to delete preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -620,7 +620,7 @@ export const itineraryPreferencesRepository = {
 
             return data as IFlightPreference;
         } catch (error) {
-            console.error('Error in getFlightPreferenceById:', error);
+
             throw new Error(`Failed to fetch flight preference: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -645,7 +645,7 @@ export const itineraryPreferencesRepository = {
 
             return data as IHotelPreference;
         } catch (error) {
-            console.error('Error in getHotelPreferenceById:', error);
+
             throw new Error(`Failed to fetch hotel preference: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -670,7 +670,7 @@ export const itineraryPreferencesRepository = {
 
             return data as IVisaPreference;
         } catch (error) {
-            console.error('Error in getVisaPreferenceById:', error);
+
             throw new Error(`Failed to fetch visa preference: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -695,7 +695,7 @@ export const itineraryPreferencesRepository = {
 
             return data as IUserPreferencesSummary;
         } catch (error) {
-            console.error('Error in getUserPreferencesSummaryById:', error);
+
             throw new Error(`Failed to fetch user preferences summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -744,7 +744,7 @@ export const itineraryPreferencesRepository = {
 
             return { type: 'summary', data: null };
         } catch (error) {
-            console.error('Error in getPreferenceById:', error);
+
             throw new Error(
                 `Failed to fetch preference: ${error instanceof Error ? error.message : 'Unknown error'
                 }`
@@ -768,7 +768,7 @@ export const itineraryPreferencesRepository = {
 
             return data?.map(item => item.lead_id) || [];
         } catch (error) {
-            console.error('Error in getAllLeadIds:', error);
+
             throw new Error(`Failed to get lead IDs: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -908,7 +908,7 @@ export const itineraryPreferencesRepository = {
                 total_pages: Math.ceil((count || 0) / limit)
             };
         } catch (error) {
-            console.error('Error in getAllLeadsPaginated:', error);
+
             throw new Error(`Failed to get all leads: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -1079,7 +1079,7 @@ export const itineraryPreferencesRepository = {
                 total_pages: Math.ceil((count || 0) / limit)
             };
         } catch (error) {
-            console.error('Error in getAllLeadsBasicPaginated:', error);
+
             throw new Error(`Failed to get all leads basic: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -1180,7 +1180,7 @@ export const itineraryPreferencesRepository = {
                 recent_leads_last_30_days: recent30DaysCount || 0
             };
         } catch (error) {
-            console.error('Error in getAllLeadsSummary:', error);
+
             throw new Error(`Failed to get leads summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -1272,7 +1272,7 @@ export const itineraryPreferencesRepository = {
                 return dateB.getTime() - dateA.getTime();
             });
         } catch (error) {
-            console.error('Error in getRecentLeads:', error);
+
             throw new Error(`Failed to get recent leads: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -1396,7 +1396,7 @@ export const itineraryPreferencesRepository = {
                 .order('display_order', { ascending: true });
 
             if (relError) {
-                console.warn('Error fetching service relationships:', relError.message);
+
             }
 
             const relationshipsByLead = new Map<string, Map<string, any>>();
@@ -1494,7 +1494,7 @@ export const itineraryPreferencesRepository = {
             };
 
         } catch (error) {
-            console.error('Error in getAllLeadsMinimal:', error);
+
             throw new Error(
                 `Failed to get minimal lead details: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
@@ -2059,7 +2059,7 @@ export const itineraryPreferencesRepository = {
                     .insert(flightPreferencesData);
 
                 if (flightError) {
-                    console.error('Failed to save to flight_preferences:', flightError.message);
+
                 }
             }
 
@@ -2088,7 +2088,7 @@ export const itineraryPreferencesRepository = {
                 }));
 
             if (hotelPreferencesData.length > 0) {
-                console.log('🏨 Attempting to insert hotel data:', JSON.stringify(hotelPreferencesData, null, 2));
+
 
                 const { data: insertedHotelData, error: hotelError } = await supabaseAdmin
                     .from('hotel_preferences')
@@ -2103,7 +2103,7 @@ export const itineraryPreferencesRepository = {
                         code: hotelError.code
                     });
                 } else {
-                    console.log('✅ Hotel preferences saved successfully:', insertedHotelData);
+
                 }
             }
 
@@ -2154,7 +2154,7 @@ export const itineraryPreferencesRepository = {
                     leadDetailsResult.stage = 'Itinerary Generated';
                 }
             } catch (error) {
-                console.warn('Could not fetch lead details:', error);
+
             }
 
             return {
@@ -2166,7 +2166,7 @@ export const itineraryPreferencesRepository = {
             };
 
         } catch (error) {
-            console.error('Error in saveAllServicePreferences:', error);
+
             throw new Error(`Failed to save service preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     },
@@ -2273,7 +2273,7 @@ export const itineraryPreferencesRepository = {
                 .range((page - 1) * limit, page * limit - 1);
 
             if (fileError) {
-                console.error('Error fetching file-only itineraries:', fileError);
+
                 return {
                     leads: [],
                     total_count: 0,
@@ -2388,7 +2388,7 @@ export const itineraryPreferencesRepository = {
             };
 
         } catch (error) {
-            console.error('Error in getAllFileOnlyItineraries:', error);
+
             return {
                 leads: [],
                 total_count: 0,

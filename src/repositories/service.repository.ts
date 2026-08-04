@@ -918,7 +918,7 @@ export const serviceRepository = {
             return unassignedServices;
 
         } catch (error) {
-            console.error('Error in getUnassignedServices:', error);
+
             throw error;
         }
     },

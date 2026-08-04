@@ -37,7 +37,7 @@ class PDFDeliveryService {
     constructor() {
         this.service = getWhatsAppService();
         if (!this.service) {
-            console.log('❌ WhatsApp number not configured in .env');
+
         }
     }
 
@@ -97,7 +97,7 @@ class PDFDeliveryService {
                 return { success: false, error: 'Failed to send WhatsApp message' };
             }
         } catch (error: any) {
-            console.error('WhatsApp delivery error:', error);
+
             return {
                 success: false,
                 error: error.message || 'Unknown WhatsApp delivery error'
@@ -151,7 +151,7 @@ class PDFDeliveryService {
                 };
             }
         } catch (error: any) {
-            console.error('Email delivery error:', error);
+
             return {
                 success: false,
                 error: error.message || 'Unknown email delivery error'
@@ -170,13 +170,13 @@ class PDFDeliveryService {
             message: 'Delivery attempt completed'
         };
 
-        console.log(`📦 Starting PDF delivery for ${clientName} (Lead: ${leadId})`);
-        console.log(`📎 PDF URL: ${pdfUrl}`);
+
+
 
         let anySuccess = false;
 
         if (clientPhone) {
-            console.log(`📱 Attempting WhatsApp delivery to ${clientPhone}...`);
+
             const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
 
             result.whatsapp = {
@@ -187,16 +187,16 @@ class PDFDeliveryService {
 
             if (whatsappResult.success) {
                 anySuccess = true;
-                console.log('✅ WhatsApp delivery successful');
+
             } else {
-                console.log(`❌ WhatsApp delivery failed: ${whatsappResult.error}`);
+
             }
         } else {
-            console.log('⚠️ No phone number provided, skipping WhatsApp');
+
         }
 
         if (clientEmail) {
-            console.log(`📧 Attempting email delivery to ${clientEmail}...`);
+
             const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
 
             result.email = {
@@ -208,12 +208,12 @@ class PDFDeliveryService {
 
             if (emailResult.success) {
                 anySuccess = true;
-                console.log('✅ Email delivery successful');
+
             } else {
-                console.log(`❌ Email delivery failed: ${emailResult.error}`);
+
             }
         } else {
-            console.log('⚠️ No email address provided, skipping email');
+
         }
 
         result.success = anySuccess;
@@ -224,7 +224,7 @@ class PDFDeliveryService {
             result.message = 'Failed to deliver PDF via any channel';
         }
 
-        console.log(`📊 Delivery complete. Success: ${result.success}`);
+
         return result;
     }
 

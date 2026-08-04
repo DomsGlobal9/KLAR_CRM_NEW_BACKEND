@@ -33,7 +33,7 @@ export const quoteController = {
 
             return res.status(201).json(result);
         } catch (error: any) {
-            console.error('Error in createQuote controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -56,7 +56,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getQuoteById controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -79,7 +79,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getQuoteByNumber controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -113,7 +113,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getAllQuotes controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -137,7 +137,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in updateQuote controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -160,7 +160,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in deleteQuote controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -191,7 +191,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in updateQuoteStatus controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -210,7 +210,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getQuotesByItinerary controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -229,7 +229,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getQuotesByClientEmail controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -246,7 +246,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getQuoteStatistics controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -265,7 +265,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in getRecentQuotes controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -292,7 +292,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in searchQuotes controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -309,7 +309,7 @@ export const quoteController = {
 
             return res.status(200).json(result);
         } catch (error: any) {
-            console.error('Error in generateQuoteNumber controller:', error);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
@@ -348,7 +348,7 @@ export const quoteController = {
             return res.send(pdfBuffer);
 
         } catch (error: any) {
-            console.error("PDF Workflow Error:", error);
+
             res.status(500).json({ success: false, message: error.message });
         }
     },
@@ -510,7 +510,7 @@ export const quoteController = {
 
 
             if (isDelivered) {
-                console.log("Quote got delivered, by email or whatsapp");
+
                 await quoteRepository.updateQuoteStatus(
                     quoteId as string,
                     'Quote_Sent'
@@ -529,7 +529,7 @@ export const quoteController = {
             });
 
         } catch (error: any) {
-            console.error("Proposal S3 Workflow Error:", error);
+
             res.status(500).json({
                 success: false,
                 message: "Failed to process and share proposal PDF",

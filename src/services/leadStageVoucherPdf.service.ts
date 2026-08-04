@@ -7,7 +7,7 @@ export const leadStageVoucherPdfService = {
    * aligned perfectly with the itinerary brand theme.
    */
   async generateHTML(voucherData: any, forEmail: boolean = false): Promise<string> {
-    console.log("9 leadStageVoucherPdf.service.ts", voucherData);
+
     if (!voucherData) {
       throw new Error("Template engine context structure cannot be blank.");
     }

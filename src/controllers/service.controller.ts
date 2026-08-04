@@ -132,7 +132,7 @@ export const serviceController = {
         const userId = req.user?.id;
         const userRole = req.user?.role;
 
-        console.log("@@@@@@@@@@@@ The role we get", userRole);
+
 
         try {
             const filter: IServiceFilter = {
@@ -166,7 +166,7 @@ export const serviceController = {
                     .eq('id', teamId)
                     .single();
 
-                console.log("@@@@@@@@@@@@ THe team data we get", JSON.stringify(teamData, null, 2));
+
 
                 if (teamError || !teamData?.service_ids || teamData.service_ids.length === 0) {
 

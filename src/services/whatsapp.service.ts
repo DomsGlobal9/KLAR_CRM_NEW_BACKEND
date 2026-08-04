@@ -38,29 +38,29 @@ class WhatsAppService {
         });
 
         this.client.on('loading_screen', (percent, message) => {
-            console.log(`⏳ Loading WhatsApp: ${percent}% — ${message}`);
+
         });
 
         this.client.on('authenticated', () => {
-            console.log('🔐 WhatsApp authenticated');
+
         });
 
         this.client.on('auth_failure', (msg) => {
-            console.error('🔐 Auth failed:', msg);
+
             this.isReady = false;
             this.connectionStatus = 'disconnected';
             this.restartClient();
         });
 
         this.client.on('ready', () => {
-            console.log('✅ WhatsApp client ready');
+
             this.isReady = true;
             this.currentQrString = null;
             this.connectionStatus = 'ready';
         });
 
         this.client.on('disconnected', (reason) => {
-            console.log('❌ WhatsApp disconnected:', reason);
+
             this.isReady = false;
             this.currentQrString = null;
             this.connectionStatus = 'disconnected';
@@ -71,7 +71,7 @@ class WhatsAppService {
         if (process.env.NODE_ENV === 'production') {
             this.initializeClient();
         } else {
-            console.log('⚠️ WhatsApp disabled in development');
+
         }
     }
 
@@ -80,18 +80,18 @@ class WhatsAppService {
             this.connectionStatus = 'initializing';
             this.client.initialize();
         } catch (err) {
-            console.error('Failed to initialize WhatsApp client:', err);
+
             this.connectionStatus = 'disconnected';
         }
     }
 
     private restartClient() {
-        console.log('🔄 Restarting WhatsApp client in 5s...');
+
         setTimeout(() => {
             this.client.destroy()
                 .then(() => this.initializeClient())
                 .catch((err) => {
-                    console.error('Error destroying client:', err);
+
                     this.initializeClient();
                 });
         }, 5000);
@@ -125,7 +125,7 @@ class WhatsAppService {
 
     private formatPhoneNumber(phoneNumber: string): string | null {
         if (!this.isValidPhoneNumber(phoneNumber)) {
-            console.log(`⚠️ Invalid phone number format: ${phoneNumber}`);
+
             return null;
         }
         let cleaned = phoneNumber.replace(/\D/g, '');
@@ -137,25 +137,25 @@ class WhatsAppService {
 
     public async sendMessage(phoneNumber: string, message: string): Promise<boolean> {
         if (!this.isReady) {
-            console.log('⏳ WhatsApp client not ready');
+
             return false;
         }
 
         const formattedNumber = this.formatPhoneNumber(phoneNumber);
 
         if (!formattedNumber) {
-            console.log(`❌ Skipping invalid number: ${phoneNumber}`);
+
             return false;
         }
 
         try {
             const chatId = `${formattedNumber}@c.us`;
-            console.log(`📤 Sending to ${formattedNumber}...`);
+
             await this.client.sendMessage(chatId, message);
-            console.log(`✅ Sent to ${formattedNumber}`);
+
             return true;
         } catch (error: any) {
-            console.log(`❌ Failed to send to ${phoneNumber}: ${error.message || 'Unknown error'}`);
+
             return false;
         }
     }
@@ -174,6 +174,6 @@ export default function getWhatsAppService() {
         }
         return whatsappInstance;
     }
-    console.log('⚠️ WhatsApp service not available in development mode');
+
     return null;
 }

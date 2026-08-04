@@ -23,7 +23,7 @@ async function getRoundRobinRM(): Promise<string | null> {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
 
     if (error || !users || users.length === 0) {
-      console.log('⚠️  No users found in Auth dashboard');
+
       return null;
     }
 
@@ -38,7 +38,7 @@ async function getRoundRobinRM(): Promise<string | null> {
     });
 
     if (activeRMs.length === 0) {
-      console.log('⚠️  No active RMs found for auto-assignment');
+
       return null;
     }
 
@@ -53,7 +53,7 @@ async function getRoundRobinRM(): Promise<string | null> {
     const currentCount = (selectedRM.user_metadata?.assigned_leads_count || selectedRM.user_metadata?.user_metadata?.assigned_leads_count || 0);
     const newCount = currentCount + 1;
 
-    console.log(`✅ Round Robin selected: ${selectedRM.email} (Current count: ${currentCount})`);
+
 
     // 4. Update the RM's metadata to increment the count
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
@@ -67,13 +67,13 @@ async function getRoundRobinRM(): Promise<string | null> {
     );
 
     if (updateError) {
-      console.error('❌ Failed to update RM lead count:', updateError.message);
+
       // We still return the ID so the assignment isn't blocked by the counter failing
     }
 
     return selectedRM.id;
   } catch (err) {
-    console.error('❌ Round Robin error:', err);
+
     return null;
   }
 }
@@ -99,7 +99,7 @@ export const leadService = {
 
     const existingLead = await leadRepository.getLeadByEmail(sanitizedData.email);
     if (existingLead) {
-      console.log(`⚠️ Lead with email ${sanitizedData.email} already exists`);
+
     }
 
     // const travelPlan = await travelPlanService.generateTravelPlan(sanitizedData as any);
@@ -142,7 +142,7 @@ export const leadService = {
    * Update lead and requirements
    */
   async updateLead(id: string, payload: any): Promise<boolean> {
-    console.log("🔧 Service update received payload:", JSON.stringify(payload, null, 2));
+
 
     const existingLead = await leadRepository.getLeadById(id);
     if (!existingLead) {
@@ -230,7 +230,7 @@ export const leadService = {
     try {
       return await leadRepository.getLeadStats(leadId);
     } catch (error) {
-      console.error('Error in getLeadStats service:', error);
+
       throw error;
     }
   },

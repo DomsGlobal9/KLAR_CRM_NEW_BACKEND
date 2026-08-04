@@ -86,12 +86,12 @@ export const authController = {
 
             const { data, error } = await AuthService.refresh(refresh_token)
             if (error) {
-                console.error('Supabase refresh session error:', error);
+
                 throw error;
             }
 
             const session = data.session
-            console.log('Supabase refresh session success, session:', session ? 'Found' : 'Not Found');
+
 
             res.json({
                 success: true,
@@ -199,7 +199,7 @@ export const authController = {
             });
 
         } catch (err: any) {
-            console.error('Forgot password failed:', err);
+
             // Return success even on error for security
             return res.status(200).json({
                 success: true,
@@ -225,7 +225,7 @@ export const authController = {
             console.log("155auth.controller, sendRegistrationOTP", result)
             res.json(result);
         } catch (err: any) {
-            console.error('Send registration OTP failed:', err);
+
             res.status(400).json({ error: err.message || 'Failed to send OTP' });
             console.log("160auth.controller, sendRegistrationOTP", err)
         }
@@ -261,7 +261,7 @@ export const authController = {
 
             res.json(result);
         } catch (err: any) {
-            console.error('Resend registration OTP failed:', err);
+
             res.status(400).json({ error: err.message || 'Failed to resend OTP' });
         }
     },
@@ -306,7 +306,7 @@ export const authController = {
                 message: 'Superadmin registered successfully. You can now log in with OTP.',
             });
         } catch (err: any) {
-            console.error('Superadmin registration failed:', err);
+
             res.status(400).json({ error: err.message || 'Registration failed' });
         }
     },
@@ -324,12 +324,12 @@ export const authController = {
             const normalizedEmail = email.toLowerCase();
 
             const { data: userList } = await AuthRepository.listUsers();
-            console.log(`[AUTH Controller] USER LIST data: `, userList);
+
 
 
             const user = userList.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
 
-            console.log(`[AUTH Controller] USER data: `, user);
+
 
             if (!user) {
                 return res.status(404).json({ error: 'Email not registered - 1' });
@@ -350,7 +350,7 @@ export const authController = {
             const result = await otpService.sendOTP(normalizedEmail, 'login');
             res.json({ success: true, message: 'Login OTP sent to your email' });
         } catch (err: any) {
-            console.error('Send login OTP failed:', err);
+
             res.status(400).json({ error: err.message || 'Failed to send login OTP' });
         }
     },
@@ -389,7 +389,7 @@ export const authController = {
 
             res.json(result);
         } catch (err: any) {
-            console.error('Resend login OTP failed:', err);
+
             res.status(400).json({ error: err.message || 'Failed to resend OTP' });
         }
     },
@@ -444,7 +444,7 @@ export const authController = {
                 }
             });
         } catch (err: any) {
-            console.error('Login OTP verification failed:', err);
+
             res.status(401).json({
                 success: false,
                 error: err.message || 'Login failed'
@@ -500,7 +500,7 @@ export const authController = {
             });
 
         } catch (err: any) {
-            console.error('Resend password OTP failed:', err);
+
             return res.status(400).json({ 
                 success: false, 
                 error: err.message || 'Failed to resend OTP' 
@@ -566,7 +566,7 @@ export const authController = {
             });
 
         } catch (err: any) {
-            console.error('Verify password OTP failed:', err);
+
             return res.status(400).json({ 
                 success: false, 
                 error: err.message || 'OTP verification failed' 
@@ -581,7 +581,7 @@ export const authController = {
     async resetPassword(req: Request, res: Response) {
         try {
             const { email, newPassword } = req.body;
-            console.log("32434",email, newPassword);
+
 
             if (!email || !newPassword) {
                 return res.status(400).json({ 
@@ -619,7 +619,7 @@ export const authController = {
             );
 
             if (updateError) {
-                console.error('Password update failed:', updateError);
+
                 throw new Error('Failed to update password');
             }
 
@@ -644,7 +644,7 @@ export const authController = {
             });
 
         } catch (err: any) {
-            console.error('Reset password failed:', err);
+
             return res.status(400).json({ 
                 success: false, 
                 error: err.message || 'Failed to reset password' 

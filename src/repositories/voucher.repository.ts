@@ -37,7 +37,7 @@ export const voucherRepository = {
      * Create a new voucher entity transaction record
      */
     async createVoucher(payload: ICreateVoucherDTO): Promise<IVoucher> {
-        console.log("^^^^^^^^^^^^^^^^^ Voucher Repository Payload received", JSON.stringify(payload, null, 2));
+
 
         const voucherNumber = payload.voucher_number || (payload as any).voucherNumber;
         if (!voucherNumber) {
@@ -119,7 +119,7 @@ export const voucherRepository = {
             created_at: new Date().toISOString()
         };
 
-        console.log("Inserting voucher data to backend database table instance:", JSON.stringify(voucherData, null, 2));
+
 
         const { data, error } = await supabaseAdmin
             .from('vouchers')
@@ -128,7 +128,7 @@ export const voucherRepository = {
             .single();
 
         if (error || !data) {
-            console.error('Failed to create voucher row mapping context:', error);
+
             throw new Error(`Failed to create voucher record tracking segment: ${error?.message || 'Unknown network trace standard event error'}`);
         }
 
@@ -392,7 +392,7 @@ export const voucherRepository = {
             .single();
 
         if (error) {
-            console.error('Failed to complete update parameters validation sequencing query logic:', error);
+
             throw new Error(`Failed to update voucher row context state parameters values: ${error.message}`);
         }
 

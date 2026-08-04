@@ -5,7 +5,7 @@ export class VisaService {
     // Shared paginated collection engine for custom filtered flows
     async getVisaBookings(filter: any, page: number, limit: number) {
         const { data, total } = await visaRepository.findAllBookings(filter, page, limit);
-    console.log("VisaService.getVisaBookings: Retrieved data:", data); 
+
         // Map raw schema elements to explicitly match your format requirements
         const transformedData = data.map((booking: any) => ({
             _id: booking._id,

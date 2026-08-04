@@ -9,21 +9,21 @@ dotenv.config();
 const PORT = process.env.PORT || 3001;
 
 const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+
 });
 
 const gracefulShutdown = () => {
-    console.log('Received shutdown signal, closing gracefully...');
+
 
     // cronService.stopAllJobs();
 
     server.close(() => {
-        console.log('HTTP server closed');
+
         process.exit(0);
     });
 
     setTimeout(() => {
-        console.error('Could not close connections in time, forcefully shutting down');
+
         process.exit(1);
     }, 10000);
 };

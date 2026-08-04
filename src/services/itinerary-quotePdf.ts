@@ -435,7 +435,7 @@ import path from 'path';
 
 export const travelDocumentService = {
     async generateTravelProposalHTML(itineraryData: any, quoteData: any): Promise<string> {
-        console.log("8 itinerary-quotePdf.ts- PDF Generation Data:", { itineraryData: JSON.stringify(itineraryData), quoteData: JSON.stringify(quoteData) });
+
         
         const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
 

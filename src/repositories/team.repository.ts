@@ -1,31 +1,7 @@
 import { supabaseAdmin } from '../config';
-import { IService } from '../interfaces';
 import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
-
-    async validateServiceIds(service_ids: string[], currentTeamId?: string): Promise<void> {
-        if (!service_ids || service_ids.length === 0) return;
-
-        const { data: existingTeams, error } = await supabaseAdmin
-            .from('teams')
-            .select('id, name, service_ids')
-            .contains('service_ids', service_ids);
-
-        if (error) throw error;
-
-        const conflictingTeams = currentTeamId
-            ? existingTeams?.filter(team => team.id !== currentTeamId)
-            : existingTeams;
-
-        if (conflictingTeams && conflictingTeams.length > 0) {
-            const assignedServices = conflictingTeams.flatMap(team =>
-                team.service_ids.filter((id: string) => service_ids.includes(id))
-            );
-
-            throw new Error(`Services ${assignedServices.join(', ')} are already assigned to other teams`);
-        }
-    },
 
     /**
      * Create a new team
@@ -33,16 +9,13 @@ export const teamRepository = {
      * @param description 
      * @returns   
      */
-    async createTeam(name: string, description?: string, service_ids: string[] = []) {
-        await this.validateServiceIds(service_ids);
-
+    async createTeam(name: string, description?: string) {
         const { data, error } = await supabaseAdmin
             .from('teams')
             .insert({
                 name,
                 description,
-                members_count: 0,
-                service_ids: service_ids
+                members_count: 0
             })
             .select()
             .single();
@@ -63,7 +36,6 @@ export const teamRepository = {
         if (error) throw error;
         return data ?? [];
     },
-
 
     /**
      * Get team by ID
@@ -110,36 +82,13 @@ export const teamRepository = {
         return data as Team[];
     },
 
-    async getServicesByIds(serviceIds: string[]): Promise<{ id: string; name: string }[]> {
-        if (!serviceIds || serviceIds.length === 0) {
-            return [];
-        }
-
-        const { data, error } = await supabaseAdmin
-            .from('services')
-            .select('id, name')
-            .in('id', serviceIds);
-
-        if (error) {
-            throw new Error(`Failed to fetch services: ${error.message}`);
-        }
-
-        return data || [];
-    },
-
     /**
      * Update team details
      * @param id 
      * @param updates 
      * @returns 
      */
-    async updateTeam(id: string, updates: { name?: string; description?: string; service_ids?: string[] }) {
-        if (updates.service_ids) {
-            await this.validateServiceIds(updates.service_ids, id);
-        }
-
-        console.log("The service ids we get:", updates.service_ids);
-
+    async updateTeam(id: string, updates: { name?: string; description?: string; is_active?: boolean }) {
         const { data, error } = await supabaseAdmin
             .from('teams')
             .update(updates)

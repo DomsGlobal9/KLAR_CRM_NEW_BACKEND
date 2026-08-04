@@ -41,7 +41,7 @@ export const s3UploadService = {
 
             throw new Error('Upload failed: ' + response.data.message);
         } catch (error: any) {
-            console.error('S3 Upload Error:', error.message);
+
             throw new Error('Could not upload file to S3');
         }
     }

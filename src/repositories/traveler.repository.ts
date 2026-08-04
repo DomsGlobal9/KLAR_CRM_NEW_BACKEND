@@ -101,7 +101,7 @@ export const travelerRepository = {
                 }
             }
             // ADD THIS ERROR HANDLING ↑↑↑
-            console.error("❌ Traveler creation error:", error);
+
             throw new Error(`Failed to create traveler: ${error.message}`);
         }
 
@@ -374,7 +374,7 @@ export const travelerRepository = {
             const { data, error } = await query;
 
             if (error) {
-                console.error('Error in checkBulkExists:', error);
+
                 return { emails: new Set<string>(), phones: new Set<string>() };
             }
 
@@ -388,7 +388,7 @@ export const travelerRepository = {
 
             return { emails: emailSet, phones: phoneSet };
         } catch (error) {
-            console.error('Error in checkBulkExists:', error);
+
             return { emails: new Set<string>(), phones: new Set<string>() };
         }
     },
@@ -447,7 +447,7 @@ export const travelerRepository = {
 
             return { emails: emailSet, phones: phoneSet, details };
         } catch (error) {
-            console.error('Error in checkExistingTravelers:', error);
+
             return { emails: emailSet, phones: phoneSet, details: [] };
         }
     },

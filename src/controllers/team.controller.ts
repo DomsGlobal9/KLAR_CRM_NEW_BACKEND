@@ -58,7 +58,7 @@ export const teamController = {
             });
 
         } catch (error: any) {
-            console.error('Error fetching teams:', error);
+
 
             return res.status(500).json({
                 success: false,
@@ -76,13 +76,12 @@ export const teamController = {
     async update(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            const { name, description, is_active, service_ids } = req.body;
-            console.log("THe update data we get", req.body);
+            const { name, description, is_active } = req.body;
+
             const team = await teamService.updateTeam(id as string, {
                 name,
                 description,
-                is_active,
-                service_ids
+                is_active
             });
 
             // await createAuditLog({

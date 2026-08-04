@@ -34,7 +34,7 @@ export const leadStageInvoiceRepository = {
       .single();
 
     if (error) {
-      console.error("❌ Supabase lead stage invoice record insertion failure:", error);
+
       throw new Error(`Failed to commit invoice profile tracking record: ${error.message}`);
     }
 
@@ -56,7 +56,7 @@ export const leadStageInvoiceRepository = {
       .range(fromOffset, toOffset);
 
     if (error) {
-      console.error("❌ Supabase lead stage invoice catalog fetch error:", error);
+
       throw new Error(`Failed to query transactions database: ${error.message}`);
     }
 
@@ -78,7 +78,7 @@ export const leadStageInvoiceRepository = {
       .maybeSingle();
 
     if (error) {
-      console.error("❌ Supabase fetch target selection error mapping:", error);
+
       throw new Error(`Failed to fetch database tracking invoice entry: ${error.message}`);
     }
     return data;
@@ -94,7 +94,7 @@ export const leadStageInvoiceRepository = {
       .eq('id', invoiceId);
 
     if (error) {
-      console.error("❌ Supabase permanent row deletion failure target reference context:", error);
+
       throw new Error(`Failed to safely purge target record tracking mapping row: ${error.message}`);
     }
     return true;
