@@ -15,7 +15,8 @@ export const emailResponseController = {
                 status,
                 trackingId,
                 startDate,
-                endDate
+                endDate,
+                search
             } = req.query;
 
             const result = await emailResponseService.getEmailLogs({
@@ -25,7 +26,8 @@ export const emailResponseController = {
                 status: status as string,
                 trackingId: trackingId as string,
                 startDate: startDate as string,
-                endDate: endDate as string
+                endDate: endDate as string,
+                search: search as string
             });
 
             res.json({
@@ -53,7 +55,8 @@ export const emailResponseController = {
                 trackingId,
                 startDate,
                 endDate,
-                unreadOnly = false
+                unreadOnly = false,
+                search
             } = req.query;
 
             const result = await emailResponseService.getEmailReplies({
@@ -63,7 +66,8 @@ export const emailResponseController = {
                 trackingId: trackingId as string,
                 startDate: startDate as string,
                 endDate: endDate as string,
-                unreadOnly: unreadOnly === 'true'
+                unreadOnly: unreadOnly === 'true',
+                search: search as string
             });
 
             res.json({
@@ -178,7 +182,8 @@ export const emailResponseController = {
                 trackingId,
                 direction,
                 startDate,
-                endDate
+                endDate,
+                search
             } = req.query;
 
             const result = await emailResponseService.getAllEmails({
@@ -189,7 +194,8 @@ export const emailResponseController = {
                 trackingId: trackingId as string,
                 direction: direction as 'incoming' | 'outgoing' | undefined,
                 startDate: startDate as string,
-                endDate: endDate as string
+                endDate: endDate as string,
+                search: search as string
             });
 
             res.json({

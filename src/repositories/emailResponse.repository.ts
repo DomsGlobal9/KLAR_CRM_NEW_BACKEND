@@ -35,6 +35,7 @@ export const emailResponseRepository = {
         direction?: 'incoming' | 'outgoing';
         startDate?: string;
         endDate?: string;
+        search?: string;
     }) {
         let query = supabaseAdmin
             .from('email_messages')
@@ -57,6 +58,12 @@ export const emailResponseRepository = {
         }
         if (params.endDate) {
             query = query.lte('created_at', params.endDate);
+        }
+        if (params.search) {
+            const term = params.search.trim();
+            if (term) {
+                query = query.or(`subject.ilike.%${term}%,from_email.ilike.%${term}%`);
+            }
         }
 
         query = query
@@ -115,6 +122,7 @@ export const emailResponseRepository = {
         startDate?: string;
         endDate?: string;
         unreadOnly?: boolean;
+        search?: string;
     }) {
         let query = supabaseAdmin
             .from('email_messages')
@@ -136,6 +144,12 @@ export const emailResponseRepository = {
         if (params.unreadOnly) {
             query = query.eq('status', 'received');
         }
+        if (params.search) {
+            const term = params.search.trim();
+            if (term) {
+                query = query.or(`subject.ilike.%${term}%,from_email.ilike.%${term}%`);
+            }
+        }
 
         query = query
             .order('created_at', { ascending: false })
@@ -154,6 +168,7 @@ export const emailResponseRepository = {
         trackingId?: string;
         startDate?: string;
         endDate?: string;
+        search?: string;
     }) {
         let query = supabaseAdmin
             .from('email_messages')
@@ -171,6 +186,12 @@ export const emailResponseRepository = {
         }
         if (params.endDate) {
             query = query.lte('created_at', params.endDate);
+        }
+        if (params.search) {
+            const term = params.search.trim();
+            if (term) {
+                query = query.or(`subject.ilike.%${term}%,from_email.ilike.%${term}%`);
+            }
         }
 
         query = query
@@ -205,16 +226,16 @@ export const emailResponseRepository = {
         return data as EmailMessage[];
     },
 
-    async getEmailMessagesByLeadId(leadId: string, limit: number, offset: number): Promise<EmailMessage[]> {
-        const { data, error } = await supabaseAdmin
+    async getEmailMessagesByLeadId(leadId: string, limit: number, offset: number): Promise<{ data: EmailMessage[]; total: number }> {
+        const { data, error, count } = await supabaseAdmin
             .from('email_messages')
-            .select('*')
+            .select('*', { count: 'exact', head: false })
             .eq('lead_id', leadId)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
         if (error) throw error;
-        return data as EmailMessage[];
+        return { data: data as EmailMessage[], total: count || 0 };
     },
 
     async getRecentIncomingEmails(limit: number, since: string): Promise<EmailMessage[]> {
