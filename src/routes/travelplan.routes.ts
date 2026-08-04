@@ -8,7 +8,7 @@ router.post('/generate', travelPlanController.generateTravelPlan);
 
 router.post('/test', travelPlanController.testTravelPlanGeneration);
 
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 // Routes for authenticated users
 router.get('/generate/:leadId', travelPlanController.generateTravelPlanByLeadId);

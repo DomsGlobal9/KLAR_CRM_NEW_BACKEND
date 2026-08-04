@@ -7,7 +7,7 @@ const router = Router();
 /**
  * Apply authenticate middleware to all routes in this router
  */
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 /**
  * Team create route
