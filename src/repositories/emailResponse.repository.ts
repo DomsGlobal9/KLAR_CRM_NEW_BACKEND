@@ -25,6 +25,47 @@ export interface EmailMessage {
     updated_at: string;
 }
 
+async function formatMessagesWithUserLookup(data: any[]): Promise<EmailMessage[]> {
+    const userCache = new Map<string, { name: string; email: string }>();
+
+    return Promise.all((data || []).map(async (item: any) => {
+        let userId = item.user_id || item.raw_headers?.user_id || null;
+        let senderName = item.sender_name || item.raw_headers?.sender_name || null;
+        let senderEmail = item.sender_email || item.raw_headers?.sender_email || null;
+
+        if (userId && (!senderName || !senderEmail)) {
+            if (userCache.has(userId)) {
+                const cached = userCache.get(userId)!;
+                senderName = senderName || cached.name;
+                senderEmail = senderEmail || cached.email;
+            } else {
+                try {
+                    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+                    if (userData?.user) {
+                        const u = userData.user;
+                        const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Team Member';
+                        const email = u.email || '';
+                        userCache.set(userId, { name, email });
+                        senderName = senderName || name;
+                        senderEmail = senderEmail || email;
+                    }
+                } catch (e) {
+                    // ignore user lookup error
+                }
+            }
+        }
+
+        return {
+            ...item,
+            user_id: userId,
+            sender_name: senderName,
+            sender_email: senderEmail,
+            senderName: senderName || item.senderName,
+            senderEmail: senderEmail || item.senderEmail,
+        } as EmailMessage;
+    }));
+}
+
 export const emailResponseRepository = {
     async getEmailMessages(params: {
         limit: number;
@@ -74,44 +115,8 @@ export const emailResponseRepository = {
 
         if (error) throw error;
 
-        const userCache = new Map<string, { name: string; email: string }>();
-
-        const formattedData = await Promise.all((data || []).map(async (item: any) => {
-            let userId = item.user_id || item.raw_headers?.user_id || null;
-            let senderName = item.sender_name || item.raw_headers?.sender_name || null;
-            let senderEmail = item.sender_email || item.raw_headers?.sender_email || null;
-
-            if (userId && (!senderName || !senderEmail)) {
-                if (userCache.has(userId)) {
-                    const cached = userCache.get(userId)!;
-                    senderName = senderName || cached.name;
-                    senderEmail = senderEmail || cached.email;
-                } else {
-                    try {
-                        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-                        if (userData?.user) {
-                            const u = userData.user;
-                            const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Team Member';
-                            const email = u.email || '';
-                            userCache.set(userId, { name, email });
-                            senderName = senderName || name;
-                            senderEmail = senderEmail || email;
-                        }
-                    } catch (e) {
-                        // ignore user lookup error
-                    }
-                }
-            }
-
-            return {
-                ...item,
-                user_id: userId,
-                sender_name: senderName,
-                sender_email: senderEmail,
-            };
-        }));
-
-        return { data: formattedData as EmailMessage[], total: count || 0 };
+        const formattedData = await formatMessagesWithUserLookup(data || []);
+        return { data: formattedData, total: count || 0 };
     },
 
     async getIncomingEmails(params: {
@@ -158,7 +163,8 @@ export const emailResponseRepository = {
         const { data, error, count } = await query;
 
         if (error) throw error;
-        return { data: data as EmailMessage[], total: count || 0 };
+        const formattedData = await formatMessagesWithUserLookup(data || []);
+        return { data: formattedData, total: count || 0 };
     },
 
     async getOutgoingEmails(params: {
@@ -201,7 +207,8 @@ export const emailResponseRepository = {
         const { data, error, count } = await query;
 
         if (error) throw error;
-        return { data: data as EmailMessage[], total: count || 0 };
+        const formattedData = await formatMessagesWithUserLookup(data || []);
+        return { data: formattedData, total: count || 0 };
     },
 
     async getEmailMessagesByTrackingId(trackingId: string): Promise<EmailMessage[]> {
@@ -212,7 +219,7 @@ export const emailResponseRepository = {
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        return data as EmailMessage[];
+        return formatMessagesWithUserLookup(data || []);
     },
 
     async getEmailThreadByTrackingId(trackingId: string): Promise<EmailMessage[]> {
@@ -223,7 +230,7 @@ export const emailResponseRepository = {
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        return data as EmailMessage[];
+        return formatMessagesWithUserLookup(data || []);
     },
 
     async getEmailMessagesByLeadId(leadId: string, limit: number, offset: number): Promise<{ data: EmailMessage[]; total: number }> {
@@ -235,7 +242,8 @@ export const emailResponseRepository = {
             .range(offset, offset + limit - 1);
 
         if (error) throw error;
-        return { data: data as EmailMessage[], total: count || 0 };
+        const formattedData = await formatMessagesWithUserLookup(data || []);
+        return { data: formattedData, total: count || 0 };
     },
 
     async getRecentIncomingEmails(limit: number, since: string): Promise<EmailMessage[]> {
