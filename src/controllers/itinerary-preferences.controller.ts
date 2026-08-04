@@ -517,6 +517,7 @@ export const itineraryPreferencesController = {
             const clientPhone = leadData.phone || itinResult.data.lead_details?.phone;
             const clientEmail = leadData.email || itinResult.data.lead_details?.email;
 
+            const user = (req as any).user;
             const deliveryOptions: DeliveryOptions = {
                 leadId: leadId,
                 clientName: itinResult.data.lead_details?.name || leadData.name || 'Client',
@@ -526,6 +527,9 @@ export const itineraryPreferencesController = {
                 pdfFileName: fileName,
                 htmlContent: html,
                 pdfBuffer: buffer,
+                userId: user?.id,
+                senderName: user?.full_name || user?.name,
+                senderEmail: user?.email,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

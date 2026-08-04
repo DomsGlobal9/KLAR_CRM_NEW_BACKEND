@@ -9,6 +9,9 @@ export interface SendReplyPayload {
     html?: string;
     cc?: string | string[];
     bcc?: string | string[];
+    userId?: string;
+    senderName?: string;
+    senderEmail?: string;
     attachments?: Array<{
         filename: string;
         path?: string;
@@ -21,7 +24,7 @@ export interface SendReplyPayload {
 export const emailReplyService = {
     async sendReply(payload: SendReplyPayload) {
         try {
-            const { trackingId, text, html, cc, bcc, attachments } = payload;
+            const { trackingId, text, html, cc, bcc, attachments, userId, senderName, senderEmail } = payload;
 
             const threadMessages = await emailMessageRepository.getThreadByTrackingId(trackingId);
 
@@ -84,7 +87,10 @@ export const emailReplyService = {
                 leadId: leadId,
                 trackingId: trackingId,
                 threadId: lastMessage.message_id || undefined,
-                attachments: attachments
+                attachments: attachments,
+                userId: userId,
+                senderName: senderName,
+                senderEmail: senderEmail
             });
 
             if (!emailResult.success) {

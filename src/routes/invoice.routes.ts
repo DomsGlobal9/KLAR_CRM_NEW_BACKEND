@@ -3,8 +3,8 @@ import { invoiceController } from '../controllers';
 import { authenticate, requireRole } from '../middleware';
 
 const router = Router();
-// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
-router.use(authenticate, requireRole('superadmin', 'admin', 'relationship_manager', 'team_lead'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
+// router.use(authenticate, requireRole('superadmin', 'admin', 'relationship_manager', 'team_lead'));
 
 
 // GET  /api/v1/invoice

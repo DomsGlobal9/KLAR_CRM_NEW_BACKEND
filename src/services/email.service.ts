@@ -13,6 +13,9 @@ export interface SendEmailPayload {
     replyTo?: string;
     requireNewLead?: boolean;
     leadId?: string;
+    userId?: string;
+    senderName?: string;
+    senderEmail?: string;
     trackingId?: string;
     threadId?: string;
     source?: string;
@@ -127,6 +130,9 @@ export class EmailService {
                     html_body: payload.html || null,
                     status: 'sent',
                     lead_id: payload.leadId || null,
+                    user_id: payload.userId || null,
+                    sender_name: payload.senderName || null,
+                    sender_email: payload.senderEmail || null,
                     raw_headers: null,
                     error: null,
                 });

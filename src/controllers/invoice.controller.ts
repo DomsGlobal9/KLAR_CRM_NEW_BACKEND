@@ -504,6 +504,8 @@ export class InvoiceController {
                 });
             }
 
+            const user = (req as any).user;
+
             // 4. Prepare delivery options
             const deliveryOptions: DeliveryOptions = {
                 leadId: invoice.lead_id || id as string,
@@ -514,6 +516,9 @@ export class InvoiceController {
                 pdfFileName: fileName,
                 htmlContent: html,
                 pdfBuffer: pdfBuffer,
+                userId: user?.id,
+                senderName: user?.full_name || user?.name,
+                senderEmail: user?.email,
             };
 
             // 5. Process delivery based on sendVia options

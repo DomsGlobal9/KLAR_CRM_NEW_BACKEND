@@ -25,6 +25,13 @@ export class EmailController {
                 return;
             }
 
+            const user = (req as any).user;
+            if (user) {
+                payload.userId = payload.userId || user.id;
+                payload.senderEmail = payload.senderEmail || user.email;
+                payload.senderName = payload.senderName || user.full_name || user.name;
+            }
+
             const result = await emailService.sendEmail(payload);
 
             if (result.success) {

@@ -3,7 +3,7 @@ import { authenticate, requireRole } from '../middleware/auth.middleware';
 import { teamMemberController } from '../controllers/teamMember.controller';
 
 const router = Router();
-// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 
 /**

@@ -658,6 +658,7 @@ async sendFileItineraryPDF(req: Request, res: Response) {
         //     })
         //     .eq('id', itineraryId);
 
+        const user = (req as any).user;
         // 7. Send via WhatsApp/Email
         const deliveryOptions = {
             leadId: fileRecord.lead_id,
@@ -668,6 +669,9 @@ async sendFileItineraryPDF(req: Request, res: Response) {
             pdfFileName: fileName,
             htmlContent: htmlContent,
             pdfBuffer: pdfBuffer,
+            userId: user?.id,
+            senderName: user?.full_name || user?.name,
+            senderEmail: user?.email,
         };
 
         const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
