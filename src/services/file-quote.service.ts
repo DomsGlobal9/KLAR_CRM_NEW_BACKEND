@@ -308,7 +308,8 @@ export const fileQuoteService = {
                 clientPhone: clientPhone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: buffer,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

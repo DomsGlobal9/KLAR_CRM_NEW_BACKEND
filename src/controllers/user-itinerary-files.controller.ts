@@ -666,7 +666,8 @@ async sendFileItineraryPDF(req: Request, res: Response) {
             clientPhone: leadData.phone || '',
             pdfUrl: pdfUrl,
             pdfFileName: fileName,
-            htmlContent: htmlContent
+            htmlContent: htmlContent,
+            pdfBuffer: pdfBuffer,
         };
 
         const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

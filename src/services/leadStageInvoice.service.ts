@@ -107,7 +107,8 @@ export const leadStageInvoiceService = {
       clientPhone: invoice.lead_phone,
       pdfUrl: publicUrl,
       pdfFileName: fileName,
-      htmlContent: htmlContent
+      htmlContent: htmlContent,
+      pdfBuffer: buffer,
     };
 
     const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

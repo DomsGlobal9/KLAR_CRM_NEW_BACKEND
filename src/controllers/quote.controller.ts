@@ -403,7 +403,8 @@ export const quoteController = {
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: buffer,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
@@ -492,7 +493,8 @@ export const quoteController = {
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: pdfBuffer,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

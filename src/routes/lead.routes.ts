@@ -12,8 +12,8 @@ router.post('/capture', leadController.createQuickLead);
 /**
  * Protected routes - require authentication and specific roles
  */
+router.use(authenticate, requireRole('superadmin', 'admin', 'relationship_manager', 'team_lead'));
 // router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
-router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 router.post('/', leadController.createLead);
 router.get('/',  leadController.getAllLeads);
@@ -24,7 +24,8 @@ router.put('/:id', leadController.updateLead);
 router.delete('/:id', leadController.deleteLead);
 router.patch('/:id/stage', leadController.updateLeadStage);
 router.post('/:id/assign', leadController.assignLead);
-// This allows n8n to bypass the login requirement if it provides the secret key
+
+
 router.post('/auto-assign', (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
     if (apiKey && apiKey === process.env.INTERNAL_API_KEY) {

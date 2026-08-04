@@ -95,7 +95,8 @@ export const voucherController = {
                 clientPhone: voucherData.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html // Passed forward for explicit inline tracking rendering
+                htmlContent: html,
+                pdfBuffer: buffer,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

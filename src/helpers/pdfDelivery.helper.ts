@@ -9,6 +9,7 @@ export interface DeliveryOptions {
     pdfUrl: string;
     pdfFileName: string;
     htmlContent?: string;
+    pdfBuffer?: Buffer;
 }
 
 export interface SendViaOptions {

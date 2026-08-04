@@ -512,7 +512,8 @@ export class InvoiceController {
                 clientPhone: invoice.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: pdfBuffer,
             };
 
             // 5. Process delivery based on sendVia options

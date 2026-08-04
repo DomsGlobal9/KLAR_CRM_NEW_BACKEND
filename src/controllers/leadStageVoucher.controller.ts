@@ -158,6 +158,7 @@ async previewVoucherPDF(req: Request, res: Response) {
         pdfUrl: publicUrl,
         pdfFileName: fileName,
         htmlContent: html,
+        pdfBuffer: buffer,
       };
 
       const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

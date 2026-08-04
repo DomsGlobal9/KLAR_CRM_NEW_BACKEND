@@ -39,7 +39,7 @@ export interface BulkEmailPayload {
 }
 
 export class EmailService {
-    private getBackendUrl(path: string = '/send'): string {
+    private getBackendUrl(path: string = '/email/send'): string {
         const baseUrl = (envConfig.EMAIL_BACKEND_URL || 'http://localhost:5013/api/emails').replace(/\/+$/, '');
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
         return `${baseUrl}${cleanPath}`;
@@ -77,6 +77,13 @@ export class EmailService {
                 }
             }
 
+            const formattedAttachments = payload.attachments?.map((att) => ({
+                filename: att.filename,
+                content: att.content ? (Buffer.isBuffer(att.content) ? att.content.toString('base64') : att.content) : undefined,
+                contentType: att.contentType,
+                encoding: Buffer.isBuffer(att.content) ? 'base64' : att.encoding,
+            }));
+
             // Call Email Backend Service (BullMQ / SES / Redis)
             const backendEndpoint = this.getBackendUrl('/email/send');
             const response = await axios.post(
@@ -90,10 +97,13 @@ export class EmailService {
                     bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
                     leadId: payload.leadId,
                     trackingId,
+                    attachments: formattedAttachments,
                 },
                 {
                     headers: { 'Content-Type': 'application/json' },
-                    timeout: 10000,
+                    timeout: 20000,
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity,
                 }
             );
 
@@ -162,11 +172,9 @@ export class EmailService {
                 };
             });
 
-            // Dispatch bulk request to Email Backend Service
-            const bulkEndpoint = this.getBackendUrl('/send-bulk');
+            const bulkEndpoint = this.getBackendUrl('/email/send-bulk');
             const response = await axios.post(bulkEndpoint, { emails: formattedEmails }, { timeout: 15000 });
 
-            // Store in DB for non-OTP emails
             for (const email of payload.emails) {
                 if (email.saveToDb !== false && !email.isOtp) {
                     const uniqueTo = processRecipients(email.to);
@@ -201,7 +209,6 @@ export class EmailService {
             };
         } catch (error: any) {
             console.error('[EmailService] Send bulk emails error:', error.message);
-            // Fallback: send individually
             const results = [];
             let successful = 0;
             let failed = 0;
