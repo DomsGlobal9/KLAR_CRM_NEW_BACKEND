@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware';
 const router = Router();
 
 // Global gateway security layer for all voucher interactions
-router.use(authenticate, requireRole('superadmin', 'admin', 'rm', 'tl'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 // ============= STATIC ROUTES (no parameters) =============
 router.post('/generate-number', voucherController.generateVoucherNumber);
