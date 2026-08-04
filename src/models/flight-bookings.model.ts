@@ -60,6 +60,8 @@ export interface Booking {
     email: string;
     phone: string;
 
+    departureDate?: Date | string;
+
     isHold: boolean;
 
     travellers: Traveller[];
@@ -128,6 +130,7 @@ const BookingSchema = new Schema<BookingDocument>(
         totalPrice: Number,
         email: String,
         phone: String,
+        departureDate: Date,
         isHold: Boolean,
         travellers: [TravellerSchema],
 

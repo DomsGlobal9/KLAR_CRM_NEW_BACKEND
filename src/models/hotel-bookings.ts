@@ -34,6 +34,7 @@ export interface IRoom {
  * Booking interface
  */
 export interface IBooking extends Document {
+    klarBookingId?: string;
     confirmationNumber: string;
     reservationId: string;
     propertyId: string;
@@ -85,6 +86,10 @@ const roomSchema = new Schema<IRoom>(
  */
 const bookingSchema = new Schema<IBooking>(
     {
+        klarBookingId: {
+      type: String,
+      index: { unique: true, sparse: true },
+    },
         confirmationNumber: {
             type: String,
             required: true,
