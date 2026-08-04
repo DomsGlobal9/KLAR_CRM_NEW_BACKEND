@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import emailRoutes from './email.routes';
 import emailResponseRoutes from './emailResponse.routes';
 import userRoutes from './user.routes';
@@ -46,7 +47,7 @@ router.use('/user', userRoutes);
 router.use('/team', teamRoutes);
 router.use('/team-member', teamMemberRoutes);
 router.use('/stage', stageRoutes);
-router.use('/lead', leadRoutes); 
+router.use('/lead', leadRoutes);
 router.use('/inquiry-sources', inquirySourcesRoutes);
 router.use('/invoice', invoiceRoutes);
 router.use('/quote', quoteRoutes);
@@ -66,16 +67,17 @@ router.use('/department', departmentRoutes);
  * -------------------------------- 
  * All OTA related routes will be defined here
  */
-router.use("/flights", flight)
-router.use("/hotel", hotel)
+router.use("/flights", flight);
+router.use("/hotel", hotel);
 router.use('/payment', paymentRoutes);
-router.use("/insurance", insuranceRoutes)
-router.use("/cabs", cabsRoutes)
+router.use("/insurance", insuranceRoutes);
+router.use("/cabs", cabsRoutes);
 router.use('/voucher', voucherRoutes);
 router.use('/wallet-transactions', walletTransactionRoutes);
 router.use('/lead-stage-vouchers', leadStageVoucherRoutes);
-router.use("/lead-stage-invoice", leadStageInvoiceRoutes)
+router.use("/lead-stage-invoice", leadStageInvoiceRoutes);
 router.use('/travelers', travelerRoutes);
 router.use('/visa', visaRoutes);
-router.use("/tour", tourRoutes)
+router.use("/tour", tourRoutes);
+
 export default router;
