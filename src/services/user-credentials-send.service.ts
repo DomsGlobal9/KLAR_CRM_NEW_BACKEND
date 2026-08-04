@@ -99,7 +99,7 @@ class UserCredentialsService {
             } else {
                 return {
                     sent: false,
-                    error: result.error || 'Failed to send email',
+                    error: result.error || 'Failed to send email - 4',
                     timestamp: new Date().toISOString()
                 };
             }

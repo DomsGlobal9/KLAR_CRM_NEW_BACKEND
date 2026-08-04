@@ -1,11 +1,7 @@
+import axios from 'axios';
 import { envConfig } from '../config';
-import { mailConfig, MailOptions } from '../config/mail.config';
-import { supabase } from '../config/supabase.config';
 import { emailMessageRepository } from '../repositories/email-message.repository';
-import { emailRepository } from '../repositories/email.repository';
 import { v4 as uuidv4 } from 'uuid';
-
-
 
 export interface SendEmailPayload {
     to: string | string[];
@@ -20,6 +16,8 @@ export interface SendEmailPayload {
     trackingId?: string;
     threadId?: string;
     source?: string;
+    saveToDb?: boolean;
+    isOtp?: boolean;
     attachments?: Array<{
         filename: string;
         path?: string;
@@ -41,6 +39,12 @@ export interface BulkEmailPayload {
 }
 
 export class EmailService {
+    private getBackendUrl(path: string = '/send'): string {
+        const baseUrl = (envConfig.EMAIL_BACKEND_URL || 'http://localhost:5013/api/emails').replace(/\/+$/, '');
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return `${baseUrl}${cleanPath}`;
+    }
+
     async sendEmail(payload: SendEmailPayload): Promise<EmailResponse> {
         try {
             if (!payload.to) {
@@ -66,60 +70,70 @@ export class EmailService {
             const trackingId = payload.trackingId || uuidv4();
 
             let finalSubject = payload.subject;
-            finalSubject += ` [TID:${trackingId}]`;
-
-            if (payload.leadId) {
-                finalSubject += ` [LEAD_ID:${payload.leadId}]`;
+            if (!payload.isOtp) {
+                finalSubject += ` [TID:${trackingId}]`;
+                if (payload.leadId) {
+                    finalSubject += ` [LEAD_ID:${payload.leadId}]`;
+                }
             }
 
-            const result = await mailConfig.sendMail({
-                from: process.env.SMTP_FROM || envConfig.SMTP_USER,
-                to: uniqueTo,
-                subject: finalSubject,
-                text: payload.text,
-                html: payload.html,
-                cc: uniqueCc.length > 0 ? uniqueCc : undefined,
-                bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
-                replyTo: payload.replyTo || envConfig.SMTP_USER,
-                attachments: payload.attachments,
-                headers: payload.threadId
-                    ? {
-                        'In-Reply-To': payload.threadId,
-                        'References': payload.threadId,
-                    }
-                    : undefined,
-            });
+            // Call Email Backend Service (BullMQ / SES / Redis)
+            const backendEndpoint = this.getBackendUrl('/email/send');
+            const response = await axios.post(
+                backendEndpoint,
+                {
+                    to: uniqueTo,
+                    subject: finalSubject,
+                    text: payload.text,
+                    html: payload.html,
+                    cc: uniqueCc.length > 0 ? uniqueCc : undefined,
+                    bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
+                    leadId: payload.leadId,
+                    trackingId,
+                },
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 10000,
+                }
+            );
 
-            await emailMessageRepository.createEmailMessage({
-                tracking_id: trackingId,
-                parent_tracking_id: null,
-                message_id: result.messageId,
-                in_reply_to: null,
-                direction: 'outgoing',
-                from_email: process.env.SMTP_FROM || envConfig.SMTP_USER,
-                to_email: uniqueTo,
-                cc_email: uniqueCc.length > 0 ? uniqueCc : null,
-                bcc_email: uniqueBcc.length > 0 ? uniqueBcc : null,
-                subject: finalSubject,
-                body: payload.text || null,
-                html_body: payload.html || null,
-                status: 'sent',
-                lead_id: payload.leadId || null,
-                raw_headers: null,
-                error: null,
-            });
+            const responseData = response.data;
+            const messageId = responseData?.data?.messageId || responseData?.data?.jobId || trackingId;
+
+            // Store in database only if saveToDb is not false and not an OTP email
+            if (payload.saveToDb !== false && !payload.isOtp) {
+                await emailMessageRepository.createEmailMessage({
+                    tracking_id: trackingId,
+                    parent_tracking_id: null,
+                    message_id: messageId,
+                    in_reply_to: null,
+                    direction: 'outgoing',
+                    from_email: envConfig.DEFAULT_FROM_EMAIL || envConfig.SMTP_USER,
+                    to_email: uniqueTo,
+                    cc_email: uniqueCc.length > 0 ? uniqueCc : null,
+                    bcc_email: uniqueBcc.length > 0 ? uniqueBcc : null,
+                    subject: finalSubject,
+                    body: payload.text || null,
+                    html_body: payload.html || null,
+                    status: 'sent',
+                    lead_id: payload.leadId || null,
+                    raw_headers: null,
+                    error: null,
+                });
+            }
 
             return {
                 success: true,
-                messageId: result.messageId,
-                response: result.response,
+                messageId,
+                response: 'Email dispatched via Email Backend Service',
             };
-
         } catch (error: any) {
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to send email via Email Backend Service';
+            console.error('[EmailService] Send email error:', errorMsg);
 
             return {
                 success: false,
-                error: error.message || 'Failed to send email',
+                error: errorMsg,
             };
         }
     }
@@ -130,53 +144,108 @@ export class EmailService {
         successful: number;
         failed: number;
     }> {
-        const results = [];
-        let successful = 0;
-        let failed = 0;
+        try {
+            const processRecipients = (recipients: string | string[] | undefined): string[] => {
+                if (!recipients) return [];
+                const arr = Array.isArray(recipients) ? recipients : [recipients];
+                return [...new Set(arr.map(r => r.trim()))];
+            };
 
-        for (const email of payload.emails) {
-            const response = await this.sendEmail(email);
-            results.push({ email, response });
+            const formattedEmails = payload.emails.map((email) => {
+                const uniqueTo = processRecipients(email.to)[0] || '';
+                return {
+                    to: uniqueTo,
+                    subject: email.subject,
+                    text: email.text,
+                    html: email.html,
+                    leadId: email.leadId,
+                };
+            });
 
-            if (response.success) {
-                successful++;
-            } else {
-                failed++;
+            // Dispatch bulk request to Email Backend Service
+            const bulkEndpoint = this.getBackendUrl('/send-bulk');
+            const response = await axios.post(bulkEndpoint, { emails: formattedEmails }, { timeout: 15000 });
+
+            // Store in DB for non-OTP emails
+            for (const email of payload.emails) {
+                if (email.saveToDb !== false && !email.isOtp) {
+                    const uniqueTo = processRecipients(email.to);
+                    const trackingId = uuidv4();
+                    await emailMessageRepository.createEmailMessage({
+                        tracking_id: trackingId,
+                        parent_tracking_id: null,
+                        message_id: trackingId,
+                        in_reply_to: null,
+                        direction: 'outgoing',
+                        from_email: envConfig.DEFAULT_FROM_EMAIL || envConfig.SMTP_USER,
+                        to_email: uniqueTo,
+                        cc_email: null,
+                        bcc_email: null,
+                        subject: email.subject,
+                        body: email.text || null,
+                        html_body: email.html || null,
+                        status: 'sent',
+                        lead_id: email.leadId || null,
+                        raw_headers: null,
+                        error: null,
+                    });
+                }
             }
 
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
+            const queuedCount = response.data?.data?.queuedCount || payload.emails.length;
+            return {
+                success: true,
+                results: payload.emails.map((e) => ({ email: e, response: { success: true } })),
+                successful: queuedCount,
+                failed: 0,
+            };
+        } catch (error: any) {
+            console.error('[EmailService] Send bulk emails error:', error.message);
+            // Fallback: send individually
+            const results = [];
+            let successful = 0;
+            let failed = 0;
 
-        return {
-            success: failed === 0,
-            results,
-            successful,
-            failed,
-        };
+            for (const email of payload.emails) {
+                const response = await this.sendEmail(email);
+                results.push({ email, response });
+                if (response.success) {
+                    successful++;
+                } else {
+                    failed++;
+                }
+            }
+
+            return {
+                success: failed === 0,
+                results,
+                successful,
+                failed,
+            };
+        }
     }
 
     async sendTestEmail(to?: string): Promise<EmailResponse> {
         try {
             const testPayload: SendEmailPayload = {
-                to: to || process.env.SMTP_USER || 'test@example.com',
-                subject: 'Test Email from Mail Service',
-                text: 'This is a test email sent from your mail service backend.',
+                to: to || envConfig.SMTP_USER || 'test@example.com',
+                subject: 'Test Email from KLAR CRM Backend Service',
+                text: 'This is a test email sent via Email Backend Service.',
                 html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333;">Test Email</h1>
-            <p>This is a test email sent from your mail service backend.</p>
-            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-              <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
-            </div>
-            <p>If you received this email, your mail service is working correctly! ✅</p>
-          </div>
-        `,
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h1 style="color: #333;">Test Email</h1>
+                    <p>This is a test email sent via Email Backend Service.</p>
+                    <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>Backend Endpoint:</strong> ${envConfig.EMAIL_BACKEND_URL}</p>
+                    </div>
+                    <p>If you received this email, your Email Backend integration is working correctly! ✅</p>
+                </div>
+                `,
             };
 
             return await this.sendEmail(testPayload);
         } catch (error: any) {
-
             return {
                 success: false,
                 error: error.message || 'Failed to send test email',
@@ -206,38 +275,26 @@ export class EmailService {
         status: 'healthy' | 'degraded' | 'unhealthy';
         message: string;
         timestamp: string;
-        smtpConfig: {
-            host: string;
-            port: number;
-            secure: boolean;
-            user: string;
-        };
+        backendUrl: string;
+        queueMetrics?: any;
     }> {
         try {
-            await mailConfig.getTransporter().verify();
+            const statusUrl = this.getBackendUrl('/queue/status');
+            const res = await axios.get(statusUrl, { timeout: 3000 });
 
             return {
                 status: 'healthy',
-                message: 'Email service is operational',
+                message: 'Email Backend Service is operational',
                 timestamp: new Date().toISOString(),
-                smtpConfig: {
-                    host: process.env.SMTP_HOST || 'not configured',
-                    port: parseInt(process.env.SMTP_PORT || '587'),
-                    secure: process.env.SMTP_SECURE === 'true',
-                    user: process.env.SMTP_USER?.split('@')[0] + '...' || 'not configured',
-                },
+                backendUrl: envConfig.EMAIL_BACKEND_URL,
+                queueMetrics: res.data?.data,
             };
-        } catch (error) {
+        } catch (error: any) {
             return {
-                status: 'unhealthy',
-                message: 'SMTP connection failed',
+                status: 'degraded',
+                message: `Email Backend Service ping failed: ${error.message}`,
                 timestamp: new Date().toISOString(),
-                smtpConfig: {
-                    host: process.env.SMTP_HOST || 'not configured',
-                    port: parseInt(process.env.SMTP_PORT || '587'),
-                    secure: process.env.SMTP_SECURE === 'true',
-                    user: process.env.SMTP_USER?.split('@')[0] + '...' || 'not configured',
-                },
+                backendUrl: envConfig.EMAIL_BACKEND_URL,
             };
         }
     }
