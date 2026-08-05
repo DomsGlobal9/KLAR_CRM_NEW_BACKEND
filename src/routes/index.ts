@@ -33,6 +33,7 @@ import travelerRoutes from './traveler.routes';
 import emailReplyRoutes from './emailReply.routes';
 import tourRoutes from "./tour.routes"
 import departmentRoutes from "./department.routes";
+import cruiseRoutes from './cruise.routes';
 
 const router = Router();
 
@@ -62,6 +63,7 @@ router.use('/email-reply', emailReplyRoutes);
 router.use('/department', departmentRoutes);
 
 
+
 /**
  * OTA Section
  * -------------------------------- 
@@ -79,5 +81,6 @@ router.use("/lead-stage-invoice", leadStageInvoiceRoutes);
 router.use('/travelers', travelerRoutes);
 router.use('/visa', visaRoutes);
 router.use("/tour", tourRoutes);
+router.use("/cruise", cruiseRoutes);
 
 export default router;
