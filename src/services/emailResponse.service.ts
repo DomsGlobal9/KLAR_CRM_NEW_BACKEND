@@ -8,6 +8,7 @@ export interface EmailLogFilters {
     trackingId?: string;
     startDate?: string;
     endDate?: string;
+    search?: string;
 }
 
 export interface EmailReplyFilters {
@@ -18,6 +19,7 @@ export interface EmailReplyFilters {
     startDate?: string;
     endDate?: string;
     unreadOnly?: boolean;
+    search?: string;
 }
 
 export interface AllEmailsFilters {
@@ -29,12 +31,13 @@ export interface AllEmailsFilters {
     direction?: 'incoming' | 'outgoing';
     startDate?: string;
     endDate?: string;
+    search?: string;
 }
 
 export const emailResponseService = {
 
     async getEmailLogs(filters: EmailLogFilters) {
-        const { page, limit, leadId, status, trackingId, startDate, endDate } = filters;
+        const { page, limit, leadId, status, trackingId, startDate, endDate, search } = filters;
         const offset = (page - 1) * limit;
 
         const { data, total } = await emailResponseRepository.getEmailMessages({
@@ -45,7 +48,8 @@ export const emailResponseService = {
             trackingId,
             direction: 'outgoing',
             startDate,
-            endDate
+            endDate,
+            search
         });
 
         return {
@@ -60,7 +64,7 @@ export const emailResponseService = {
     },
 
     async getEmailReplies(filters: EmailReplyFilters) {
-        const { page, limit, leadId, trackingId, startDate, endDate, unreadOnly } = filters;
+        const { page, limit, leadId, trackingId, startDate, endDate, unreadOnly, search } = filters;
         const offset = (page - 1) * limit;
 
         const { data, total } = await emailResponseRepository.getIncomingEmails({
@@ -70,7 +74,8 @@ export const emailResponseService = {
             trackingId,
             startDate,
             endDate,
-            unreadOnly
+            unreadOnly,
+            search
         });
 
         return {
@@ -101,14 +106,15 @@ export const emailResponseService = {
     async getEmailsByLeadId(leadId: string, page: number, limit: number) {
         const offset = (page - 1) * limit;
 
-        const messages = await emailResponseRepository.getEmailMessagesByLeadId(leadId, limit, offset);
+        const { data, total } = await emailResponseRepository.getEmailMessagesByLeadId(leadId, limit, offset);
 
         return {
-            data: messages,
+            data,
             pagination: {
                 page,
                 limit,
-                total: messages.length
+                total,
+                totalPages: Math.ceil(total / limit)
             }
         };
     },
@@ -123,7 +129,7 @@ export const emailResponseService = {
     },
 
     async getAllEmails(filters: AllEmailsFilters) {
-        const { page, limit, leadId, status, trackingId, direction, startDate, endDate } = filters;
+        const { page, limit, leadId, status, trackingId, direction, startDate, endDate, search } = filters;
         const offset = (page - 1) * limit;
 
         const { data, total } = await emailResponseRepository.getEmailMessages({
@@ -134,7 +140,8 @@ export const emailResponseService = {
             trackingId,
             direction,
             startDate,
-            endDate
+            endDate,
+            search
         });
 
         return {

@@ -22,13 +22,18 @@ export const emailReplyController = {
                 });
             }
 
+            const user = (req as any).user;
+
             const result = await emailReplyService.sendReply({
                 trackingId: trackingId as string,
                 text,
                 html,
                 cc,
                 bcc,
-                attachments
+                attachments,
+                userId: user?.id,
+                senderName: user?.full_name || user?.name,
+                senderEmail: user?.email
             });
 
             if (!result.success) {

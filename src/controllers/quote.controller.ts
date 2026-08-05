@@ -396,6 +396,7 @@ export const quoteController = {
 
             const publicUrl = await s3UploadService.uploadToS3(buffer, fileName);
 
+            const user = (req as any).user;
             const deliveryOptions: DeliveryOptions = {
                 leadId: quote.lead_id,
                 clientName: quote.client_name || 'Client',
@@ -403,7 +404,11 @@ export const quoteController = {
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: buffer,
+                userId: user?.id,
+                senderName: user?.full_name || user?.name,
+                senderEmail: user?.email,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);
@@ -485,6 +490,7 @@ export const quoteController = {
 
             const publicUrl = await s3UploadService.uploadToS3(pdfBuffer, fileName);
 
+            const user = (req as any).user;
             const deliveryOptions: DeliveryOptions = {
                 leadId: quote.lead_id,
                 clientName: quote.client_name || 'Client',
@@ -492,7 +498,11 @@ export const quoteController = {
                 clientPhone: quote.client_phone,
                 pdfUrl: publicUrl,
                 pdfFileName: fileName,
-                htmlContent: html
+                htmlContent: html,
+                pdfBuffer: pdfBuffer,
+                userId: user?.id,
+                senderName: user?.full_name || user?.name,
+                senderEmail: user?.email,
             };
 
             const deliveryResult = await processPDFDelivery(deliveryOptions, sendVia);

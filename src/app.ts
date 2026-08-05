@@ -31,7 +31,7 @@ app.get('/health', (_req, res) => {
 });
 
 if (envConfig.NODE_ENV !== 'test') {
-  // cronService.initializeJobs();
+  
 }
 
 app.get('/api/v1/cron/status', (_req, res) => {
@@ -50,10 +50,6 @@ app.get('/api/v1/cron/status', (_req, res) => {
     environment: envConfig.NODE_ENV
   });
 });
-
-// if (envConfig.NODE_ENV !== 'test') {
-//   startEmailReaderJob();
-// }
 
 connectDB();
 

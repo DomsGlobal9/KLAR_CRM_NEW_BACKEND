@@ -36,6 +36,7 @@ interface EnvConfig {
     DEFAULT_FROM_EMAIL: string;
     DEFAULT_FROM_NAME: string;
     DEFAULT_REPLY_TO: string;
+    EMAIL_BACKEND_URL: string;
 
     /**
      * CORS
@@ -317,6 +318,7 @@ export const envConfig: EnvConfig = {
     DEFAULT_REPLY_TO: validateRequired(process.env.DEFAULT_REPLY_TO, 'DEFAULT_REPLY_TO') ||
         process.env.DEFAULT_FROM_EMAIL ||
         'noreply@example.com',
+    EMAIL_BACKEND_URL: process.env.EMAIL_BACKEND_URL || 'http://localhost:5013/api/emails',
 
     /**
      * CORS

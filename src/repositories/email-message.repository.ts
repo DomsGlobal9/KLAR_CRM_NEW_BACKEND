@@ -18,33 +18,61 @@ export const emailMessageRepository = {
         html_body: string | null;
         status: string;
         lead_id: string | null;
-        raw_headers: any | null;
+        user_id?: string | null;
+        sender_name?: string | null;
+        sender_email?: string | null;
+        raw_headers?: any | null;
         error: string | null;
     }) {
-        const { data, error } = await supabaseAdmin
+        const rawHeaders = {
+            ...(payload.raw_headers || {}),
+            sender_name: payload.sender_name || null,
+            sender_email: payload.sender_email || null,
+            user_id: payload.user_id || null,
+        };
+
+        const insertPayload: any = {
+            tracking_id: payload.tracking_id,
+            parent_tracking_id: payload.parent_tracking_id,
+            message_id: payload.message_id,
+            in_reply_to: payload.in_reply_to,
+            direction: payload.direction,
+            from_email: payload.from_email,
+            to_email: payload.to_email,
+            cc_email: payload.cc_email,
+            bcc_email: payload.bcc_email,
+            subject: payload.subject,
+            body: payload.body,
+            html_body: payload.html_body,
+            status: payload.status,
+            lead_id: payload.lead_id,
+            user_id: payload.user_id || null,
+            sender_name: payload.sender_name || null,
+            sender_email: payload.sender_email || null,
+            raw_headers: rawHeaders,
+            error: payload.error,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        let { data, error } = await supabaseAdmin
             .from('email_messages')
-            .insert({
-                tracking_id: payload.tracking_id,
-                parent_tracking_id: payload.parent_tracking_id,
-                message_id: payload.message_id,
-                in_reply_to: payload.in_reply_to,
-                direction: payload.direction,
-                from_email: payload.from_email,
-                to_email: payload.to_email,
-                cc_email: payload.cc_email,
-                bcc_email: payload.bcc_email,
-                subject: payload.subject,
-                body: payload.body,
-                html_body: payload.html_body,
-                status: payload.status,
-                lead_id: payload.lead_id,
-                raw_headers: payload.raw_headers,
-                error: payload.error,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
+            .insert(insertPayload)
             .select()
             .single();
+
+        if (error && error.message?.includes('column')) {
+            delete insertPayload.user_id;
+            delete insertPayload.sender_name;
+            delete insertPayload.sender_email;
+            const res = await supabaseAdmin
+                .from('email_messages')
+                .insert(insertPayload)
+                .select()
+                .single();
+            data = res.data;
+            error = res.error;
+        }
 
         if (error) {
             throw new Error(`Failed to create email message: ${error.message}`);

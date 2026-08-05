@@ -9,6 +9,10 @@ export interface PDFDeliveryOptions {
     pdfUrl: string;
     pdfFileName: string;
     htmlContent?: string;
+    pdfBuffer?: Buffer;
+    userId?: string;
+    senderName?: string;
+    senderEmail?: string;
 }
 
 export interface DeliveryResult {
@@ -30,15 +34,10 @@ export interface DeliveryResult {
 type DocumentType = 'invoice' | 'quotation' | 'proposal' | 'itinerary';
 
 class PDFDeliveryService {
-
-
     private service: any;
 
     constructor() {
         this.service = getWhatsAppService();
-        if (!this.service) {
-
-        }
     }
 
     /**
@@ -52,23 +51,16 @@ class PDFDeliveryService {
         return 'itinerary';
     }
 
-
-
     /**
      * Cleans phone numbers to ensure compatibility with standard WhatsApp formats
      */
     private sanitizePhoneNumber(phone: string): string {
-        // Strip out spaces, dashes, parentheses, and leading plus signs
         let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-
-        // If the number is 10 digits (common in India), pre-pend the country code '91' 
-        // Adjust this country code prefix fallback as per your business target demographic
         if (cleaned.length === 10) {
             cleaned = '91' + cleaned;
         }
         return cleaned;
     }
-
 
     /**
      * Send PDF via WhatsApp only
@@ -79,42 +71,30 @@ class PDFDeliveryService {
                 return { success: false, error: 'Phone number is required' };
             }
 
-            if (!this.service.getStatus()) {
-                return { success: false, error: 'WhatsApp service is not ready' };
-            }
-
-            // Clean number to prevent API delivery failures
-            const sanitizedPhone = this.sanitizePhoneNumber(phoneNumber);
-            const docType = this.detectDocumentType(pdfFileName);
-
             const message = this.createWhatsAppMessage(clientName, pdfUrl);
+            const sanitizedPhone = this.sanitizePhoneNumber(phoneNumber);
 
-            const sent = await this.service.sendMessage(sanitizedPhone, message);
-
-            if (sent) {
-                return { success: true };
-            } else {
-                return { success: false, error: 'Failed to send WhatsApp message' };
-            }
+            const result = await this.service.sendMessage(sanitizedPhone, message);
+            return { success: result.success, error: result.error };
         } catch (error: any) {
-
-            return {
-                success: false,
-                error: error.message || 'Unknown WhatsApp delivery error'
-            };
+            return { success: false, error: error.message || 'WhatsApp sending failed' };
         }
     }
 
     /**
      * Send PDF via Email only
      */
-    async sendViaEmail(emailAddress: string, pdfUrl: string, clientName: string, leadId: string, htmlContent: string | undefined, pdfFileName: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    async sendViaEmail(
+        options: PDFDeliveryOptions
+    ): Promise<{ success: boolean; error?: string; messageId?: string }> {
         try {
-            if (!emailAddress) {
+            const { clientEmail, pdfUrl, clientName, pdfFileName, htmlContent, pdfBuffer, leadId, userId, senderName, senderEmail } = options;
+
+            if (!clientEmail) {
                 return { success: false, error: 'Email address is required' };
             }
 
-            const validation = emailService.validateEmailAddresses(emailAddress);
+            const validation = emailService.validateEmailAddresses(clientEmail);
             if (validation.invalid.length > 0) {
                 return { success: false, error: 'Invalid email format' };
             }
@@ -127,15 +107,24 @@ class PDFDeliveryService {
                 itinerary: `Your Custom Itinerary Details - ${clientName}`
             };
 
+            const attachments = pdfBuffer ? [{
+                filename: pdfFileName,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+            }] : [];
+
             const emailPayload: SendEmailPayload = {
-                to: emailAddress,
+                to: clientEmail,
                 subject: subjects[docType] || `Your ${docType} - ${clientName}`,
                 text: this.createEmailText(clientName, pdfUrl),
                 html: htmlContent || this.createEmailHTML(clientName, pdfUrl, docType),
                 requireNewLead: false,
-                attachments: []
+                leadId: leadId,
+                userId: userId,
+                senderName: senderName,
+                senderEmail: senderEmail,
+                attachments
             };
-
 
             const result = await emailService.sendEmail(emailPayload);
 
@@ -151,7 +140,6 @@ class PDFDeliveryService {
                 };
             }
         } catch (error: any) {
-
             return {
                 success: false,
                 error: error.message || 'Unknown email delivery error'
@@ -163,41 +151,29 @@ class PDFDeliveryService {
      * Send PDF via both WhatsApp and Email
      */
     async deliverPDF(options: PDFDeliveryOptions): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
+        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
 
         const result: DeliveryResult = {
             success: false,
             message: 'Delivery attempt completed'
         };
 
-
-
-
         let anySuccess = false;
 
         if (clientPhone) {
-
             const whatsappResult = await this.sendViaWhatsApp(clientPhone, pdfUrl, clientName, pdfFileName);
-
             result.whatsapp = {
                 sent: whatsappResult.success,
                 error: whatsappResult.error,
                 timestamp: new Date().toISOString()
             };
-
             if (whatsappResult.success) {
                 anySuccess = true;
-
-            } else {
-
             }
-        } else {
-
         }
 
         if (clientEmail) {
-
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
+            const emailResult = await this.sendViaEmail(options);
 
             result.email = {
                 sent: emailResult.success,
@@ -208,22 +184,13 @@ class PDFDeliveryService {
 
             if (emailResult.success) {
                 anySuccess = true;
-
-            } else {
-
             }
-        } else {
-
         }
 
         result.success = anySuccess;
-
-        if (anySuccess) {
-            result.message = 'PDF delivered successfully via at least one channel';
-        } else {
-            result.message = 'Failed to deliver PDF via any channel';
-        }
-
+        result.message = anySuccess
+            ? 'PDF delivered successfully via at least one channel'
+            : 'Failed to deliver PDF via any channel';
 
         return result;
     }
@@ -235,7 +202,7 @@ class PDFDeliveryService {
         options: PDFDeliveryOptions,
         channels: { whatsapp?: boolean; email?: boolean }
     ): Promise<DeliveryResult> {
-        const { leadId, clientName, clientEmail, clientPhone, pdfUrl, pdfFileName, htmlContent } = options;
+        const { clientName, clientEmail, clientPhone, pdfUrl, pdfFileName } = options;
 
         const result: DeliveryResult = {
             success: false,
@@ -255,7 +222,7 @@ class PDFDeliveryService {
         }
 
         if (channels.email && clientEmail) {
-            const emailResult = await this.sendViaEmail(clientEmail, pdfUrl, clientName, leadId, htmlContent, pdfFileName);
+            const emailResult = await this.sendViaEmail(options);
             result.email = {
                 sent: emailResult.success,
                 error: emailResult.error,
@@ -273,9 +240,8 @@ class PDFDeliveryService {
         return result;
     }
 
-
     /**
-     * Create WhatsApp message (Original version without styled emojis)
+     * Create WhatsApp message
      */
     private createWhatsAppMessage(clientName: string, pdfUrl: string): string {
         return `Hello ${clientName},
@@ -290,165 +256,65 @@ Thank you for choosing our services.`;
      * Create plain text email content
      */
     private createEmailText(clientName: string, pdfUrl: string): string {
-        return `
-            Dear ${clientName},
+        return `Dear ${clientName},
 
-            Your customized itinerary is ready! 
+Your customized travel document is attached to this email.
 
-            You can view and download your PDF itinerary here:
-            ${pdfUrl}
-
-            This link will allow you to access your itinerary anytime.
-
-            Thank you for choosing our services!
-
-            Best regards,
-            Your Travel Team
-        `.trim();
+Thank you for choosing our services!`;
     }
 
     /**
-     * Create HTML email content (Enhanced version with custom HTML support)
+     * Create HTML email content
      */
     private createEmailHTML(clientName: string, pdfUrl: string, docType: DocumentType): string {
-        const titles: Record<DocumentType, string> = {
-            invoice: 'Your Invoice',
-            quotation: 'Your Quotation',
-            proposal: 'Your Travel Proposal',
-            itinerary: 'Your Itinerary'
-        };
-
         return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px; text-align: center;">
-        <h1 style="color: #0066cc; margin-bottom: 10px;">${titles[docType]} is Ready! 🎉</h1>
-        <p style="font-size: 18px; color: #555;">Dear ${clientName},</p>
-    </div>
-
-    <div style="background-color: #ffffff; border-radius: 8px; padding: 25px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
-        <h2 style="color: #0066cc; margin-top: 0;">Your PDF Document</h2>
-        <p>Your ${docType} has been generated and is ready for viewing.</p>
-        
-        <div style="background-color: #f0f7ff; border-radius: 6px; padding: 20px; margin: 20px 0; text-align: center;">
-            <a href="${pdfUrl}" 
-               style="display: inline-block; background-color: #0066cc; color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">
-                📄 View Your PDF
-            </a>
-            <p style="margin-top: 10px; color: #666; font-size: 14px;">
-                Click the button above to view and download your PDF
-            </p>
-        </div>
-
-        <p><strong>📎 Direct Link:</strong><br>
-        <a href="${pdfUrl}" style="color: #0066cc; word-break: break-all;">${pdfUrl}</a></p>
-        
-        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-            ⚡ This link is publicly accessible and can be shared.
-        </p>
-    </div>
-
-    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center;">
-        <p style="margin: 0; color: #666;">Thank you for choosing our services! ✈️🌍</p>
-        <p style="margin: 10px 0 0 0; color: #999; font-size: 14px;">Best regards,<br>Your Travel Team</p>
-    </div>
-</body>
-</html>
-        `.trim();
-    }
-
-    /**
-     * Get delivery service status
-     */
-    async getServiceStatus(): Promise<{
-        whatsapp: { ready: boolean };
-        email: { status: string; message: string };
-    }> {
-        const emailStatus = await emailService.getServiceStatus();
-
-        return {
-            whatsapp: {
-                ready: this.service.getStatus()
-            },
-            email: {
-                status: emailStatus.status,
-                message: emailStatus.message
-            }
-        };
-    }
-
-    /**
-     * Send Text Reminder via Email
-     */
-    async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<any> {
-        const emailPayload = {
-            to: emailAddress,
-            subject: `🔔 Reminder: ${title}`,
-            text: `${title}\n\n${content}`, // Fallback plain text
-            html: this.createReminderHTML(clientName, title, content),
-            requireNewLead: false,
-        };
-        return await emailService.sendEmail(emailPayload);
-    }
-
-    /**
-     * HTML Template for Text Reminders
-     */
-    private createReminderHTML(clientName: string, title: string, content: string): string {
-        return `
-<!DOCTYPE html>
-<html>
-<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7f9; padding: 20px;">
-    <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e1e8ed; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        
-        <div style="background-color: #244875; padding: 20px; text-align: center;">
-            <h2 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 0.5px;">New Reminder</h2>
-        </div>
-
-        <div style="padding: 30px;">
-            <p style="font-size: 16px; color: #64748b; margin-top: 0;">Hi <strong>${clientName}</strong>,</p>
-            
-            <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 18px;">${title}</h3>
-                <p style="margin: 0; color: #475569; font-size: 15px; line-height: 1.5;">${content}</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                <h2 style="color: #2563eb;">Your ${docType.toUpperCase()} Details</h2>
+                <p>Dear <strong>${clientName}</strong>,</p>
+                <p>Please find your ${docType} attached to this email.</p>
+                <p style="margin-top: 20px;">If you have any questions, feel free to reply to this email.</p>
+                <br/>
+                <p>Best regards,<br/><strong>KLAR World Team</strong></p>
             </div>
-
-            <p style="font-size: 14px; color: #94a3b8; margin-bottom: 0;">
-                This is an automated notification from your travel team.
-            </p>
-        </div>
-
-        <div style="background-color: #f1f5f9; padding: 15px; text-align: center; border-top: 1px solid #e2e8f0;">
-            <p style="margin: 0; font-size: 12px; color: #64748b;">&copy; 2026 Your Travel Agency</p>
-        </div>
-    </div>
-</body>
-</html>
-    `.trim();
+        `;
     }
+    /**
+     * Send Reminder email
+     */
+    async sendReminderEmail(emailAddress: string, title: string, content: string, clientName: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+        try {
+            const emailPayload: SendEmailPayload = {
+                to: emailAddress,
+                subject: `Reminder: ${title}`,
+                text: `Hello ${clientName},\n\nReminder: ${title}\n${content}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                        <h2 style="color: #2563eb;">Reminder: ${title}</h2>
+                        <p>Hello <strong>${clientName}</strong>,</p>
+                        <p>${content}</p>
+                        <br/>
+                        <p>Best regards,<br/><strong>KLAR World Team</strong></p>
+                    </div>
+                `,
+            };
 
+            const result = await emailService.sendEmail(emailPayload);
+            return {
+                success: result.success,
+                messageId: result.messageId,
+                error: result.error,
+            };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
+    }
 
     /**
- * NEW: Styled WhatsApp Message (No PDF link)
- */
+     * Create Reminder WhatsApp message
+     */
     createReminderWhatsApp(clientName: string, title: string, content: string): string {
-        return `
-🔔 *REMINDER FOR ${clientName.toUpperCase()}*
-
-*Topic:* ${title}
-
-${content}
-
-_Reply to this message if you have any questions._
-    `.trim();
+        return `Hello ${clientName},\n\nReminder: ${title}\n${content}\n\nThank you!`;
     }
-
-
 }
 
 export const pdfDeliveryService = new PDFDeliveryService();

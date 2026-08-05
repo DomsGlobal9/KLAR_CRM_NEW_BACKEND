@@ -22,6 +22,9 @@ export const emailMessages = pgTable('email_messages', {
   status: text('status').default('sent').notNull(),
   
   leadId: uuid('lead_id'),
+  userId: uuid('user_id'),
+  senderName: text('sender_name'),
+  senderEmail: text('sender_email'),
   
   rawHeaders: jsonb('raw_headers'),
   error: text('error'),
@@ -33,6 +36,7 @@ export const emailMessages = pgTable('email_messages', {
   parentTrackingIdIdx: index('idx_email_messages_parent_tracking_id').on(table.parentTrackingId),
   messageIdIdx: index('idx_email_messages_message_id').on(table.messageId),
   leadIdIdx: index('idx_email_messages_lead_id').on(table.leadId),
+  userIdIdx: index('idx_email_messages_user_id').on(table.userId),
   directionIdx: index('idx_email_messages_direction').on(table.direction),
   createdAtIdx: index('idx_email_messages_created_at').on(table.createdAt),
   fromEmailIdx: index('idx_email_messages_from_email').on(table.fromEmail),

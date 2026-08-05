@@ -67,12 +67,14 @@ export const otpService = {
                     ? 'Your Registration Verification Code'
                     : 'Your Login Verification Code',
                 html: generateOTPEmailTemplate(otp_code, type),
-                requireNewLead: false
+                requireNewLead: false,
+                saveToDb: false,
+                isOtp: true,
             };
 
             const emailResult = await emailService.sendEmail(emailPayload);
             if (!emailResult.success) {
-                throw new Error('Failed to send email');
+                throw new Error('Failed to send email - 1');
             }
 
             // Add a note in response for login type
@@ -156,12 +158,14 @@ export const otpService = {
                     ? 'Your New Registration Verification Code'
                     : 'Your New Login Verification Code',
                 html: generateOTPEmailTemplate(otp_code, type),
-                requireNewLead: false
+                requireNewLead: false,
+                saveToDb: false,
+                isOtp: true,
             };
 
             const emailResult = await emailService.sendEmail(emailPayload);
             if (!emailResult.success) {
-                throw new Error('Failed to send email');
+                throw new Error('Failed to send email -2');
             }
 
             return {
@@ -244,7 +248,9 @@ export const otpService = {
                     ? 'Your New Registration Verification Code'
                     : 'Your New Login Verification Code',
                 html: generateOTPEmailTemplate(otp_code, type),
-                requireNewLead: false
+                requireNewLead: false,
+                saveToDb: false,
+                isOtp: true,
             };
 
             await emailService.sendEmail(emailPayload);

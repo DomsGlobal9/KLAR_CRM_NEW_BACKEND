@@ -7,6 +7,7 @@ import {
     SendEmailPayload, 
     BulkEmailPayload 
 } from '../services';
+import { supabaseAdmin } from '../config';
 
 export class EmailController {
     /**
@@ -23,6 +24,28 @@ export class EmailController {
                     message: 'Request body is required',
                 });
                 return;
+            }
+
+            let user = (req as any).user;
+            if (!user && req.headers.authorization?.startsWith('Bearer ')) {
+                try {
+                    const token = req.headers.authorization.split(' ')[1];
+                    const { data: authData } = await supabaseAdmin.auth.getUser(token);
+                    if (authData?.user) {
+                        const meta = authData.user.user_metadata || {};
+                        user = {
+                            id: authData.user.id,
+                            email: authData.user.email,
+                            full_name: meta.full_name || meta.name || authData.user.email,
+                        };
+                    }
+                } catch (e) {}
+            }
+
+            if (user) {
+                payload.userId = payload.userId || user.id;
+                payload.senderEmail = payload.senderEmail || user.email;
+                payload.senderName = payload.senderName || user.full_name || user.name || user.email;
             }
 
             const result = await emailService.sendEmail(payload);
