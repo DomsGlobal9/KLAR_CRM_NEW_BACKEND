@@ -118,7 +118,7 @@ export const teamMemberService = {
     /**
      * Get all team members with role and team details
      */
-    async getAllTeamMembers(currentUser?: any) {
+    async getAllTeamMembers(currentUser?: any, roleFilter?: string) {
         const { data, error } = await teamMemberRepository.listUsers();
         if (error) throw error;
 
@@ -152,7 +152,7 @@ export const teamMemberService = {
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();
 
-        return filteredUsers.map(user => {
+        let mapped = filteredUsers.map(user => {
             const metadata = user.user_metadata || {};
 
             while (metadata.user_metadata) {
@@ -171,6 +171,32 @@ export const teamMemberService = {
                 user_metadata: metadata
             };
         });
+
+        if (roleFilter) {
+            const filters = roleFilter.toLowerCase().split(',').map(f => f.trim());
+            mapped = mapped.filter(u => {
+                const metaRole = (u.user_metadata?.role_name || u.user_metadata?.role || '').toLowerCase();
+                const objRole = (u.role?.name || '').toLowerCase();
+
+                return filters.some(targetRole => {
+                    if (targetRole === 'admin') {
+                        return metaRole === 'admin' || metaRole === 'administrator' || metaRole === 'superadmin' ||
+                               objRole === 'admin' || objRole === 'administrator' || objRole === 'superadmin';
+                    }
+                    if (targetRole === 'tl' || targetRole === 'team_lead') {
+                        return metaRole === 'tl' || metaRole === 'team_lead' || metaRole === 'teamlead' || metaRole === 'team lead' || metaRole === 'lead' ||
+                               objRole === 'tl' || objRole === 'team_lead' || objRole === 'teamlead' || objRole === 'team lead' || objRole === 'lead';
+                    }
+                    if (targetRole === 'rm' || targetRole === 'relationship_manager') {
+                        return metaRole === 'rm' || metaRole === 'relationship_manager' || metaRole === 'relationshipmanager' || metaRole === 'relationship manager' ||
+                               objRole === 'rm' || objRole === 'relationship_manager' || objRole === 'relationshipmanager' || objRole === 'relationship manager';
+                    }
+                    return metaRole === targetRole || objRole === targetRole;
+                });
+            });
+        }
+
+        return mapped;
     },
 
 

@@ -33,7 +33,8 @@ export const teamMemberController = {
 
     async getAll(req: AuthRequest, res: Response) {
         try {
-            const users = await teamMemberService.getAllTeamMembers(req.user);
+            const roleFilter = req.query.role as string | undefined;
+            const users = await teamMemberService.getAllTeamMembers(req.user, roleFilter);
 
             if (!users || users.length === 0) {
                 return res.status(404).json({
