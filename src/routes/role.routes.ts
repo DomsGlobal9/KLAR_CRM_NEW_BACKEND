@@ -1,5 +1,5 @@
 import express from 'express';
-import { roleController } from '../controllers';
+import { roleController, screenPermissionsController } from '../controllers';
 import { authenticate, requireRole } from '../middleware';
 
 const router = express.Router();
@@ -7,6 +7,12 @@ const router = express.Router();
 /**
  * All role routes are protected and only accessible by superadmin
  */
+
+/**
+ * Screen Access Permissions
+ */
+router.get('/screen-permissions', screenPermissionsController.getPermissions);
+router.put('/screen-permissions', screenPermissionsController.savePermissions);
 
 /**
  * Create a new role
@@ -34,4 +40,4 @@ router.put('/:id', roleController.updateRole);
  */
 router.delete('/:id', roleController.deleteRole);
 
-export default router;
+export default router;
