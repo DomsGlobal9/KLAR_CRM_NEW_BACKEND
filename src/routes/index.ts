@@ -34,6 +34,7 @@ import emailReplyRoutes from './emailReply.routes';
 import tourRoutes from "./tour.routes"
 import departmentRoutes from "./department.routes";
 import cruiseRoutes from './cruise.routes';
+import charterRoutes from './charter.routes';
 
 const router = Router();
 
@@ -82,5 +83,6 @@ router.use('/travelers', travelerRoutes);
 router.use('/visa', visaRoutes);
 router.use("/tour", tourRoutes);
 router.use("/cruise", cruiseRoutes);
+router.use("/charter", charterRoutes);
 
 export default router;
