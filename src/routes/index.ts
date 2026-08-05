@@ -35,6 +35,7 @@ import tourRoutes from "./tour.routes"
 import departmentRoutes from "./department.routes";
 import cruiseRoutes from './cruise.routes';
 import charterRoutes from './charter.routes';
+import passportRoutes from './passport.routes';
 
 const router = Router();
 
@@ -84,5 +85,6 @@ router.use('/visa', visaRoutes);
 router.use("/tour", tourRoutes);
 router.use("/cruise", cruiseRoutes);
 router.use("/charter", charterRoutes);
+router.use("/passport", passportRoutes);
 
 export default router;
