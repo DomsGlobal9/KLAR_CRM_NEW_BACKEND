@@ -100,6 +100,13 @@ export class EmailService {
                     bcc: uniqueBcc.length > 0 ? uniqueBcc : undefined,
                     leadId: payload.leadId,
                     trackingId,
+                    userId: payload.userId,
+                    user_id: payload.userId,
+                    senderName: payload.senderName,
+                    user_name: payload.senderName,
+                    senderEmail: payload.senderEmail,
+                    user_mail: payload.senderEmail,
+                    user_email: payload.senderEmail,
                     attachments: formattedAttachments,
                 },
                 {
@@ -112,31 +119,6 @@ export class EmailService {
 
             const responseData = response.data;
             const messageId = responseData?.data?.messageId || responseData?.data?.jobId || trackingId;
-
-            // Store in database only if saveToDb is not false and not an OTP email
-            if (payload.saveToDb !== false && !payload.isOtp) {
-                await emailMessageRepository.createEmailMessage({
-                    tracking_id: trackingId,
-                    parent_tracking_id: null,
-                    message_id: messageId,
-                    in_reply_to: null,
-                    direction: 'outgoing',
-                    from_email: envConfig.DEFAULT_FROM_EMAIL || envConfig.SMTP_USER,
-                    to_email: uniqueTo,
-                    cc_email: uniqueCc.length > 0 ? uniqueCc : null,
-                    bcc_email: uniqueBcc.length > 0 ? uniqueBcc : null,
-                    subject: finalSubject,
-                    body: payload.text || null,
-                    html_body: payload.html || null,
-                    status: 'sent',
-                    lead_id: payload.leadId || null,
-                    user_id: payload.userId || null,
-                    sender_name: payload.senderName || null,
-                    sender_email: payload.senderEmail || null,
-                    raw_headers: null,
-                    error: null,
-                });
-            }
 
             return {
                 success: true,
@@ -175,36 +157,18 @@ export class EmailService {
                     text: email.text,
                     html: email.html,
                     leadId: email.leadId,
+                    userId: email.userId,
+                    user_id: email.userId,
+                    senderName: email.senderName,
+                    user_name: email.senderName,
+                    senderEmail: email.senderEmail,
+                    user_mail: email.senderEmail,
+                    user_email: email.senderEmail,
                 };
             });
 
             const bulkEndpoint = this.getBackendUrl('/email/send-bulk');
             const response = await axios.post(bulkEndpoint, { emails: formattedEmails }, { timeout: 15000 });
-
-            for (const email of payload.emails) {
-                if (email.saveToDb !== false && !email.isOtp) {
-                    const uniqueTo = processRecipients(email.to);
-                    const trackingId = uuidv4();
-                    await emailMessageRepository.createEmailMessage({
-                        tracking_id: trackingId,
-                        parent_tracking_id: null,
-                        message_id: trackingId,
-                        in_reply_to: null,
-                        direction: 'outgoing',
-                        from_email: envConfig.DEFAULT_FROM_EMAIL || envConfig.SMTP_USER,
-                        to_email: uniqueTo,
-                        cc_email: null,
-                        bcc_email: null,
-                        subject: email.subject,
-                        body: email.text || null,
-                        html_body: email.html || null,
-                        status: 'sent',
-                        lead_id: email.leadId || null,
-                        raw_headers: null,
-                        error: null,
-                    });
-                }
-            }
 
             const queuedCount = response.data?.data?.queuedCount || payload.emails.length;
             return {
