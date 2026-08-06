@@ -158,7 +158,7 @@ export const teamMemberController = {
 
     async remove(req: AuthRequest, res: Response) {
         const role = req.user?.role;
-        if (role != 'superadmin') {
+        if (role != 'SUPERADMIN') {
             return res.status(400).json({ success: false, message: 'You are not authorized' })
         }
 

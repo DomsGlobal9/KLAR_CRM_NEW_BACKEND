@@ -56,8 +56,8 @@ export const teamMemberService = {
         if (!role) throw new Error('Role not found');
 
 
-        if (role.name === 'superadmin') {
-            throw new Error('Cannot create superadmin');
+        if (role.name === 'SUPERADMIN') {
+            throw new Error('Cannot create SUPERADMIN');
         }
 
         if (role.name === 'tl' && payload.team_id) {
@@ -123,7 +123,7 @@ export const teamMemberService = {
         if (error) throw error;
 
         let filteredUsers = data.users.filter(
-            u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
+            u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'SUPERADMIN'
         );
 
         if (currentUser) {
@@ -180,8 +180,8 @@ export const teamMemberService = {
 
                 return filters.some(targetRole => {
                     if (targetRole === 'admin') {
-                        return metaRole === 'admin' || metaRole === 'administrator' || metaRole === 'superadmin' ||
-                               objRole === 'admin' || objRole === 'administrator' || objRole === 'superadmin';
+                        return metaRole === 'admin' || metaRole === 'administrator' || metaRole === 'SUPERADMIN' ||
+                               objRole === 'admin' || objRole === 'administrator' || objRole === 'SUPERADMIN';
                     }
                     if (targetRole === 'tl' || targetRole === 'team_lead') {
                         return metaRole === 'tl' || metaRole === 'team_lead' || metaRole === 'teamlead' || metaRole === 'team lead' || metaRole === 'lead' ||
@@ -213,7 +213,7 @@ export const teamMemberService = {
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
 
-            case 'superadmin':
+            case 'SUPERADMIN':
                 return users;
 
             default:
@@ -255,7 +255,7 @@ export const teamMemberService = {
 
         const users = data.users.filter(
             u => !u.user_metadata?.team_id &&
-                u.user_metadata?.role_name !== 'superadmin'
+                u.user_metadata?.role_name !== 'SUPERADMIN'
         );
 
         const roles = await roleRepository.getAll();
@@ -385,8 +385,8 @@ export const teamMemberService = {
         const user = data.users.find(u => u.id === userId);
         if (!user) throw new Error('User not found');
 
-        if (user.user_metadata?.role_name === 'superadmin') {
-            throw new Error('Cannot modify superadmin status');
+        if (user.user_metadata?.role_name === 'SUPERADMIN') {
+            throw new Error('Cannot modify SUPERADMIN status');
         }
 
         // Get current metadata
@@ -450,8 +450,8 @@ export const teamMemberService = {
         const user = data.users.find(u => u.id === userId);
         if (!user) throw new Error('User not found');
 
-        if (user.user_metadata?.role_name === 'superadmin') {
-            throw new Error('Cannot delete superadmin');
+        if (user.user_metadata?.role_name === 'SUPERADMIN') {
+            throw new Error('Cannot delete SUPERADMIN');
         }
 
         const roleId = user.user_metadata?.role_id;
@@ -515,7 +515,7 @@ export const teamMemberService = {
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role not found');
-        if (role.name === 'superadmin') throw new Error('Cannot assign superadmin role');
+        if (role.name === 'SUPERADMIN') throw new Error('Cannot assign SUPERADMIN role');
 
 
 
@@ -629,11 +629,11 @@ export const teamMemberService = {
 
         let filteredUsers: any[] = [];
 
-        if (userRole === 'superadmin' || userRole === 'admin') {
+        if (userRole === 'SUPERADMIN' || userRole === 'admin') {
             filteredUsers = allUsers.filter(u => {
                 const metadata = u.user_metadata || {};
                 const roleName = metadata.role_name;
-                return roleName !== 'superadmin';
+                return roleName !== 'SUPERADMIN';
             });
         }
         else if (userRole === 'tl' || userRole === 'rm') {

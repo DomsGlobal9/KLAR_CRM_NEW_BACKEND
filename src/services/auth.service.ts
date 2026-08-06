@@ -22,13 +22,13 @@ export const AuthService = {
         //     throw new Error('Registration is closed. Superadmin already exists.');
         // }
 
-        const role = await roleRepository.getRoleByIdOrName({ name: 'superadmin' });
+        const role = await roleRepository.getRoleByIdOrName({ name: 'SUPERADMIN' });
         if (!role) {
             throw new Error('Superadmin role not found in database');
         }
 
-        if (role.name !== 'superadmin') {
-            throw new Error('Only superadmin can be registered');
+        if (role.name !== 'SUPERADMIN') {
+            throw new Error('Only SUPERADMIN can be registered');
         }
 
         if (existingUsers.users.some((u: any) => u.email === email)) {
@@ -42,7 +42,7 @@ export const AuthService = {
             user_metadata: {
                 username,
                 role_id: role.id,
-                role_name: 'superadmin',
+                role_name: 'SUPERADMIN',
                 team_id: null,
                 full_name: full_name ?? null,
                 phone: phone ?? null,

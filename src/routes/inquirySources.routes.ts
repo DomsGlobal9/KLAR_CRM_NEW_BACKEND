@@ -11,9 +11,9 @@ router.get('/', inquirySourceController.getAllSources);
 router.get('/categories', inquirySourceController.getSourcesByCategory);
 
 /**
- * Protected routes - only admin and superadmin can manage sources
+ * Protected routes - only admin and SUPERADMIN can manage sources
 */
-// router.use(authenticate, requireRole('superadmin', 'admin'));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin'));
 
 router.post('/', inquirySourceController.createSource);
 router.put('/:id', inquirySourceController.updateSource);

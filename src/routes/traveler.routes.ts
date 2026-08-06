@@ -20,7 +20,7 @@ router.get('/:id', travelerController.getTravelerById);
 router.patch('/:id', travelerController.updateTraveler);
 
 // Delete traveler by ID
-router.delete('/:id', authenticate, requireRole('superadmin', 'admin'), travelerController.deleteTraveler);
+router.delete('/:id', authenticate, requireRole('SUPERADMIN', 'admin'), travelerController.deleteTraveler);
 
 router.post('/filter', travelerController.filterAndSortTravelers);
 

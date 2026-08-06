@@ -16,6 +16,6 @@ router.post('/save/:leadId',  travelPlanController.saveTravelPlanToLead);
 router.get('/:planId', travelPlanController.getTravelPlanById);
 
 // Optional: Admin only routes
-// router.delete('/:planId', authenticate, requireRole('superadmin', 'admin'), travelPlanController.deleteTravelPlan);
+// router.delete('/:planId', authenticate, requireRole('SUPERADMIN', 'admin'), travelPlanController.deleteTravelPlan);
 
 export default router;

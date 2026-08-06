@@ -12,9 +12,9 @@ router.get('/health', serviceController.healthCheck);
 /**
  * Get all services with only id and name (for UI dropdowns)
  */
-router.get('/services-minimal', authenticate, requireRole('superadmin', 'admin', 'rm', 'tl', 'relationship_manager', 'team_lead'), serviceController.getAllServicesMinimal);
+router.get('/services-minimal', authenticate, requireRole('SUPERADMIN', 'admin', 'rm', 'tl', 'relationship_manager', 'team_lead'), serviceController.getAllServicesMinimal);
 
-router.get('/unassigned-to-teams', authenticate, requireRole('superadmin', 'admin'), serviceController.getUnassignedServices);
+router.get('/unassigned-to-teams', authenticate, requireRole('SUPERADMIN', 'admin'), serviceController.getUnassignedServices);
 
 
 router.get('/services-hierarchy', serviceController.getServicesHierarchyMinimal);

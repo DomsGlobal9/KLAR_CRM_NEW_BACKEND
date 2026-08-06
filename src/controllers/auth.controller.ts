@@ -24,7 +24,7 @@ export const authController = {
                 entity_id: result.data.user?.id,
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
-                details: 'Initial superadmin created',
+                details: 'Initial SUPERADMIN created',
             });
 
             res.status(201).json({
@@ -211,7 +211,7 @@ export const authController = {
     // ===== OTP Based Authentication Methods begins from here =====
 
     /**
-     * Step 1: Send OTP for superadmin registration
+     * Step 1: Send OTP for SUPERADMIN registration
      */
     async sendRegistrationOTP(req: Request, res: Response) {
         try {
@@ -267,7 +267,7 @@ export const authController = {
     },
 
     /**
-     * Step 2: Verify OTP and create superadmin
+     * Step 2: Verify OTP and create SUPERADMIN
      */
     async verifyAndRegister(req: Request, res: Response) {
         try {
@@ -283,7 +283,7 @@ export const authController = {
                 return res.status(400).json({ error: 'Invalid or expired OTP' });
             }
 
-            // Register superadmin
+            // Register SUPERADMIN
             const payload = { email: email.toLowerCase(), password, username, full_name, phone };
             const result = await AuthService.register(payload);
 
@@ -297,7 +297,7 @@ export const authController = {
                 action: 'USER_CREATED',
                 entity_type: 'user',
                 entity_id: userId,
-                details: 'Initial superadmin created via OTP verification',
+                details: 'Initial SUPERADMIN created via OTP verification',
                 ip_address: req.ip,
                 user_agent: req.headers['user-agent'],
             });

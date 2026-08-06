@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware';
 const router = express.Router();
 
 /**
- * All role routes are protected and only accessible by superadmin
+ * All role routes are protected and only accessible by SUPERADMIN
  */
 
 /**
@@ -27,7 +27,7 @@ router.get('/', roleController.getAllRoles);
 /**
  * Get role name and id only
  */
-// router.get('/id-names', authenticate, requireRole("superadmin", "admin"), roleController.getRoleIdNames);
+// router.get('/id-names', authenticate, requireRole("SUPERADMIN", "admin"), roleController.getRoleIdNames);
 router.get('/id-names', roleController.getRoleIdNames);
 
 /**
@@ -40,4 +40,4 @@ router.put('/:id', roleController.updateRole);
  */
 router.delete('/:id', roleController.deleteRole);
 
-export default router;
+export default router;

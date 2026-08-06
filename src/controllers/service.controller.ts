@@ -144,7 +144,7 @@ export const serviceController = {
 
             let services: IService[] = [];
 
-            if (userRole === 'superadmin' || userRole === 'admin') {
+            if (userRole === 'SUPERADMIN' || userRole === 'admin') {
                 services = await serviceService.getAllServices(filter);
             }
             else if (userRole === 'tl' || userRole === 'rm' || userRole === 'relationship_manager' || userRole === 'team_lead') {

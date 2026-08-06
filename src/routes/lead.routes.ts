@@ -12,7 +12,7 @@ router.post('/capture', leadController.createQuickLead);
 /**
  * Protected routes - require authentication and specific roles
  */
-// router.use(authenticate, requireRole('superadmin', 'admin', 'relationship_manager', 'team_lead'));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 router.post('/', leadController.createLead);
@@ -34,7 +34,7 @@ router.post('/auto-assign', (req, res, next) => {
     // No key? Fall back to standard user authentication
     authenticate(req, res, (err) => {
         if (err) return next(err);
-        requireRole('superadmin', 'admin', 'rm', 'tl')(req, res, next);
+        requireRole('SUPERADMIN', 'admin', 'rm', 'tl')(req, res, next);
     });
 }, leadController.autoAssignLead);
 
