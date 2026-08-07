@@ -156,3 +156,48 @@ requests drain, default `15000`. Keep PM2's `kill_timeout` above it.
 **Tests.** 8 new, covering close ordering, per-step failure isolation, exit-code
 propagation, the repeated-signal guard, and the guarantee that shutdown never
 rejects.
+
+---
+
+## [1.4.0] — Flatten nested N+1 queries
+
+**Problem.** Several list endpoints built their response with a query per row,
+and in two cases a query per row *of each row* — N + N×M round trips to render a
+single page. Rendering 25 services with their categories and sub-services took
+51 queries.
+
+**Changes.**
+
+| File | Was | Now |
+| --- | --- | --- |
+| `repositories/service.repository.ts` | `getAllServicesWithRelations`: 1 categories query per service | 2 queries total |
+| `repositories/service.repository.ts` | `getAllServicesWithRelationsMinimal`: 1 per service **plus** 1 per category | 2 queries total |
+| `repositories/service.repository.ts` | third variant: 1 categories query per service | 1 query total |
+| `services/service.service.ts` | `getServiceHierarchy`: 1 per service + 1 per category | 2 queries total |
+| `services/department.service.ts` | `listDepartments`: 3 lookups per department (30 for a 10-row page) | 3 queries total |
+| `repositories/emailResponse.repository.ts` | `formatMessagesWithUserLookup`: 1 Auth API call per message | 1 query total |
+
+New shared helper `fetchCategoryTreeByServiceIds()` loads the category and
+sub-service tree for any number of services in at most two queries and groups
+the rows in memory. Exposed as `serviceRepository.getCategoryTreeByServiceIds()`
+so the service layer can build the same hierarchy without looping.
+
+New `AuthRepository.getUserSummariesByIds()` resolves display name and email for
+many users in one query — the same fix as v1.1.0's `getUsernamesByIds`, for the
+call sites that need name and email rather than just a username.
+
+**Note on the email "cache".** `formatMessagesWithUserLookup` held a `Map` that
+looked like a per-request cache, but every item ran concurrently inside
+`Promise.all`, so they all missed it and fired their requests simultaneously. It
+only ever helped on a sequential re-check. That path now resolves the users it
+needs up front, in one query.
+
+**Compatibility.** Filtering (`is_active`) and ordering (`display_order`
+ascending) match the original per-row queries exactly. Department enrichment
+preserves each department's own id order and still drops ids that no longer
+resolve. Name resolution order (`full_name` → `name` → `email` →
+`'Team Member'`) is unchanged. Response bodies are byte-identical.
+
+**Tests.** 8 new, asserting query *counts* rather than just results — including
+that 25 services still cost 3 queries, that the sub-services query is skipped
+when not requested, and that an empty input issues no queries at all.

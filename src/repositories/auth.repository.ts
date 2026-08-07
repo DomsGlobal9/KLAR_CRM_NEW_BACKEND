@@ -215,6 +215,53 @@ export const AuthRepository = {
     },
 
     /**
+     * Resolve display name and email for many users in a single query.
+     *
+     * Same problem as getUsernamesByIds, different fields: callers that render
+     * a sender or owner column were calling
+     * supabaseAdmin.auth.admin.getUserById() once per row.
+     *
+     * Name resolution order (full_name → name → email) matches what those call
+     * sites did, so rendered output is unchanged.
+     */
+    async getUserSummariesByIds(
+        userIds: string[]
+    ): Promise<Map<string, { name: string; email: string }>> {
+        const summaries = new Map<string, { name: string; email: string }>();
+
+        const uniqueIds = [...new Set((userIds || []).filter(Boolean))];
+
+        if (!uniqueIds.length) return summaries;
+
+        try {
+            const rows = await client<{
+                id: string;
+                email: string | null;
+                raw_user_meta_data: Record<string, any> | null;
+            }[]>`
+                SELECT id, email, raw_user_meta_data
+                FROM auth.users
+                WHERE id = ANY(${uniqueIds}::uuid[])
+            `;
+
+            for (const row of rows) {
+                const meta = row.raw_user_meta_data || {};
+
+                summaries.set(row.id, {
+                    name: meta.full_name || meta.name || row.email || 'Team Member',
+                    email: row.email || '',
+                });
+            }
+        } catch (error: any) {
+            console.error('❌ getUserSummariesByIds failed:', error.message);
+            // Unresolved ids are simply absent; callers fall back to whatever
+            // sender fields the row already carries.
+        }
+
+        return summaries;
+    },
+
+    /**
      * @deprecated Use getUsernamesByIds(). Kept as an alias for existing callers.
      */
     async getUsernamesByIdsSql(userIds: string[]): Promise<Map<string, string | null>> {

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 
 export interface EmailMessage {
     id: string;
@@ -25,45 +26,51 @@ export interface EmailMessage {
     updated_at: string;
 }
 
+/**
+ * Attach sender name/email to a page of messages.
+ *
+ * This used to call supabaseAdmin.auth.admin.getUserById() per message — an
+ * HTTPS round trip each. The Map here looked like a cache, but because every
+ * item ran concurrently inside Promise.all, they all missed it and fired their
+ * requests simultaneously; it only helped on the rare sequential re-check.
+ *
+ * Now: work out which users are actually needed, resolve them in one query,
+ * then fill the rows in memory.
+ */
 async function formatMessagesWithUserLookup(data: any[]): Promise<EmailMessage[]> {
-    const userCache = new Map<string, { name: string; email: string }>();
+    const rows = data || [];
 
-    return Promise.all((data || []).map(async (item: any) => {
-        let userId = item.user_id || item.raw_headers?.user_id || null;
-        let senderName = item.sender_name || item.raw_headers?.sender_name || null;
-        let senderEmail = item.sender_email || item.raw_headers?.sender_email || null;
+    const readItem = (item: any) => ({
+        userId: item.user_id || item.raw_headers?.user_id || null,
+        senderName: item.sender_name || item.raw_headers?.sender_name || null,
+        senderEmail: item.sender_email || item.raw_headers?.sender_email || null,
+    });
 
-        if (userId && (!senderName || !senderEmail)) {
-            if (userCache.has(userId)) {
-                const cached = userCache.get(userId)!;
-                senderName = senderName || cached.name;
-                senderEmail = senderEmail || cached.email;
-            } else {
-                try {
-                    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-                    if (userData?.user) {
-                        const u = userData.user;
-                        const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Team Member';
-                        const email = u.email || '';
-                        userCache.set(userId, { name, email });
-                        senderName = senderName || name;
-                        senderEmail = senderEmail || email;
-                    }
-                } catch (e) {
-                    // ignore user lookup error
-                }
-            }
-        }
+    // Only look up users whose name or email is actually missing.
+    const idsToResolve = rows
+        .map(readItem)
+        .filter(({ userId, senderName, senderEmail }) => userId && (!senderName || !senderEmail))
+        .map(({ userId }) => userId as string);
+
+    const summaries = await AuthRepository.getUserSummariesByIds(idsToResolve);
+
+    return rows.map((item: any) => {
+        const { userId, senderName, senderEmail } = readItem(item);
+
+        const resolved = userId ? summaries.get(userId) : undefined;
+
+        const finalName = senderName || resolved?.name || null;
+        const finalEmail = senderEmail || resolved?.email || null;
 
         return {
             ...item,
             user_id: userId,
-            sender_name: senderName,
-            sender_email: senderEmail,
-            senderName: senderName || item.senderName,
-            senderEmail: senderEmail || item.senderEmail,
+            sender_name: finalName,
+            sender_email: finalEmail,
+            senderName: finalName || item.senderName,
+            senderEmail: finalEmail || item.senderEmail,
         } as EmailMessage;
-    }));
+    });
 }
 
 export const emailResponseRepository = {
