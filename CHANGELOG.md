@@ -201,3 +201,64 @@ resolve. Name resolution order (`full_name` → `name` → `email` →
 **Tests.** 8 new, asserting query *counts* rather than just results — including
 that 25 services still cost 3 queries, that the sub-services query is skipped
 when not requested, and that an empty input issues no queries at all.
+
+---
+
+## [1.5.0] — Rate limiting
+
+**Problem.** The API had no rate limiting at all. A single script, or one
+runaway retry loop in the frontend, could saturate the process and take the app
+down for every user.
+
+**Changes.**
+
+| File | Change |
+| --- | --- |
+| `middleware/rateLimit.middleware.ts` | **New.** `apiLimiter` (general) and `authLimiter` (credential endpoints). |
+| `app.ts` | `apiLimiter` mounted on `/api/v1`; added configurable `trust proxy`. |
+| `routes/auth.routes.ts` | `authLimiter` on all login, OTP, registration, and password-reset endpoints. |
+
+**Keyed by user, not IP — this matters here.** This is an internal CRM, so most
+users sit behind one office NAT. A plain per-IP limit would treat the entire
+office as one client and lock everyone out together. Requests are keyed by
+authenticated user id, falling back to IP only for unauthenticated traffic.
+
+**The auth limiter is keyed by the targeted email**, and counts only *failed*
+attempts (`skipSuccessfulRequests`). That blunts credential stuffing and OTP
+brute-forcing against a given account without penalising a user who signs in
+repeatedly, and without letting one shared IP exhaust everyone's budget. Email
+keys are lowercased and trimmed so varying case cannot buy a fresh budget.
+
+**Deliberately not limited:**
+
+- `/health` — a load balancer polling it must never consume a client's budget.
+- `POST /refresh-token` — the frontend refreshes on a timer; throttling it would
+  sign users out.
+
+**⚠️ Deployment requirement.** If the app runs behind nginx, a load balancer, or
+any reverse proxy, set `TRUST_PROXY` (usually `1`). Without it Express sees the
+proxy's IP for every request, and unauthenticated traffic shares a single
+bucket. Leave it unset when the app is directly exposed.
+
+**New environment variables** (all optional, defaults shown):
+
+- `TRUST_PROXY` — number of proxy hops; unset by default
+- `RATE_LIMIT_WINDOW_MS` — `60000`
+- `RATE_LIMIT_MAX` — `600` per window per user
+- `AUTH_RATE_LIMIT_WINDOW_MS` — `900000`
+- `AUTH_RATE_LIMIT_MAX` — `20` failed attempts per window per account
+
+Limits are deliberately generous — the aim is to stop abuse and runaway loops,
+not throttle normal use. The frontend polls ~4×/minute per user, far below the
+general limit.
+
+**Note.** Counters are in-process. With a single instance (see v1.3.0) that is
+correct. If `instances` is ever raised, move the store to Redis or each worker
+will enforce its own separate budget.
+
+**New dependency.** `express-rate-limit`.
+
+**Tests.** 10 new, driven through a real Express app via supertest: limit
+enforcement, 429 shape, per-user isolation (the office-NAT case), `/health`
+exemption, standard headers, failed-vs-successful auth attempts, per-account
+isolation, email normalisation, and the no-email IP fallback.

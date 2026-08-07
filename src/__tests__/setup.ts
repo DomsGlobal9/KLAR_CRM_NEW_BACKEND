@@ -36,6 +36,16 @@ const testEnv: Record<string, string> = {
     SUPABASE_DATABASE_URL: 'postgres://test:test@localhost:5432/test',
 
     SUPER_ADMIN_EMAIL: 'admin@test.invalid',
+
+    /**
+     * Rate limits are read at module-import time, so they must be set before
+     * the middleware loads. Deliberately tiny so tests can reach the threshold
+     * in a few requests instead of hundreds.
+     */
+    RATE_LIMIT_WINDOW_MS: '60000',
+    RATE_LIMIT_MAX: '5',
+    AUTH_RATE_LIMIT_WINDOW_MS: '60000',
+    AUTH_RATE_LIMIT_MAX: '3',
 };
 
 for (const [key, value] of Object.entries(testEnv)) {
