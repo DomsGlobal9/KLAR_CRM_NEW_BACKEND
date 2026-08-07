@@ -1,6 +1,6 @@
 {
   "name": "crm_for_klar_backend",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "verify:auth-access": "ts-node --transpile-only scripts/verify-auth-access.ts",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --exec ts-node --transpile-only src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "build": "npm run typecheck && tsc",
     "serve": "npm run build && npm start",
     "clean": "rimraf dist .wwebjs_cache whatsapp-session node_modules",
@@ -24,7 +24,9 @@
     "pm2:monit": "pm2 monit",
     "pm2:save": "pm2 save",
     "pm2:startup": "pm2 startup",
-    "deploy": "git pull && npm install && npm run build && pm2 restart klar-crm-backend-server"
+    "deploy": "git pull && npm install && npm run build && pm2 restart klar-crm-backend-server",
+    "typecheck:src": "tsc --noEmit",
+    "test:ci": "vitest run --reporter=verbose"
   },
   "keywords": [],
   "author": "",

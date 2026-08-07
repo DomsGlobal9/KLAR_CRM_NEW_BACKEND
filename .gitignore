@@ -20,11 +20,18 @@ desktop.ini
 Thumbs.db
 
 
-# Scratch/test files
+# Scratch/test files — local experiments only, never the committed suite
 scratch_test_assign.ts
 *.scratch.ts
 *.test.local.ts
 
-# Test files
-src/__tests__/
+# Test output, not test source
+coverage/
+.vitest/
+test-results/
+
+# NOTE: the committed test suite lives in tests/ and MUST stay in Git.
+# `src/__tests__/` was previously ignored, which silently dropped the whole
+# suite from the repository — CI and other developers had nothing to run.
+# Ignore test OUTPUT and local scratch files, never test SOURCE.
 

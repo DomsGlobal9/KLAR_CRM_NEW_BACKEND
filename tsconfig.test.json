@@ -1,0 +1,27 @@
+{
+  /**
+   * Typecheck-only config covering BOTH src and tests.
+   *
+   * The main tsconfig.json has `rootDir: "src"` and `include: ["src"]`, which is
+   * correct for the build — it keeps test files out of dist/. But it also means
+   * tests are not typechecked at all.
+   *
+   * While the suite lived in src/__tests__/ it was covered by the main config;
+   * moving it to tests/ would have silently dropped that safety net, so
+   * `npm run typecheck` now uses this config instead. Emit is disabled, so this
+   * never produces output.
+   */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
