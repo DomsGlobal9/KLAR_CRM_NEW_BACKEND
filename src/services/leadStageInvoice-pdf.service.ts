@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import { renderPdf } from './pdf-browser.service';
 import handlebars from 'handlebars';
 
 const formatINR = (amount: number): string => {
@@ -31,29 +31,8 @@ function numberToINRWords(amount: number): string {
 export const leadStageInvoicePdfService = {
     async generatePDFBuffer(invoice: any): Promise<Buffer> {
         const htmlContent = await this.compileInvoiceHTML(invoice);
-        
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox', 
-                '--disable-dev-shm-usage', 
-                '--disable-gpu',
-                '--disable-accelerated-2d-canvas'
-            ]
-        });
-        
-        const page = await browser.newPage();
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
-        
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }
-        });
 
-        await browser.close();
-        return Buffer.from(pdfBuffer);
+        return renderPdf(htmlContent);
     },
 
     async compileInvoiceHTML(invoice: any): Promise<string> {

@@ -57,3 +57,52 @@ does not, usernames silently render blank. See `npm run verify:auth-access`.
 **Also added.** Test infrastructure (`vitest.config.ts`, `src/__tests__/`) —
 the project previously had none. 26 tests covering batching, deduping, caching,
 invalidation, failure degradation, and every authentication rejection path.
+
+---
+
+## [1.2.0] — Fix Puppeteer memory leak and stop launching Chromium per request
+
+**Problem.** Seven code paths across six services called `puppeteer.launch()` on
+every PDF request. Two distinct faults:
+
+1. **A permanent leak.** None of the call sites used `try/finally`. The
+   `browser.close()` line sat after `page.pdf()`, so any throw — malformed HTML,
+   a template error, a timeout — skipped it and orphaned a Chromium process
+   holding 250–400 MB. Nothing ever reclaimed it. Over days of uptime this is a
+   guaranteed OOM kill, and it was the single biggest obstacle to running 24/7.
+
+2. **Cost per request.** Launching Chromium takes 1–3 seconds and several
+   hundred megabytes. Doing that per request meant a handful of concurrent PDFs
+   could outweigh everything else on the box.
+
+**Changes.**
+
+| File | Change |
+| --- | --- |
+| `services/pdf-browser.service.ts` | **New.** Owns one shared browser for the process. `renderPdf(html, options?)` always closes its page in a `finally` block. Relaunches transparently if Chromium dies, never caches a failed launch, and caps concurrent renders (`PDF_MAX_CONCURRENCY`, default 4) with a FIFO queue. |
+| `services/invoicePdf.service.ts` | `generatePDF` → `renderPdf` |
+| `services/itinerary-pdf.service.ts` | `generatePDFBuffer`, `generateBuffer` → `renderPdf` |
+| `services/itinerary-quotePdf.ts` | `generatePDFBuffer` → `renderPdf` |
+| `services/quote-pdf.service.ts` | `generateBuffer` → `renderPdf` |
+| `services/voucher-pdf.service.ts` | `generateBuffer` → `renderPdf` |
+| `services/leadStageInvoice-pdf.service.ts` | `generatePDFBuffer` → `renderPdf` |
+| `services/leadStageVoucherPdf.service.ts` | `generateBuffer` → `renderPdf` |
+
+**Effect.** Chromium launches once per process instead of once per request, and
+a failed render can no longer leak one. Memory under sustained PDF load goes
+from unbounded growth to flat.
+
+**Compatibility.** No public signature changed — every service keeps its method
+name and `Promise<Buffer>` return type. Page format and margins (A4,
+`printBackground`, 15 mm) are unchanged; they were identical at all seven sites
+and are now the shared default. Callers needing different options can pass them.
+
+**New environment variables** (both optional):
+
+- `PDF_MAX_CONCURRENCY` — simultaneous renders, default `4`
+- `PDF_TIMEOUT_MS` — per-render timeout, default `60000`
+
+**Tests.** 13 new, including the regression that matters: a render that throws
+must still close its page. Also covers browser reuse, concurrent first-call
+sharing, relaunch after crash, recovery from a failed launch, slot release on
+failure, and the concurrency gate.
