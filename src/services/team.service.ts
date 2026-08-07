@@ -62,8 +62,8 @@ export const teamService = {
      * @returns 
      */
     async deleteTeam(id: string, requester: any) {
-        if (requester?.role_name !== 'superadmin') {
-            throw new Error('Unauthorized: Only superadmin can delete teams');
+        if (requester?.role_name !== 'SUPERADMIN') {
+            throw new Error('Unauthorized: Only SUPERADMIN can delete teams');
         }
         return await teamRepository.deleteTeam(id);
     }

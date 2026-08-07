@@ -9,7 +9,7 @@ const router = Router();
    STATIC ROUTES FIRST
    ======================= */
 
-// router.use(authenticate, requireRole('superadmin', 'admin', 'relationship_manager', 'team_lead'));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 

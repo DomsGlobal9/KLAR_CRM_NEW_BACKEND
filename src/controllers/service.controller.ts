@@ -144,46 +144,61 @@ export const serviceController = {
 
             let services: IService[] = [];
 
-            if (userRole === 'superadmin' || userRole === 'admin') {
+            if (userRole === 'SUPERADMIN' || userRole === 'admin') {
                 services = await serviceService.getAllServices(filter);
             }
-            else if (userRole === 'tl' || userRole === 'rm') {
-
+            else if (userRole === 'tl' || userRole === 'rm' || userRole === 'relationship_manager' || userRole === 'team_lead') {
                 const teamId = req.user?.team_id;
+                const departmentId = req.user?.department_id || req.user?.department;
 
-                if (!teamId) {
+                let deptData: { service_ids?: string[] } | null = null;
+
+                if (departmentId) {
+                    const { data, error } = await supabaseAdmin
+                        .from('departments')
+                        .select('service_ids')
+                        .eq('id', departmentId)
+                        .single();
+                    if (!error && data) {
+                        deptData = data;
+                    }
+                }
+
+                if (!deptData && teamId) {
+                    const { data, error } = await supabaseAdmin
+                        .from('departments')
+                        .select('service_ids')
+                        .contains('team_ids', [teamId]);
+                    if (!error && data && data.length > 0) {
+                        deptData = data[0];
+                    }
+                }
+
+                if (!deptData && req.user?.id) {
+                    const { data, error } = await supabaseAdmin
+                        .from('departments')
+                        .select('service_ids')
+                        .contains('admin_ids', [req.user.id]);
+                    if (!error && data && data.length > 0) {
+                        deptData = data[0];
+                    }
+                }
+
+                if (!deptData || !deptData.service_ids || deptData.service_ids.length === 0) {
                     return res.status(200).json({
                         success: true,
                         data: [],
                         count: 0,
-                        message: 'No team assigned to user'
+                        message: 'No services assigned to your department'
                     });
                 }
 
-                const { data: teamData, error: teamError } = await supabaseAdmin
-                    .from('teams')
-                    .select('service_ids')
-                    .eq('id', teamId)
-                    .single();
-
-
-
-                if (teamError || !teamData?.service_ids || teamData.service_ids.length === 0) {
-
-                    return res.status(200).json({
-                        success: true,
-                        data: [],
-                        count: 0,
-                        message: 'No services assigned to your team'
-                    });
-                }
-
-                const teamServices = await serviceService.getServicesByIds(
-                    teamData.service_ids,
+                const deptServices = await serviceService.getServicesByIds(
+                    deptData.service_ids,
                     filter
                 );
 
-                services = teamServices;
+                services = deptServices;
             }
             else {
                 return res.status(200).json({

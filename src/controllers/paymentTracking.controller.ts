@@ -9,7 +9,7 @@ export class PaymentTrackingController {
     getTotalPaymentsReceived = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
             
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view payment totals.'
@@ -37,7 +37,7 @@ export class PaymentTrackingController {
      */
     getPaymentsInRange = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view payment data.'
@@ -78,7 +78,7 @@ export class PaymentTrackingController {
      */
     getPaymentSummary = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view payment summary.'
@@ -118,7 +118,7 @@ export class PaymentTrackingController {
      */
     getCumulativePayments = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view cumulative payments.'
@@ -146,7 +146,7 @@ export class PaymentTrackingController {
      */
     getPaymentAnalytics = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view payment analytics.'
@@ -184,7 +184,7 @@ export class PaymentTrackingController {
      */
     getDashboardOverview = async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
-            if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     message: 'Access denied. Only administrators can view dashboard overview.'

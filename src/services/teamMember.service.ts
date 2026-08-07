@@ -56,8 +56,8 @@ export const teamMemberService = {
         if (!role) throw new Error('Role not found');
 
 
-        if (role.name === 'superadmin') {
-            throw new Error('Cannot create superadmin');
+        if (role.name === 'SUPERADMIN') {
+            throw new Error('Cannot create SUPERADMIN');
         }
 
         if (role.name === 'tl' && payload.team_id) {
@@ -118,12 +118,12 @@ export const teamMemberService = {
     /**
      * Get all team members with role and team details
      */
-    async getAllTeamMembers(currentUser?: any) {
+    async getAllTeamMembers(currentUser?: any, roleFilter?: string) {
         const { data, error } = await teamMemberRepository.listUsers();
         if (error) throw error;
 
         let filteredUsers = data.users.filter(
-            u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'superadmin'
+            u => u.user_metadata?.role_name && u.user_metadata.role_name !== 'SUPERADMIN'
         );
 
         if (currentUser) {
@@ -152,7 +152,7 @@ export const teamMemberService = {
         const roles = await roleRepository.getAll();
         const teams = await teamRepository.getAll();
 
-        return filteredUsers.map(user => {
+        let mapped = filteredUsers.map(user => {
             const metadata = user.user_metadata || {};
 
             while (metadata.user_metadata) {
@@ -171,6 +171,32 @@ export const teamMemberService = {
                 user_metadata: metadata
             };
         });
+
+        if (roleFilter) {
+            const filters = roleFilter.toLowerCase().split(',').map(f => f.trim());
+            mapped = mapped.filter(u => {
+                const metaRole = (u.user_metadata?.role_name || u.user_metadata?.role || '').toLowerCase();
+                const objRole = (u.role?.name || '').toLowerCase();
+
+                return filters.some(targetRole => {
+                    if (targetRole === 'admin') {
+                        return metaRole === 'admin' || metaRole === 'administrator' || metaRole === 'SUPERADMIN' ||
+                               objRole === 'admin' || objRole === 'administrator' || objRole === 'SUPERADMIN';
+                    }
+                    if (targetRole === 'tl' || targetRole === 'team_lead') {
+                        return metaRole === 'tl' || metaRole === 'team_lead' || metaRole === 'teamlead' || metaRole === 'team lead' || metaRole === 'lead' ||
+                               objRole === 'tl' || objRole === 'team_lead' || objRole === 'teamlead' || objRole === 'team lead' || objRole === 'lead';
+                    }
+                    if (targetRole === 'rm' || targetRole === 'relationship_manager') {
+                        return metaRole === 'rm' || metaRole === 'relationship_manager' || metaRole === 'relationshipmanager' || metaRole === 'relationship manager' ||
+                               objRole === 'rm' || objRole === 'relationship_manager' || objRole === 'relationshipmanager' || objRole === 'relationship manager';
+                    }
+                    return metaRole === targetRole || objRole === targetRole;
+                });
+            });
+        }
+
+        return mapped;
     },
 
 
@@ -187,7 +213,7 @@ export const teamMemberService = {
             case 'rm':
                 return users.filter(u => u.user_metadata?.assigned_rm === currentUser.id);
 
-            case 'superadmin':
+            case 'SUPERADMIN':
                 return users;
 
             default:
@@ -229,7 +255,7 @@ export const teamMemberService = {
 
         const users = data.users.filter(
             u => !u.user_metadata?.team_id &&
-                u.user_metadata?.role_name !== 'superadmin'
+                u.user_metadata?.role_name !== 'SUPERADMIN'
         );
 
         const roles = await roleRepository.getAll();
@@ -359,8 +385,8 @@ export const teamMemberService = {
         const user = data.users.find(u => u.id === userId);
         if (!user) throw new Error('User not found');
 
-        if (user.user_metadata?.role_name === 'superadmin') {
-            throw new Error('Cannot modify superadmin status');
+        if (user.user_metadata?.role_name === 'SUPERADMIN') {
+            throw new Error('Cannot modify SUPERADMIN status');
         }
 
         // Get current metadata
@@ -424,8 +450,8 @@ export const teamMemberService = {
         const user = data.users.find(u => u.id === userId);
         if (!user) throw new Error('User not found');
 
-        if (user.user_metadata?.role_name === 'superadmin') {
-            throw new Error('Cannot delete superadmin');
+        if (user.user_metadata?.role_name === 'SUPERADMIN') {
+            throw new Error('Cannot delete SUPERADMIN');
         }
 
         const roleId = user.user_metadata?.role_id;
@@ -489,7 +515,7 @@ export const teamMemberService = {
 
         const role = await roleRepository.getById(role_id);
         if (!role) throw new Error('Role not found');
-        if (role.name === 'superadmin') throw new Error('Cannot assign superadmin role');
+        if (role.name === 'SUPERADMIN') throw new Error('Cannot assign SUPERADMIN role');
 
 
 
@@ -603,11 +629,11 @@ export const teamMemberService = {
 
         let filteredUsers: any[] = [];
 
-        if (userRole === 'superadmin' || userRole === 'admin') {
+        if (userRole === 'SUPERADMIN' || userRole === 'admin') {
             filteredUsers = allUsers.filter(u => {
                 const metadata = u.user_metadata || {};
                 const roleName = metadata.role_name;
-                return roleName !== 'superadmin';
+                return roleName !== 'SUPERADMIN';
             });
         }
         else if (userRole === 'tl' || userRole === 'rm') {

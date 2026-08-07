@@ -230,7 +230,7 @@ export class InvoiceController {
 
     async deleteInvoice(req: AuthRequest, res: Response) {
         const userRole = req.user?.role;
-        if (userRole != 'superadmin') {
+        if (userRole != 'SUPERADMIN') {
             return res.status(400).json({
                 success: false,
                 message: 'You are not authorized'

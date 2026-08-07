@@ -7,3 +7,4 @@ export * from './roles.schema';
 export * from './teams.schema';
 export * from './departments.schema';
 export * from './auth-users.schema';
+export * from './role-screen-permissions.schema';

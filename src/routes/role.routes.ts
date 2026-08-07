@@ -1,12 +1,18 @@
 import express from 'express';
-import { roleController } from '../controllers';
+import { roleController, screenPermissionsController } from '../controllers';
 import { authenticate, requireRole } from '../middleware';
 
 const router = express.Router();
 
 /**
- * All role routes are protected and only accessible by superadmin
+ * All role routes are protected and only accessible by SUPERADMIN
  */
+
+/**
+ * Screen Access Permissions
+ */
+router.get('/screen-permissions', screenPermissionsController.getPermissions);
+router.put('/screen-permissions', screenPermissionsController.savePermissions);
 
 /**
  * Create a new role
@@ -21,7 +27,7 @@ router.get('/', roleController.getAllRoles);
 /**
  * Get role name and id only
  */
-// router.get('/id-names', authenticate, requireRole("superadmin", "admin"), roleController.getRoleIdNames);
+// router.get('/id-names', authenticate, requireRole("SUPERADMIN", "admin"), roleController.getRoleIdNames);
 router.get('/id-names', roleController.getRoleIdNames);
 
 /**

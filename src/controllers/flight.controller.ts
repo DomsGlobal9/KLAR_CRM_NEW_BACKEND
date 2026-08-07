@@ -10,7 +10,6 @@ export const getFlightReport = async (req: Request, res: Response) => {
         const filter = (req.query.filter as string) || "all";
 
         const { bookings, pagination } = await getAllFlightsWithUsers(page, limit, filter);
-        console.log("flight.controllers.ts bokings", filter, bookings)
 
         res.status(200).json({
             success: true,

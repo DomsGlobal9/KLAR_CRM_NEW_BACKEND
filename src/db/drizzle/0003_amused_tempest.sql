@@ -1,0 +1,10 @@
+CREATE TABLE "role_screen_permissions" (
+	"role" text PRIMARY KEY NOT NULL,
+	"permissions" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "email_messages" ADD COLUMN "user_id" uuid;--> statement-breakpoint
+ALTER TABLE "email_messages" ADD COLUMN "sender_name" text;--> statement-breakpoint
+ALTER TABLE "email_messages" ADD COLUMN "sender_email" text;--> statement-breakpoint
+CREATE INDEX "idx_email_messages_user_id" ON "email_messages" USING btree ("user_id");

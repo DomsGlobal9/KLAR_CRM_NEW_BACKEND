@@ -11,3 +11,4 @@ export { serviceController } from "./service.controller";
 export { itineraryController } from "./itinerary.controller";
 export { itineraryPreferencesController } from "./itinerary-preferences.controller";
 export { inquirySourceController } from "./inquirySource.controller";
+export { screenPermissionsController } from "./screen-permissions.controller";

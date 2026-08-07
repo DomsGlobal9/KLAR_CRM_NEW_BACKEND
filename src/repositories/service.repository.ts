@@ -854,23 +854,23 @@ export const serviceRepository = {
      */
     async getUnassignedServices(filter: IServiceFilter = {}): Promise<IService[]> {
         try {
-            // Step 1: Get all service IDs that are assigned to any team
-            const { data: teams, error: teamsError } = await supabaseAdmin
-                .from('teams')
+            // Step 1: Get all service IDs that are assigned to any department
+            const { data: depts, error: deptsError } = await supabaseAdmin
+                .from('departments')
                 .select('service_ids')
                 .not('service_ids', 'is', null);
 
-            if (teamsError) {
-                throw new Error(`Failed to fetch team service assignments: ${teamsError.message}`);
+            if (deptsError) {
+                throw new Error(`Failed to fetch department service assignments: ${deptsError.message}`);
             }
 
             // Step 2: Create a Set of all assigned service IDs (for O(1) lookup)
             const assignedServiceIds = new Set<string>();
 
-            if (teams && teams.length > 0) {
-                teams.forEach(team => {
-                    if (team.service_ids && Array.isArray(team.service_ids)) {
-                        team.service_ids.forEach((id: string) => {
+            if (depts && depts.length > 0) {
+                depts.forEach(dept => {
+                    if (dept.service_ids && Array.isArray(dept.service_ids)) {
+                        dept.service_ids.forEach((id: string) => {
                             // Only add valid UUIDs
                             if (id) {
                                 assignedServiceIds.add(id);

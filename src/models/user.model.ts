@@ -3,7 +3,7 @@ export interface User {
     username: string;
     email: string;
     password_hash: string;
-    role: 'superadmin' | 'admin' | 'rm';
+    role: 'SUPERADMIN' | 'admin' | 'rm';
     status: 'active' | 'inactive' | 'suspended';
     full_name?: string;
     phone?: string;
@@ -22,7 +22,7 @@ export interface CreateUserInput {
     username: string;
     email: string;
     password_hash: string;
-    role: 'superadmin' | 'admin' | 'rm';
+    role: 'SUPERADMIN' | 'admin' | 'rm';
     full_name?: string;
     phone?: string;
     department?: string;

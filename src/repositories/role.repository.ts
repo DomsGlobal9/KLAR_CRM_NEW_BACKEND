@@ -16,7 +16,7 @@ export const roleRepository = {
         const { data, error } = await supabaseAdmin
             .from('roles')
             .select('id, name')
-            .neq('name', 'superadmin')  
+            .neq('name', 'SUPERADMIN')  
             .order('name');
 
         if (error) throw error;

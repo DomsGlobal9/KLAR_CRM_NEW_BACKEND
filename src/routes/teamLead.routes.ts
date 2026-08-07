@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware';
 const router = Router();
 
 // Protect all Team Lead routes
-// router.use(authenticate, requireRole('superadmin', 'admin', 'rm', "tl"));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'rm', "tl"));
 router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
 
 
