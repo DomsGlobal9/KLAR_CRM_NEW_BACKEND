@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 import { Team } from '../interfaces/team.interface';
 
 export const teamRepository = {
@@ -138,8 +139,12 @@ export const teamRepository = {
         if (error) throw error;
     },
 
+    /**
+     * Delegates to AuthRepository.listUsers(), which reads auth.users directly.
+     * The previous Auth API call silently capped at the first 1000 users.
+     */
     async listUsers() {
-        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        return AuthRepository.listUsers();
     },
 
     async updateUser(userId: string, attributes: any) {

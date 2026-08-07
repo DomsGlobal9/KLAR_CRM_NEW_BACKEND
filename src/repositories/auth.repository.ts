@@ -8,6 +8,40 @@ import { client } from '../db/drizzle';
  * removes the per-request lookup entirely. This is per-instance and will be
  * replaced by a shared Redis cache when we scale out horizontally.
  */
+/**
+ * An auth.users row as read over the direct Postgres connection.
+ */
+interface AuthUserRow {
+    id: string;
+    email: string | null;
+    raw_user_meta_data: Record<string, any> | null;
+    raw_app_meta_data?: Record<string, any> | null;
+    last_sign_in_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    email_confirmed_at: string | null;
+    phone?: string | null;
+    banned_until?: string | null;
+}
+
+/**
+ * Reshape a raw row into the object the Supabase Auth API returns, so the ~20
+ * call sites that read `user_metadata`, `email`, `id` and friends work
+ * unchanged regardless of where the data came from.
+ */
+const toAuthUser = (row: AuthUserRow) => ({
+    id: row.id,
+    email: row.email ?? undefined,
+    phone: row.phone ?? undefined,
+    user_metadata: row.raw_user_meta_data || {},
+    app_metadata: row.raw_app_meta_data || {},
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    last_sign_in_at: row.last_sign_in_at,
+    email_confirmed_at: row.email_confirmed_at,
+    banned_until: row.banned_until ?? undefined,
+});
+
 const USERNAME_CACHE_TTL_MS = 60_000;
 const usernameCache = new Map<string, { username: string | null; expiresAt: number }>();
 
@@ -48,8 +82,74 @@ export const AuthRepository = {
         }
     },
 
-    async listUsers() {
-        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    /**
+     * List every auth user.
+     *
+     * Was `supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })`,
+     * which silently returned only the FIRST 1000 users — no error, no marker,
+     * just missing rows. Past that point a user simply stopped existing as far
+     * as the ~20 call sites that filter this list in memory were concerned:
+     * duplicate-email checks would pass wrongly, team lookups would find
+     * nobody, and role listings would come back short.
+     *
+     * Now one SQL query against auth.users, so the result is complete no matter
+     * how many users exist. Returns the same `{ data: { users }, error }` shape
+     * the Auth API produced, so no caller needed to change.
+     */
+    async listUsers(): Promise<{
+        data: { users: any[] };
+        error: { message: string } | null;
+    }> {
+        try {
+            const rows = await client<AuthUserRow[]>`
+                SELECT id, email, raw_user_meta_data, raw_app_meta_data,
+                       last_sign_in_at, created_at, updated_at, email_confirmed_at,
+                       phone, banned_until
+                FROM auth.users
+                ORDER BY created_at DESC
+            `;
+
+            return { data: { users: rows.map(toAuthUser) }, error: null };
+        } catch (err: any) {
+            console.error('❌ listUsers failed:', err.message);
+
+            // Callers destructure `data.users` directly, so an empty list is
+            // returned alongside the error rather than undefined.
+            return { data: { users: [] }, error: { message: err.message } };
+        }
+    },
+
+    /**
+     * Find one user by exact matches on user_metadata fields.
+     *
+     * Replaces the "list every user, then Array.find() in memory" pattern,
+     * which both capped at 1000 users and pulled the whole table across the
+     * wire to return a single row.
+     */
+    async findUserByMetadata(criteria: Record<string, string>): Promise<any | null> {
+        const entries = Object.entries(criteria).filter(([, value]) => value != null);
+
+        if (!entries.length) return null;
+
+        try {
+            // Build the metadata predicate as a single JSONB containment check,
+            // so the values stay parameterised rather than interpolated.
+            const match = Object.fromEntries(entries);
+
+            const rows = await client<AuthUserRow[]>`
+                SELECT id, email, raw_user_meta_data, raw_app_meta_data,
+                       last_sign_in_at, created_at, updated_at, email_confirmed_at,
+                       phone, banned_until
+                FROM auth.users
+                WHERE raw_user_meta_data @> ${JSON.stringify(match)}::jsonb
+                LIMIT 1
+            `;
+
+            return rows.length ? toAuthUser(rows[0]) : null;
+        } catch (err: any) {
+            console.error('❌ findUserByMetadata failed:', err.message);
+            return null;
+        }
     },
 
     async createUser(payload: any) {

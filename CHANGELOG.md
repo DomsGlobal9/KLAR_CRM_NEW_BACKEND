@@ -262,3 +262,56 @@ will enforce its own separate budget.
 enforcement, 429 shape, per-user isolation (the office-NAT case), `/health`
 exemption, standard headers, failed-vs-successful auth attempts, per-account
 isolation, email normalisation, and the no-email IP fallback.
+
+---
+
+## [1.6.0] — Remove the hardcoded user-count ceilings
+
+**Problem.** Every "list all users" path capped silently — no error, no marker,
+just missing rows. Past the cap a user simply stopped existing as far as the
+~20 call sites that filter this list in memory were concerned. Duplicate-email
+checks would pass wrongly, team-lead lookups would find nobody, round-robin lead
+assignment would ignore most staff, and role listings would come back short.
+
+Two different caps were in play:
+
+- `listUsers({ page: 1, perPage: 1000 })` in four repositories — capped at 1000.
+- **Bare `listUsers()`** in three more places — the Auth API default is **50**.
+
+**Changes.**
+
+| File | Was | Now |
+| --- | --- | --- |
+| `repositories/auth.repository.ts` | `listUsers()` capped at 1000 | One SQL query over `auth.users`, complete at any size |
+| `repositories/auth.repository.ts` | — | New `findUserByMetadata()` — filters in the database instead of listing everyone and calling `.find()` |
+| `repositories/teamMember.repository.ts` | capped at 1000; `findTLByTeam` scanned 1000 in memory | Delegates to `AuthRepository`; `findTLByTeam` filters in SQL |
+| `repositories/team.repository.ts` | capped at 1000 | Delegates to `AuthRepository` |
+| `repositories/user.repository.ts` | capped at 1000 | Delegates to `AuthRepository` |
+| `repositories/department.repository.ts` | **capped at 50** | Delegates to `AuthRepository` |
+| `repositories/teamLead.repository.ts` | **capped at 50** | Delegates to `AuthRepository` |
+| `services/lead.service.ts` | **capped at 50** — round-robin only saw 50 accounts | Delegates to `AuthRepository` |
+
+**Compatibility.** `listUsers()` returns the same `{ data: { users }, error }`
+shape the Auth API produced, and each user keeps `id`, `email`,
+`user_metadata`, `app_metadata`, `created_at`, `last_sign_in_at` and friends —
+so none of the ~20 call sites needed changing. `user_metadata` is always an
+object, never null, because callers read fields off it directly. On failure the
+user list is `[]` rather than undefined, alongside the error.
+
+**Performance note.** This is also faster: one query instead of up to 100 API
+round trips at 100k users.
+
+**Recommended index.** `findUserByMetadata()` uses JSONB containment. Add a GIN
+index if user counts grow large:
+
+```sql
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_auth_users_meta
+  ON auth.users USING gin (raw_user_meta_data jsonb_path_ops);
+```
+
+**Not changed.** `config/supabase.config.ts` still calls the Auth API inside a
+connection-test helper, but discards the result — it is a reachability probe,
+not a listing.
+
+**Tests.** 11 new, including the regression that matters: 2500 users are all
+returned where the old cap silently dropped everything past 1000.
