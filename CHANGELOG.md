@@ -106,3 +106,53 @@ and are now the shared default. Callers needing different options can pass them.
 must still close its page. Also covers browser reuse, concurrent first-call
 sharing, relaunch after crash, recovery from a failed launch, slot release on
 failure, and the concurrency gate.
+
+---
+
+## [1.3.0] — Process resilience: crash handling and real graceful shutdown
+
+**Problem.** `index.ts` had no `uncaughtException` or `unhandledRejection`
+handler, so any unhandled rejection anywhere in the app terminated the whole API
+with no diagnostic trail. `gracefulShutdown()` had an **empty body** — it closed
+the HTTP server but released no Postgres pool, no Mongo connections, and no
+Chromium process, then called `process.exit()`. Nothing logged on startup or
+shutdown, so failures were invisible.
+
+**Changes.**
+
+| File | Change |
+| --- | --- |
+| `lifecycle.ts` | **New.** Ordered shutdown (server → Chromium → Postgres → Mongo), isolated per step so one hung resource cannot strand the others. Signal handlers, a hard shutdown deadline, and a re-entry guard. Kept separate from `index.ts` so it is testable without binding a port. |
+| `index.ts` | Uses `registerProcessHandlers()`. Logs pid and port on startup. |
+| `config/mongodbDatabase.config.ts` | New `closeDB()` — Mongo connections were never closed. |
+| `ecosystem.config.js` | **New.** PM2 config with restart backoff, `min_uptime`, `max_memory_restart`, and a `kill_timeout` that exceeds the app's own shutdown deadline. |
+| `package.json` | `pm2:start` now uses the ecosystem file; added `pm2:reload` for zero-downtime reloads. |
+
+**Deliberate choice: `unhandledRejection` logs but does not exit.** Node's
+default is to terminate the process. For a CRM that must stay available, one
+request's forgotten `.catch()` should not sign every other user out. The
+trade-off is that these are real bugs and the log line is now the only thing
+surfacing them — watch for `[error] unhandledRejection` in `pm2 logs`.
+`uncaughtException` still shuts down and exits 1, because the process state is
+undefined at that point and a restart is the only safe response.
+
+**Cluster mode is NOT enabled — this is intentional.** `instances` is 1.
+Multi-instance would use all cores and is the next real capacity win, but two
+pieces of state prevent it today:
+
+1. `services/whatsapp.service.ts` uses `whatsapp-web.js` with `LocalAuth` on
+   `./whatsapp-session`. Two instances would fight over that directory and
+   corrupt the session.
+2. `services/teamMember.service.ts` holds `pendingMemberCreations` in an
+   in-process `Map`, invisible to other workers, so member invitations would
+   fail depending on which worker served the follow-up request.
+
+Both must move off local/in-process state before `instances` is raised.
+`ecosystem.config.js` documents this inline.
+
+**New environment variable.** `SHUTDOWN_TIMEOUT_MS` — how long to let in-flight
+requests drain, default `15000`. Keep PM2's `kill_timeout` above it.
+
+**Tests.** 8 new, covering close ordering, per-step failure isolation, exit-code
+propagation, the repeated-signal guard, and the guarantee that shutdown never
+rejects.
