@@ -315,3 +315,62 @@ not a listing.
 
 **Tests.** 11 new, including the regression that matters: 2500 users are all
 returned where the old cap silently dropped everything past 1000.
+
+---
+
+## [1.7.0] — Wire up cron jobs and the email reader (disabled by default)
+
+**Problem.** `cronService.initializeJobs()` was never called, and
+`startEmailReaderJob` was imported into `app.ts` but never invoked — the `if`
+block meant to start them was empty. Neither has ever run, in any environment.
+
+That was almost certainly an accident, but it is also the only reason the
+schedules never caused an incident. As written, `invoiceReminder` ran **every 30
+seconds** and, on each tick, scanned the invoice table and sent a WhatsApp
+message to every customer with an outstanding balance — roughly **2,880 messages
+per customer per day**. It would have read as spam and got the number banned.
+A second job messaged `WHATSAPP_NUMBER` every 30 seconds as a heartbeat.
+
+**Changes.**
+
+| File | Change |
+| --- | --- |
+| `config/cron.config.ts` | `invoiceReminder`: every 30 s → daily at 10:00. Heartbeat job: every 30 s → disabled outright. Added named `dailyNineAM` / `dailyTenAM` schedules. |
+| `services/cron.service.ts` | `executeJob` now **awaits** the task; added per-job overlap guard and real logging. |
+| `app.ts` | Cron jobs and the email reader are actually started — behind opt-in flags. |
+
+**`executeJob` never caught anything.** Every task in the registry is `async`,
+but the call was `config.task()` with no `await`. The function returned
+immediately, the `try/catch` wrapped nothing, and any rejection surfaced later
+as an unhandled rejection with no indication of which job caused it. Awaiting
+also serialises a job against itself, so a run that overruns its interval can no
+longer stack up concurrent copies.
+
+**⚠️ Both stay OFF by default.** Enabling them changes externally visible
+behaviour — the invoice job messages real customers. Turning it on must be a
+deliberate decision, not a side effect of deploying this patch:
+
+- `ENABLE_CRON_JOBS=true`
+- `ENABLE_EMAIL_READER=true`
+
+**Before setting `ENABLE_CRON_JOBS=true` in production:**
+
+1. Verify recipient logic against a test number first.
+2. Note that `processAllRestAmountInvoices()` does **not** check
+   `last_reminder_sent` before sending, so every run messages every matching
+   customer again. Daily is the floor, not a throttle — add that check if you
+   want real suppression.
+3. Both workers must stay single-owner. If the app is ever scaled past one
+   instance, every worker would run the same jobs and send duplicates. See the
+   note in `ecosystem.config.js`.
+
+**Tests.** 9 new. The important one is a guard asserting that **no enabled job
+uses a sub-minute schedule**, so the every-30-seconds mistake cannot silently
+return. Also covers cron-syntax validity, unique job names, the heartbeat
+staying disabled, async failures being caught, the overlap guard, and the lock
+being released after a failure.
+
+**Test infrastructure.** `nodemailer` is now stubbed suite-wide —
+`config/mail.config.ts` builds a transport and calls `verify()` at import time,
+so any test touching `../config` opened a real SMTP connection and produced a
+stray unhandled rejection that could mask genuine failures.

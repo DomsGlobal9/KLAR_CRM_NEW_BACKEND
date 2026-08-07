@@ -4,6 +4,9 @@ import { cronJobConfigs, CronJobConfig } from '../config';
 class CronService {
     private jobs: Map<string, ScheduledTask> = new Map();
 
+    /** Jobs currently mid-run, so a slow job cannot overlap itself. */
+    private running: Set<string> = new Set();
+
     /**
      * Initialize all cron jobs
      */
@@ -47,18 +50,35 @@ class CronService {
     }
 
     /**
-     * Execute a cron job with error handling
+     * Execute a cron job with error handling.
+     *
+     * Every task in the registry is async, but this used to call config.task()
+     * WITHOUT awaiting it. The try/catch therefore caught nothing — the
+     * function returned immediately and any rejection surfaced later as an
+     * unhandled rejection, with no indication of which job produced it.
+     *
+     * Awaiting also serialises a job against itself: a run that overruns its
+     * interval can no longer stack up concurrent copies.
      */
     private async executeJob(config: CronJobConfig): Promise<void> {
+        // Skip this tick if the previous run has not finished.
+        if (this.running.has(config.name)) {
+            console.warn(`[cron] ${config.name} still running, skipping this tick`);
+            return;
+        }
+
+        this.running.add(config.name);
+
         const startTime = Date.now();
 
-
         try {
-            config.task();
-            const duration = Date.now() - startTime;
+            await config.task();
 
-        } catch (error) {
-
+            console.log(`[cron] ${config.name} completed in ${Date.now() - startTime}ms`);
+        } catch (error: any) {
+            console.error(`[cron] ${config.name} failed:`, error?.stack ?? error);
+        } finally {
+            this.running.delete(config.name);
         }
     }
 

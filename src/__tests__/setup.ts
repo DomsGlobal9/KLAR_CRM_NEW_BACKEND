@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 /**
  * Test setup.
  *
@@ -52,3 +54,24 @@ for (const [key, value] of Object.entries(testEnv)) {
     // Never clobber a value the developer set deliberately.
     if (!process.env[key]) process.env[key] = value;
 }
+
+/**
+ * Block outbound mail.
+ *
+ * config/mail.config.ts builds a nodemailer transport at import time and calls
+ * verify() on it, which opens a real SMTP connection. Any test that imports
+ * anything from ../config pulls that in, producing a stray DNS failure that
+ * surfaces as an unhandled rejection and can mask genuine test errors.
+ *
+ * No unit test should perform network I/O, so the transport is stubbed here for
+ * the whole suite.
+ */
+vi.mock('nodemailer', () => ({
+    default: {
+        createTransport: () => ({
+            verify: async () => true,
+            sendMail: async () => ({ messageId: 'test-message-id' }),
+            close: () => undefined,
+        }),
+    },
+}));

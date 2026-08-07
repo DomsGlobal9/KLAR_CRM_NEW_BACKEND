@@ -44,8 +44,37 @@ app.get('/health', (_req, res) => {
   });
 });
 
+/**
+ * Background workers.
+ *
+ * Both of these were imported but never started — this `if` block was empty, so
+ * cron jobs and the IMAP email reader have never run in any environment.
+ *
+ * They are now wired up, but OFF by default. Enabling them changes externally
+ * visible behaviour (the invoice job sends WhatsApp messages to real
+ * customers), so it must be a deliberate decision rather than a side effect of
+ * deploying this patch. Set the flags once the schedules and recipient logic
+ * have been verified against a test number.
+ *
+ * Both must also stay single-owner: if the app is ever scaled beyond one
+ * instance, every worker would otherwise run the same jobs and send duplicate
+ * messages. See the note in ecosystem.config.js.
+ */
 if (envConfig.NODE_ENV !== 'test') {
-  
+  if (process.env.ENABLE_CRON_JOBS === 'true') {
+    cronService.initializeJobs();
+    console.log('[startup] cron jobs enabled');
+  } else {
+    console.log('[startup] cron jobs disabled (set ENABLE_CRON_JOBS=true to enable)');
+  }
+
+  if (process.env.ENABLE_EMAIL_READER === 'true') {
+    startEmailReaderJob()
+      .then(() => console.log('[startup] email reader started'))
+      .catch(err => console.error('[startup] email reader failed to start:', err?.message ?? err));
+  } else {
+    console.log('[startup] email reader disabled (set ENABLE_EMAIL_READER=true to enable)');
+  }
 }
 
 app.get('/api/v1/cron/status', (_req, res) => {
