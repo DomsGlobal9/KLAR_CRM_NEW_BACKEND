@@ -1,10 +1,12 @@
 {
   "name": "crm_for_klar_backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:auth-access": "ts-node --transpile-only scripts/verify-auth-access.ts",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --exec ts-node --transpile-only src/index.ts",
     "typecheck": "tsc --noEmit",

@@ -312,8 +312,14 @@ export const leadRepository = {
             throw new Error(`Failed to fetch leads: ${error.message}`);
         }
 
-        // Create an array to store the leads with usernames
-        const leadsWithUsernames = await Promise.all(data.map(async (row: any) => {
+        // Resolve every assigned_to username in ONE query instead of one lookup
+        // per lead. Previously this issued an HTTPS call to the Supabase Auth API
+        // for every row returned.
+        const assignedUsernames = await AuthRepository.getUsernamesByIds(
+            data.map((row: any) => row.assigned_to).filter(Boolean)
+        );
+
+        const leadsWithUsernames = data.map((row: any) => {
             const destination = row.to_location || row.destination;
 
             const {
@@ -327,11 +333,9 @@ export const leadRepository = {
             } = row;
 
             // Get username for assigned_to user if it exists
-            let assignedToUsername = null;
-            if (leadData.assigned_to) {
-                assignedToUsername = await AuthRepository.getUsernameById(leadData.assigned_to);
-
-            }
+            const assignedToUsername = leadData.assigned_to
+                ? assignedUsernames.get(leadData.assigned_to) ?? null
+                : null;
 
             const lead: Lead = {
                 id: leadData.id,
@@ -393,7 +397,7 @@ export const leadRepository = {
                     updated_at: leadData.updated_at
                 } : undefined
             };
-        }));
+        });
 
         return leadsWithUsernames as LeadWithRequirements[];
     },
@@ -452,20 +456,17 @@ export const leadRepository = {
 
         if (!data) return [];
 
-        const leadsWithUsernames = await Promise.all(
-            data.map(async (lead) => {
-                if (!lead.assigned_to) {
-                    return { ...lead, assigned_to: null };
-                }
-
-                const username = await AuthRepository.getUsernameById(lead.assigned_to);
-
-                return {
-                    ...lead,
-                    assigned_to: username,
-                };
-            })
+        // One batched lookup for the whole page instead of one call per lead.
+        const assignedUsernames = await AuthRepository.getUsernamesByIds(
+            data.map((lead) => lead.assigned_to).filter(Boolean)
         );
+
+        const leadsWithUsernames = data.map((lead) => ({
+            ...lead,
+            assigned_to: lead.assigned_to
+                ? assignedUsernames.get(lead.assigned_to) ?? null
+                : null,
+        }));
 
         return leadsWithUsernames;
     },

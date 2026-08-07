@@ -1,6 +1,52 @@
 import { supabase, supabaseAdmin } from '../config';
+import { client } from '../db/drizzle';
+
+/**
+ * Short-lived in-process cache for username lookups.
+ *
+ * Usernames change rarely, but they are read on every list request. Caching them
+ * removes the per-request lookup entirely. This is per-instance and will be
+ * replaced by a shared Redis cache when we scale out horizontally.
+ */
+const USERNAME_CACHE_TTL_MS = 60_000;
+const usernameCache = new Map<string, { username: string | null; expiresAt: number }>();
+
+const readUsernameCache = (userId: string): { hit: boolean; username: string | null } => {
+    const entry = usernameCache.get(userId);
+
+    if (!entry) return { hit: false, username: null };
+
+    if (entry.expiresAt < Date.now()) {
+        usernameCache.delete(userId);
+        return { hit: false, username: null };
+    }
+
+    return { hit: true, username: entry.username };
+};
+
+const writeUsernameCache = (userId: string, username: string | null): void => {
+    usernameCache.set(userId, {
+        username,
+        expiresAt: Date.now() + USERNAME_CACHE_TTL_MS,
+    });
+};
 
 export const AuthRepository = {
+
+    /**
+     * Drop cached usernames so the next read reflects updated metadata.
+     * Call this after any write that changes a user's username / full_name.
+     */
+    invalidateUsernameCache(userIds?: string | string[]): void {
+        if (!userIds) {
+            usernameCache.clear();
+            return;
+        }
+
+        for (const userId of Array.isArray(userIds) ? userIds : [userIds]) {
+            usernameCache.delete(userId);
+        }
+    },
 
     async listUsers() {
         return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -16,44 +62,41 @@ export const AuthRepository = {
         });
     },
     
+    /**
+     * Look up a user by email in a single indexed query.
+     *
+     * Previously walked the entire Auth user list 100 at a time until it found a
+     * match — at 100k users that is up to 1000 API calls for one lookup.
+     */
     async getUserByEmail(email: string) {
         try {
-            const normalizedEmail = email.toLowerCase();
+            if (!email) return { user: null, error: null };
 
-            let page = 1;
-            const perPage = 100;
-            let foundUser = null;
+            const rows = await client<{
+                id: string;
+                email: string | null;
+                raw_user_meta_data: Record<string, any> | null;
+            }[]>`
+                SELECT id, email, raw_user_meta_data
+                FROM auth.users
+                WHERE lower(email) = lower(${email})
+                LIMIT 1
+            `;
 
-            while (!foundUser) {
-                const { data, error } =
-                    await supabaseAdmin.auth.admin.listUsers({
-                        page,
-                        perPage
-                    });
+            if (!rows.length) return { user: null, error: null };
 
-                if (error) {
-                    return { user: null, error };
-                }
+            const row = rows[0];
 
-                // No more users → stop
-                if (!data || data.users.length === 0) break;
-
-                // Search in current batch
-                foundUser = data.users.find(
-                    (u: any) => u.email?.toLowerCase() === normalizedEmail
-                );
-
-                if (foundUser) {
-                    return { user: foundUser, error: null };
-                }
-
-                page++;
-            }
-
-            return { user: null, error: null };
+            return {
+                user: {
+                    id: row.id,
+                    email: row.email,
+                    user_metadata: row.raw_user_meta_data || {},
+                },
+                error: null,
+            };
 
         } catch (err: any) {
-
             return {
                 user: null,
                 error: { message: err.message || "Failed to fetch user" }
@@ -75,29 +118,17 @@ export const AuthRepository = {
     },
 
     /**
-     * Get username by user ID using direct SQL query
+     * Get username by user ID.
+     *
+     * Delegates to the batch lookup so a single call path is used everywhere and
+     * the result is cached. Prefer getUsernamesByIds() when resolving a list.
      */
     async getUsernameById(userId: string): Promise<string | null> {
-        try {
-            const { data, error } =
-                await supabaseAdmin.auth.admin.getUserById(userId);
+        if (!userId) return null;
 
-            if (error || !data?.user) {
+        const usernames = await this.getUsernamesByIds([userId]);
 
-                return null;
-            }
-
-            const meta = data.user.user_metadata;
-
-            return meta?.username || meta?.full_name || null;
-
-        } catch (error: any) {
-            console.error(
-                `❌ Exception in getUsernameById for user ${userId}:`,
-                error.message
-            );
-            return null;
-        }
+        return usernames.get(userId) ?? null;
     },
 
     /**
@@ -129,41 +160,64 @@ export const AuthRepository = {
 
 
     /**
-     * Get multiple usernames by IDs using direct SQL query (more efficient)
+     * Resolve many usernames in a single database round trip.
+     *
+     * Replaces the previous per-user call to supabaseAdmin.auth.admin.getUserById(),
+     * which issued one HTTPS request to the Supabase Auth API for every row in a
+     * list. Reads auth.users directly over the pooled Postgres connection.
+     */
+    async getUsernamesByIds(userIds: string[]): Promise<Map<string, string | null>> {
+        const userMap = new Map<string, string | null>();
+
+        if (!userIds?.length) return userMap;
+
+        // Dedupe, drop falsy ids, and serve whatever the cache already holds.
+        const missingIds: string[] = [];
+
+        for (const userId of new Set(userIds.filter(Boolean))) {
+            const cached = readUsernameCache(userId);
+
+            if (cached.hit) {
+                userMap.set(userId, cached.username);
+            } else {
+                missingIds.push(userId);
+            }
+        }
+
+        if (missingIds.length === 0) return userMap;
+
+        try {
+            const rows = await client<{ id: string; raw_user_meta_data: any }[]>`
+                SELECT id, raw_user_meta_data
+                FROM auth.users
+                WHERE id = ANY(${missingIds}::uuid[])
+            `;
+
+            for (const row of rows) {
+                const meta = row.raw_user_meta_data || {};
+                const username = meta.username || meta.full_name || null;
+
+                userMap.set(row.id, username);
+                writeUsernameCache(row.id, username);
+            }
+        } catch (error: any) {
+            console.error('❌ getUsernamesByIds failed:', error.message);
+            // Fall through: unresolved ids are returned as null, matching the
+            // previous behaviour when a lookup failed.
+        }
+
+        // Users that no longer exist (or failed to resolve) map to null.
+        for (const userId of missingIds) {
+            if (!userMap.has(userId)) userMap.set(userId, null);
+        }
+
+        return userMap;
+    },
+
+    /**
+     * @deprecated Use getUsernamesByIds(). Kept as an alias for existing callers.
      */
     async getUsernamesByIdsSql(userIds: string[]): Promise<Map<string, string | null>> {
-        try {
-            const { data, error } = await supabaseAdmin
-                .from('auth.users')
-                .select('id, raw_user_meta_data')
-                .in('id', userIds);
-
-            if (error) {
-
-                return new Map();
-            }
-
-            const userMap = new Map<string, string | null>();
-
-            if (data && Array.isArray(data)) {
-                data.forEach(user => {
-                    const username = user.raw_user_meta_data?.username || null;
-                    userMap.set(user.id, username);
-                });
-            }
-
-            // Handle any missing users
-            userIds.forEach(userId => {
-                if (!userMap.has(userId)) {
-                    userMap.set(userId, null);
-                }
-            });
-
-            return userMap;
-
-        } catch (error: any) {
-
-            return new Map();
-        }
+        return this.getUsernamesByIds(userIds);
     },
 };

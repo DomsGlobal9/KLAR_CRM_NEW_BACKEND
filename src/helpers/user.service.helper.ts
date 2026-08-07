@@ -1,5 +1,47 @@
 import { supabaseAdmin } from '../config';
 import { User } from '@supabase/supabase-js';
+import { client } from '../db/drizzle';
+
+/**
+ * Shape of an auth.users row as read over the direct Postgres connection.
+ */
+interface AuthUserRow {
+    id: string;
+    email: string | null;
+    raw_user_meta_data: Record<string, any> | null;
+    last_sign_in_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    email_confirmed_at: string | null;
+}
+
+/**
+ * Map a raw auth.users row into the same shape formatAuthUser() produces, so
+ * callers cannot tell whether the user came from the Auth API or from SQL.
+ */
+const formatAuthUserRow = (row: AuthUserRow) => {
+    const meta = row.raw_user_meta_data || {};
+
+    return {
+        id: row.id,
+        email: row.email ?? undefined,
+        username: meta.username,
+        role: meta.role ?? 'user',
+        status: meta.status ?? 'active',
+        full_name: meta.full_name,
+        phone: meta.phone,
+        profile_image_url: meta.profile_image_url,
+        assigned_under: meta.assigned_under,
+        department: meta.department,
+        notes: meta.notes,
+        assigned_leads_count: meta.assigned_leads_count ?? 0,
+        created_by: meta.created_by,
+        last_login_at: row.last_sign_in_at,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        email_confirmed_at: row.email_confirmed_at,
+    };
+};
 
 /**
  * Format Supabase auth user
@@ -41,61 +83,51 @@ export const getUserById = async (id: string) => {
 };
 
 /**
- * Get user by email
- * ⚠️ Supabase does NOT provide direct lookup → must paginate
+ * Get user by email.
+ *
+ * Previously paginated through the entire Auth user list (1 API call per 1000
+ * users, on every signup and password reset). Now a single indexed lookup.
  */
 export const getUserByEmail = async (email: string) => {
     try {
-        let page = 1;
-        const perPage = 1000;
+        if (!email) return null;
 
-        while (true) {
-            const { data, error } =
-                await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        const rows = await client<AuthUserRow[]>`
+            SELECT id, email, raw_user_meta_data,
+                   last_sign_in_at, created_at, updated_at, email_confirmed_at
+            FROM auth.users
+            WHERE lower(email) = lower(${email})
+            LIMIT 1
+        `;
 
-            if (error) return null;
-
-            const user = data.users.find(u => u.email === email);
-            if (user) return formatAuthUser(user);
-
-            if (data.users.length < perPage) break;
-            page++;
-        }
-
-        return null;
-    } catch (err) {
-
+        return rows.length ? formatAuthUserRow(rows[0]) : null;
+    } catch (err: any) {
+        console.error('❌ getUserByEmail failed:', err.message);
         return null;
     }
 };
 
 /**
- * Get user by username (from user_metadata)
+ * Get user by username (from user_metadata).
+ *
+ * Previously paginated through the entire Auth user list. Now a single query
+ * against the JSONB metadata. See note below about the supporting index.
  */
 export const getUserByUsername = async (username: string) => {
     try {
-        let page = 1;
-        const perPage = 1000;
+        if (!username) return null;
 
-        while (true) {
-            const { data, error } =
-                await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        const rows = await client<AuthUserRow[]>`
+            SELECT id, email, raw_user_meta_data,
+                   last_sign_in_at, created_at, updated_at, email_confirmed_at
+            FROM auth.users
+            WHERE raw_user_meta_data ->> 'username' = ${username}
+            LIMIT 1
+        `;
 
-            if (error) return null;
-
-            const user = data.users.find(
-                u => u.user_metadata?.username === username
-            );
-
-            if (user) return formatAuthUser(user);
-
-            if (data.users.length < perPage) break;
-            page++;
-        }
-
-        return null;
-    } catch (err) {
-
+        return rows.length ? formatAuthUserRow(rows[0]) : null;
+    } catch (err: any) {
+        console.error('❌ getUserByUsername failed:', err.message);
         return null;
     }
 };

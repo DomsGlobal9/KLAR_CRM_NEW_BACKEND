@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AuthRequest } from '../middleware';
+import { AuthRequest, invalidateToken } from '../middleware';
 import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
 import { AuthRepository, roleRepository } from '../repositories';
@@ -121,6 +121,11 @@ export const authController = {
             }
 
             await AuthService.logout(userId);
+
+            // Drop the cached verification so the token stops being accepted
+            // immediately rather than at the end of the cache window.
+            const token = req.headers.authorization?.split(' ')[1];
+            if (token) invalidateToken(token);
 
             await createAuditLog({
                 user_id: userId,
