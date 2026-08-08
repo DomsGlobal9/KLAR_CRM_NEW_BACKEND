@@ -191,9 +191,15 @@ export const quotePdfService = {
                             </tr>
                         </thead>
                         <tbody>
+                            {{#if service_type}}
+                            <tr>
+                                <td>Service Type</td>
+                                <td>{{service_type}}</td>
+                            </tr>
+                            {{/if}}
                             {{#if description}}
                             <tr>
-                                <td>Flight Details</td>
+                                <td>Description</td>
                                 <td>{{description}}</td>
                             </tr>
                             {{/if}}
@@ -209,14 +215,12 @@ export const quotePdfService = {
                                 <td>{{preferences.arrival_city}}</td>
                             </tr>
                             {{/if}}
-                            {{#unless preferences.departure_city}}
                             {{#if preferences.route}}
                             <tr>
                                 <td>Route</td>
                                 <td>{{preferences.route}}</td>
                             </tr>
                             {{/if}}
-                            {{/unless}}
                             {{#if preferences.departure_date}}
                             <tr>
                                 <td>Departure Date</td>
@@ -229,10 +233,34 @@ export const quotePdfService = {
                                 <td>{{formatDocDate preferences.arrival_date}}</td>
                             </tr>
                             {{/if}}
-                            {{#if preferences.flight_number}}
+                            {{#if preferences.airline}}
                             <tr>
-                                <td>Flight Number</td>
-                                <td>{{preferences.flight_number}}</td>
+                                <td>Airline</td>
+                                <td>{{preferences.airline}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.trip_type}}
+                            <tr>
+                                <td>Trip Type</td>
+                                <td>{{preferences.trip_type}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.cabin_class}}
+                            <tr>
+                                <td>Cabin Class</td>
+                                <td>{{preferences.cabin_class}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.fare_type}}
+                            <tr>
+                                <td>Fare Type</td>
+                                <td>{{preferences.fare_type}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.notes}}
+                            <tr>
+                                <td>Notes</td>
+                                <td>{{preferences.notes}}</td>
                             </tr>
                             {{/if}}
                         </tbody>
@@ -245,16 +273,34 @@ export const quotePdfService = {
                                 <td>₹{{formatCurrency preferences.estimated_price_per_person}}</td>
                             </tr>
                             {{/if}}
-                            {{#if estimated_price}}
+                            {{#if preferences.estimated_price}}
                             <tr>
                                 <td>Estimated Price</td>
-                                <td>₹{{formatCurrency estimated_price}}</td>
+                                <td>₹{{formatCurrency preferences.estimated_price}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.price}}
+                            <tr>
+                                <td>Price</td>
+                                <td>₹{{formatCurrency preferences.price}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.total}}
+                            <tr>
+                                <td>Total</td>
+                                <td>₹{{formatCurrency preferences.total}}</td>
                             </tr>
                             {{/if}}
                             {{#if preferences.currency}}
                             <tr>
                                 <td>Currency</td>
                                 <td>{{preferences.currency}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if preferences.baseFare}}
+                            <tr>
+                                <td>Base Fare</td>
+                                <td>₹{{formatCurrency preferences.baseFare}}</td>
                             </tr>
                             {{/if}}
                         </tbody>
