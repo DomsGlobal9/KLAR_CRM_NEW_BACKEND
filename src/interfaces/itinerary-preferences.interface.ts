@@ -15,7 +15,7 @@ export interface IFlightPreference {
     notes?: string;
 
     // NEW FIELDS - Add these
-    trip_type?: 'one-way' | 'return' | 'multi-city' ;
+    trip_type?: 'one-way' | 'return' | 'multi-city';
     departure_city?: string;
     arrival_city?: string;
     departure_date?: string;

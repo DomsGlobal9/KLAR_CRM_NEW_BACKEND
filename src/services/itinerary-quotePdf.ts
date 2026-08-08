@@ -463,6 +463,20 @@ export const travelDocumentService = {
             });
         }
 
+        if (!handlebars.helpers['getFlightTime']) {
+            handlebars.registerHelper('getFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.flight_time || item.departure_arrival_time || item.preferences?.flight_time || item.preferences?.departure_arrival_time || item.preferences?.flightTime || item.preferences?.departureArrivalTime || '';
+            });
+        }
+
+        if (!handlebars.helpers['getReturnFlightTime']) {
+            handlebars.registerHelper('getReturnFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.return_flight_time || item.preferences?.return_flight_time || item.preferences?.returnFlightTime || '';
+            });
+        }
+
         const templateHtml = `
         <!DOCTYPE html>
         <html>
@@ -643,7 +657,13 @@ export const travelDocumentService = {
                             <div><span class="field-label">Cabin Class:</span><span class="field-value" style="text-transform: capitalize;">{{preferences.cabin_class}}</span></div>
                             <div><span class="field-label">Fare Type:</span><span class="field-value" style="text-transform: capitalize;">{{preferences.fare_type}}</span></div>
                             <div><span class="field-label">Departure Date:</span><span class="field-value">{{preferences.departure_date}}</span></div>
+                            {{#if (getFlightTime this)}}
+                            <div><span class="field-label">Flight Time (Takeoff):</span><span class="field-value">{{getFlightTime this}}</span></div>
+                            {{/if}}
                             <div><span class="field-label">Arrival Date:</span><span class="field-value">{{preferences.arrival_date}}</span></div>
+                            {{#if (getReturnFlightTime this)}}
+                            <div><span class="field-label">Return Flight Time:</span><span class="field-value">{{getReturnFlightTime this}}</span></div>
+                            {{/if}}
                         {{/if}}
 
                         {{#if (eq service_type "HOTELS")}}

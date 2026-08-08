@@ -34,6 +34,20 @@ export const itineraryPdfService = {
             return array.join(', ');
         });
 
+        if (!handlebars.helpers['getFlightTime']) {
+            handlebars.registerHelper('getFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.flight_time || item.departure_arrival_time || item.preferences?.flight_time || item.preferences?.departure_arrival_time || item.preferences?.flightTime || item.preferences?.departureArrivalTime || '';
+            });
+        }
+
+        if (!handlebars.helpers['getReturnFlightTime']) {
+            handlebars.registerHelper('getReturnFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.return_flight_time || item.preferences?.return_flight_time || item.preferences?.returnFlightTime || '';
+            });
+        }
+
         const templateHtml = `
         <!DOCTYPE html>
         <html>
@@ -413,12 +427,16 @@ export const itineraryPdfService = {
                                     <td><span class="label">Route:</span> <span class="value">{{preferences.route}}</span></td>
                                 </tr>
                                 <tr>
-                                    <td><span class="label">Travel Date:</span> <span class="value">{{preferences.date}}</span></td>
-                                    <td><span class="label">Cabin Class:</span> <span class="value">{{preferences.cabin_class}}</span></td>
+                                    <td><span class="label">Departure Date:</span> <span class="value">{{#if preferences.departure_date}}{{preferences.departure_date}}{{else}}{{preferences.date}}{{/if}}</span></td>
+                                    <td><span class="label">Flight Time (Takeoff):</span> <span class="value">{{#if (getFlightTime this)}}{{getFlightTime this}}{{else}}N/A{{/if}}</span></td>
                                 </tr>
                                 <tr>
+                                    <td><span class="label">Cabin Class:</span> <span class="value">{{preferences.cabin_class}}</span></td>
                                     <td><span class="label">Fare Type:</span> <span class="value">{{preferences.fare_type}}</span></td>
+                                </tr>
+                                <tr>
                                     <td><span class="label">Est. Price (Pax):</span> <span class="value">₹{{preferences.estimated_price_per_person}}</span></td>
+                                    <td>{{#if (getReturnFlightTime this)}}<span class="label">Return Flight Time:</span> <span class="value">{{getReturnFlightTime this}}</span>{{/if}}</td>
                                 </tr>
                             {{/if}}
 

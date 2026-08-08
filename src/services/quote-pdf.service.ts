@@ -72,6 +72,20 @@ export const quotePdfService = {
             });
         }
 
+        if (!handlebars.helpers['getFlightTime']) {
+            handlebars.registerHelper('getFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.flight_time || item.departure_arrival_time || item.preferences?.flight_time || item.preferences?.departure_arrival_time || item.preferences?.flightTime || item.preferences?.departureArrivalTime || '';
+            });
+        }
+
+        if (!handlebars.helpers['getReturnFlightTime']) {
+            handlebars.registerHelper('getReturnFlightTime', (item: any) => {
+                if (!item) return '';
+                return item.return_flight_time || item.preferences?.return_flight_time || item.preferences?.returnFlightTime || '';
+            });
+        }
+
         const templateHtml = `
         <!DOCTYPE html>
         <html>
@@ -223,10 +237,22 @@ export const quotePdfService = {
                                 <td>{{formatDocDate preferences.departure_date}}</td>
                             </tr>
                             {{/if}}
+                            {{#if (getFlightTime this)}}
+                            <tr>
+                                <td>Flight Time (Takeoff)</td>
+                                <td>{{getFlightTime this}}</td>
+                            </tr>
+                            {{/if}}
                             {{#if preferences.arrival_date}}
                             <tr>
                                 <td>Arrival Date</td>
                                 <td>{{formatDocDate preferences.arrival_date}}</td>
+                            </tr>
+                            {{/if}}
+                            {{#if (getReturnFlightTime this)}}
+                            <tr>
+                                <td>Return Flight Time</td>
+                                <td>{{getReturnFlightTime this}}</td>
                             </tr>
                             {{/if}}
                             {{#if preferences.flight_number}}
