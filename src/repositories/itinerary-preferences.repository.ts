@@ -531,7 +531,9 @@ export const itineraryPreferencesRepository = {
                 cabin_class: flight.cabinClass || '',
                 estimated_price_per_person: flight.estimatedPricePerPerson ?
                     parseFloat(flight.estimatedPricePerPerson) : 0,
-                departure_arrival_time: flight.departureArrivalTime || '',
+                departure_arrival_time: flight.flightTime || flight.departureArrivalTime || flight.flight_time || '',
+                flight_time: flight.flightTime || flight.flight_time || flight.departureArrivalTime || '',
+                return_flight_time: flight.returnFlightTime || flight.return_flight_time || '',
                 fare_type: flight.fareType || '',
                 preferred_time_slot: flight.preferredTimeSlot || '',
                 better_connection_duration: flight.betterConnectionDuration || '',
@@ -544,7 +546,11 @@ export const itineraryPreferencesRepository = {
                 arrival_date: flight.arrivalDate || null,
                 return_departure_date: flight.returnDepartureDate || null,
                 return_arrival_date: flight.returnArrivalDate || null,
-                segments: flight.segments || [],
+                segments: (flight.segments || []).map((seg: any) => ({
+                    ...seg,
+                    departure_arrival_time: seg.flightTime || seg.departureArrivalTime || seg.flight_time || '',
+                    flight_time: seg.flightTime || seg.flight_time || seg.departureArrivalTime || '',
+                })),
                 estimated_total_price: flight.estimatedPricePerPerson ? parseFloat(flight.estimatedPricePerPerson) : 0,
                 currency: 'INR',
                 status: 'draft',
@@ -1514,6 +1520,9 @@ export const itineraryPreferencesRepository = {
             description?: string;
             estimated_price?: number;
             currency?: string;
+            flight_time?: string | null;
+            return_flight_time?: string | null;
+            departure_arrival_time?: string | null;
             preferences: Record<string, any>;
             is_active?: boolean;
             metadata?: Record<string, any>;
@@ -1545,6 +1554,9 @@ export const itineraryPreferencesRepository = {
             description?: string;
             estimated_price?: number;
             currency?: string;
+            flight_time?: string | null;
+            return_flight_time?: string | null;
+            departure_arrival_time?: string | null;
             preferences: Record<string, any>;
             is_active?: boolean;
             metadata?: Record<string, any>;
@@ -1552,6 +1564,9 @@ export const itineraryPreferencesRepository = {
 
         if (flightOptions.length > 0) {
             flightOptions.forEach((flight: any, index: number) => {
+                const mainFlightTime = flight.flightTime || flight.departureArrivalTime || flight.flight_time || '';
+                const mainReturnFlightTime = flight.returnFlightTime || flight.return_flight_time || '';
+
                 // Build preferences object based on trip type
                 let preferences: Record<string, any> = {
                     airline: flight.airline || '',
@@ -1560,6 +1575,9 @@ export const itineraryPreferencesRepository = {
                     estimated_price_per_person: flight.estimatedPricePerPerson ? parseFloat(flight.estimatedPricePerPerson) : 0,
                     currency: 'INR',
                     flexible_schedule: Boolean(flight.flexibleSchedule),
+                    flight_time: mainFlightTime,
+                    departure_arrival_time: mainFlightTime,
+                    return_flight_time: mainReturnFlightTime,
                     notes: ''
                 };
 
@@ -1572,6 +1590,8 @@ export const itineraryPreferencesRepository = {
                         arrival_city: flight.arrivalCity || '',
                         departure_date: flight.departureDate || '',
                         arrival_date: flight.arrivalDate || '',
+                        flight_time: mainFlightTime,
+                        departure_arrival_time: mainFlightTime,
                         route: `${flight.departureCity || ''} to ${flight.arrivalCity || ''}`
                     };
                 }
@@ -1585,16 +1605,24 @@ export const itineraryPreferencesRepository = {
                         arrival_date: flight.arrivalDate || '',
                         return_departure_date: flight.returnDepartureDate || '',
                         return_arrival_date: flight.returnArrivalDate || '',
+                        flight_time: mainFlightTime,
+                        departure_arrival_time: mainFlightTime,
+                        return_flight_time: mainReturnFlightTime,
                         route: `${flight.departureCity || ''} to ${flight.arrivalCity || ''} (Return)`
                     };
                 }
                 else if (flight.tripType === 'multi-city') {
+                    const formattedSegments = (flight.segments || []).map((seg: any) => ({
+                        ...seg,
+                        departure_arrival_time: seg.flightTime || seg.departureArrivalTime || seg.flight_time || '',
+                        flight_time: seg.flightTime || seg.flight_time || seg.departureArrivalTime || '',
+                    }));
                     preferences = {
                         ...preferences,
                         trip_type: 'multi-city',
-                        segments: flight.segments || [],
-                        total_segments: flight.segments?.length || 0,
-                        route: flight.segments?.map((s: any) => `${s.departureCity}→${s.arrivalCity}`).join(' | ') || ''
+                        segments: formattedSegments,
+                        total_segments: formattedSegments.length,
+                        route: formattedSegments.map((s: any) => `${s.departureCity}→${s.arrivalCity}`).join(' | ') || ''
                     };
                 }
 
@@ -1608,13 +1636,16 @@ export const itineraryPreferencesRepository = {
                         : `${flight.departureCity || 'N/A'} to ${flight.arrivalCity || 'N/A'} | Cabin: ${flight.cabinClass || 'N/A'}`,
                     estimated_price: flight.estimatedPricePerPerson ? parseFloat(flight.estimatedPricePerPerson) : 0,
                     currency: 'INR',
+                    flight_time: mainFlightTime || null,
+                    return_flight_time: mainReturnFlightTime || null,
+                    departure_arrival_time: mainFlightTime || null,
                     preferences: preferences,
                     is_active: true,
                     metadata: {
                         source: 'frontend_form',
+                        trip_type: flight.tripType || 'one-way',
                         imported_at: new Date().toISOString(),
-                        frontend_option_id: flight.id,
-                        trip_type: flight.tripType || 'one-way'
+                        frontend_option_id: flight.id
                     }
                 });
             });
@@ -2041,6 +2072,9 @@ export const itineraryPreferencesRepository = {
                     arrival_date: sp.preferences.arrival_date,
                     return_departure_date: sp.preferences.return_departure_date,
                     return_arrival_date: sp.preferences.return_arrival_date,
+                    departure_arrival_time: sp.preferences.flight_time || sp.preferences.departure_arrival_time || '',
+                    flight_time: sp.preferences.flight_time || sp.preferences.departure_arrival_time || '',
+                    return_flight_time: sp.preferences.return_flight_time || '',
                     segments: sp.preferences.segments || [],
                     cabin_class: sp.preferences.cabin_class,
                     fare_type: sp.preferences.fare_type,
@@ -2110,11 +2144,14 @@ export const itineraryPreferencesRepository = {
             // Insert service preferences with the itinerary_id
             let savedServicePreferences: any[] = [];
             if (servicePreferences.length > 0) {
-                const servicePrefsToInsert = servicePreferences.map((pref, index) => ({
+                const servicePrefsToInsert = servicePreferences.map((pref: any, index: number) => ({
                     ...pref,
                     lead_id: leadId,
                     itinerary_id: itineraryId,
                     preference_order: pref.preference_order || index + 1,
+                    flight_time: pref.flight_time || pref.preferences?.flight_time || pref.preferences?.departure_arrival_time || null,
+                    return_flight_time: pref.return_flight_time || pref.preferences?.return_flight_time || null,
+                    departure_arrival_time: pref.departure_arrival_time || pref.preferences?.departure_arrival_time || pref.preferences?.flight_time || null,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }));
