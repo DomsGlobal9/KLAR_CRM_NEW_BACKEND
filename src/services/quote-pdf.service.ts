@@ -32,21 +32,31 @@ export const quotePdfService = {
         const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
         const logoHtmlTag = `<img src="${hostedLogoUrl}" style="max-height: 60px; display: block;" alt="KLAR TRAVELS" />`;
 
+        const formatDocDateValue = (dateStr: string) => {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            } catch {
+                return dateStr;
+            }
+        };
+
+        const formatCurrencyValue = (amount: any) => {
+            if (amount === undefined || amount === null || amount === '') return '0.00';
+            return new Intl.NumberFormat('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(Number(amount));
+        };
+
         // Register date formatter helper
         if (!handlebars.helpers['formatDocDate']) {
-            handlebars.registerHelper('formatDocDate', (dateStr: string) => {
-                if (!dateStr) return 'N/A';
-                try {
-                    const date = new Date(dateStr);
-                    return date.toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                    });
-                } catch (e) {
-                    return dateStr;
-                }
-            });
+            handlebars.registerHelper('formatDocDate', (dateStr: string) => formatDocDateValue(dateStr));
         }
 
         // Register currency formatter helper
@@ -83,6 +93,117 @@ export const quotePdfService = {
             handlebars.registerHelper('getReturnFlightTime', (item: any) => {
                 if (!item) return '';
                 return item.return_flight_time || item.preferences?.return_flight_time || item.preferences?.returnFlightTime || '';
+            });
+        }
+
+        if (!handlebars.helpers['renderServicePreferences']) {
+            const formatKeyLabel = (key: string) => {
+                if (!key) return '';
+                const cleaned = key
+                    .replace(/_/g, ' ')
+                    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                return cleaned
+                    .split(' ')
+                    .map(part => part.toLowerCase())
+                    .map(part => part === 'id' || part === 'gst' ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1))
+                    .join(' ');
+            };
+
+            const formatValue = (key: string, value: any): string => {
+                if (value === undefined || value === null || value === '') return '';
+
+                const lowerKey = key.toLowerCase();
+                if (Array.isArray(value)) {
+                    return value
+                        .filter(v => v !== undefined && v !== null && v !== '')
+                        .map(v => typeof v === 'object' ? JSON.stringify(v) : String(v))
+                        .join(', ');
+                }
+
+                if (typeof value === 'object') {
+                    return Object.entries(value)
+                        .filter(([, val]) => val !== undefined && val !== null && val !== '')
+                        .map(([childKey, childValue]: [string, any]): string => `${formatKeyLabel(childKey)}: ${formatValue(childKey, childValue)}`)
+                        .join(', ');
+                }
+
+                if (lowerKey.includes('date')) {
+                    try {
+                        return formatDocDateValue(String(value));
+                    } catch {
+                        return String(value);
+                    }
+                }
+
+                if (['amount', 'price', 'fare', 'cost', 'total'].some(term => lowerKey.includes(term)) && !Number.isNaN(Number(value))) {
+                    return `₹${new Intl.NumberFormat('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }).format(Number(value))}`;
+                }
+
+                return String(value);
+            };
+
+            const isEmptyValue = (value: any) => {
+                if (value === undefined || value === null || value === '') return true;
+                if (Array.isArray(value)) return value.length === 0;
+                if (typeof value === 'object') return Object.keys(value).length === 0;
+                return false;
+            };
+
+            handlebars.registerHelper('renderServicePreferences', (item: any) => {
+                const rows: string[] = [];
+                const addRow = (label: string, value: any) => {
+                    if (isEmptyValue(value)) return;
+                    rows.push(`
+                        <tr>
+                            <td>${label}</td>
+                            <td>${formatValue(label, value)}</td>
+                        </tr>`);
+                };
+
+                if (item?.service_type) {
+                    addRow('Service Type', item.service_type);
+                }
+                if (item?.description) {
+                    addRow('Description', item.description);
+                }
+
+                const preferences = item?.preferences;
+                if (preferences && typeof preferences === 'object') {
+                    for (const [key, value] of Object.entries(preferences)) {
+                        addRow(formatKeyLabel(key), value);
+                    }
+                }
+
+                const topLevelExcluded = new Set(['id', 'lead_id', 'preference_order', 'created_at', 'updated_at', 'service_type', 'description', 'title', 'preferences']);
+                for (const [key, value] of Object.entries(item ?? {})) {
+                    if (topLevelExcluded.has(key)) continue;
+                    addRow(formatKeyLabel(key), value);
+                }
+
+                if (rows.length === 0) {
+                    rows.push(`
+                        <tr>
+                            <td colspan="2">No service preference details available.</td>
+                        </tr>`);
+                }
+
+                const tableHeader = item?.title ? item.title : (item?.service_type ? item.service_type : 'Service Preferences');
+                return new handlebars.SafeString(`
+                    <table class="preference-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2">${tableHeader}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.join('')}
+                        </tbody>
+                    </table>`);
             });
         }
 
@@ -198,133 +319,7 @@ export const quotePdfService = {
                 <div class="details-box">
                     <div style="font-size: 10pt; font-weight: 700; margin-bottom: 10px; color: #4b0082;">Itinerary Preference Details</div>
                     {{#each service_preferences}}
-                    <table class="preference-table">
-                        <thead>
-                            <tr>
-                                <th colspan="2">{{title}}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{#if service_type}}
-                            <tr>
-                                <td>Service Type</td>
-                                <td>{{service_type}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if description}}
-                            <tr>
-                                <td>Description</td>
-                                <td>{{description}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.departure_city}}
-                            <tr>
-                                <td>From</td>
-                                <td>{{preferences.departure_city}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.arrival_city}}
-                            <tr>
-                                <td>To</td>
-                                <td>{{preferences.arrival_city}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.route}}
-                            <tr>
-                                <td>Route</td>
-                                <td>{{preferences.route}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.departure_date}}
-                            <tr>
-                                <td>Departure Date</td>
-                                <td>{{formatDocDate preferences.departure_date}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if (getFlightTime this)}}
-                            <tr>
-                                <td>Flight Time (Takeoff)</td>
-                                <td>{{getFlightTime this}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.arrival_date}}
-                            <tr>
-                                <td>Arrival Date</td>
-                                <td>{{formatDocDate preferences.arrival_date}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.airline}}
-                            <tr>
-                                <td>Airline</td>
-                                <td>{{preferences.airline}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.trip_type}}
-                            <tr>
-                                <td>Trip Type</td>
-                                <td>{{preferences.trip_type}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.cabin_class}}
-                            <tr>
-                                <td>Cabin Class</td>
-                                <td>{{preferences.cabin_class}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.fare_type}}
-                            <tr>
-                                <td>Fare Type</td>
-                                <td>{{preferences.fare_type}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.notes}}
-                            <tr>
-                                <td>Notes</td>
-                                <td>{{preferences.notes}}</td>
-                            </tr>
-                            {{/if}}
-                        </tbody>
-                    </table>
-                    <table class="preference-table" style="margin-top: 8px;">
-                        <tbody>
-                            {{#if preferences.estimated_price_per_person}}
-                            <tr>
-                                <td>Price per Person</td>
-                                <td>₹{{formatCurrency preferences.estimated_price_per_person}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.estimated_price}}
-                            <tr>
-                                <td>Estimated Price</td>
-                                <td>₹{{formatCurrency preferences.estimated_price}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.price}}
-                            <tr>
-                                <td>Price</td>
-                                <td>₹{{formatCurrency preferences.price}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.total}}
-                            <tr>
-                                <td>Total</td>
-                                <td>₹{{formatCurrency preferences.total}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.currency}}
-                            <tr>
-                                <td>Currency</td>
-                                <td>{{preferences.currency}}</td>
-                            </tr>
-                            {{/if}}
-                            {{#if preferences.baseFare}}
-                            <tr>
-                                <td>Base Fare</td>
-                                <td>₹{{formatCurrency preferences.baseFare}}</td>
-                            </tr>
-                            {{/if}}
-                        </tbody>
-                    </table>
+                        {{{renderServicePreferences this}}}
                     {{/each}}
                 </div>
                 {{/if}}
