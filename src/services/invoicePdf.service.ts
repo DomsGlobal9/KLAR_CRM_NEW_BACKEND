@@ -32,7 +32,7 @@ function numberToINRWords(amount: number): string {
 
 export const pdfService = {
     async generateInvoiceHTML(invoice: any, forEmail: boolean = false): Promise<string> {
-        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame 1000007152 2.png';
+        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
 
         let logoSrc = '';
         if (forEmail) {

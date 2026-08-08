@@ -14,7 +14,7 @@ export const itineraryPdfService = {
         if (!normalizedData) {
             throw new Error("Template engine context structure cannot be blank.");
         }
-        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
+        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
 
         let logoSrc = '';
         if (forEmail) {
