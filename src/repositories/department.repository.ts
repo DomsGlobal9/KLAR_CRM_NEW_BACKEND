@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 import { Department, EnrichedAdmin, EnrichedTeam, EnrichedService } from '../interfaces/department.interface';
 
 export const departmentRepository = {
@@ -121,7 +122,10 @@ export const departmentRepository = {
         if (!adminIds || adminIds.length === 0) return [];
 
         try {
-            const { data: usersList, error } = await supabaseAdmin.auth.admin.listUsers();
+            // Reads auth.users directly. The bare Auth API call this replaced
+            // defaulted to just 50 users per page, so admins beyond the first 50
+            // silently failed to resolve.
+            const { data: usersList, error } = await AuthRepository.listUsers();
             if (error) {
                 console.error("Error fetching users from Supabase Auth:", error);
                 return [];

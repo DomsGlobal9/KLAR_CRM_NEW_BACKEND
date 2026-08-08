@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 import { User } from '../models/user.model';
 
 export const userRepository = {
@@ -34,11 +35,13 @@ export const userRepository = {
     },
 
     /**
-     * List all users
-     * @returns 
+     * List all users.
+     *
+     * Delegates to AuthRepository.listUsers(), which reads auth.users directly.
+     * The previous Auth API call silently capped at the first 1000 users.
      */
     async listUsers() {
-        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        return AuthRepository.listUsers();
     },
 
     /**

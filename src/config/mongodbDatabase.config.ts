@@ -59,4 +59,23 @@ export const getDB = (name: string): mongoose.Connection => {
   return connection;
 };
 
+/**
+ * Close every Mongo connection. Used during graceful shutdown so in-flight
+ * operations finish and sockets are released rather than being severed when the
+ * process exits.
+ */
+export const closeDB = async (): Promise<void> => {
+  await Promise.all(
+    Object.entries(connections).map(async ([name, conn]) => {
+      try {
+        await conn.close();
+      } catch (err: any) {
+        console.error(`Error closing MongoDB [${name}]:`, err.message);
+      }
+    })
+  );
+
+  for (const name of Object.keys(connections)) delete connections[name];
+};
+
 export default connectDB;

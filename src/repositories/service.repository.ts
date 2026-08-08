@@ -17,7 +17,90 @@ import {
     ISubServiceFilter
 } from '../interfaces/service.interface';
 
+/**
+ * Load the sub-category (and optionally sub-service) tree for many services at
+ * once, grouped by service id.
+ *
+ * The callers below used to loop: one categories query per service, and inside
+ * that, one sub-services query per category — N + N×M round trips to build a
+ * single response. This does it in at most two queries regardless of how many
+ * services are involved, then groups the rows in memory.
+ *
+ * Filtering (`is_active`) and ordering (`display_order` ascending) match the
+ * original per-service queries exactly, so response content is unchanged.
+ */
+const fetchCategoryTreeByServiceIds = async (
+    serviceIds: string[],
+    includeSubServices: boolean
+): Promise<Map<string, ISubServiceCategoryWithRelations[]>> => {
+    const grouped = new Map<string, ISubServiceCategoryWithRelations[]>();
+
+    if (!serviceIds.length) return grouped;
+
+    // Query 1: every category belonging to any of these services.
+    const { data: categories } = await supabaseAdmin
+        .from('sub_service_categories')
+        .select('*')
+        .in('service_id', serviceIds)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+    if (!categories?.length) return grouped;
+
+    // Query 2 (optional): every sub-service belonging to any of those
+    // categories, bucketed by category id.
+    const subServicesByCategory = new Map<string, ISubService[]>();
+
+    if (includeSubServices) {
+        const { data: subServices } = await supabaseAdmin
+            .from('sub_services')
+            .select('*')
+            .in('sub_service_category_id', categories.map(c => c.id))
+            .eq('is_active', true)
+            .order('display_order', { ascending: true });
+
+        for (const subService of subServices || []) {
+            const bucket = subServicesByCategory.get(subService.sub_service_category_id);
+
+            if (bucket) {
+                bucket.push(subService);
+            } else {
+                subServicesByCategory.set(subService.sub_service_category_id, [subService]);
+            }
+        }
+    }
+
+    for (const category of categories) {
+        const withSubServices = {
+            ...category,
+            sub_services: subServicesByCategory.get(category.id) || [],
+        } as ISubServiceCategoryWithRelations;
+
+        const bucket = grouped.get(category.service_id);
+
+        if (bucket) {
+            bucket.push(withSubServices);
+        } else {
+            grouped.set(category.service_id, [withSubServices]);
+        }
+    }
+
+    return grouped;
+};
+
 export const serviceRepository = {
+
+    /**
+     * Load sub-categories (and optionally sub-services) for many services in a
+     * fixed number of queries. Exposed so the service layer can build the same
+     * hierarchy without looping.
+     */
+    async getCategoryTreeByServiceIds(
+        serviceIds: string[],
+        includeSubServices: boolean = true
+    ): Promise<Map<string, ISubServiceCategoryWithRelations[]>> {
+        return fetchCategoryTreeByServiceIds(serviceIds, includeSubServices);
+    },
 
     // ============ IService CRUD ============
 
@@ -208,32 +291,16 @@ export const serviceRepository = {
     async getAllServicesWithRelations(filter: IServiceFilter = {}): Promise<IServiceWithRelations[]> {
         const services = await this.getAllServices(filter);
 
-        // Fetch categories and sub-services for each service
-        const servicesWithRelations = await Promise.all(
-            services.map(async (service) => {
-                const { data: categoriesData } = await supabaseAdmin
-                    .from('sub_service_categories')
-                    .select(`
-            *,
-            sub_services (*)
-          `)
-                    .eq('service_id', service.id)
-                    .eq('is_active', true)
-                    .order('display_order', { ascending: true });
-
-                const sub_service_categories = (categoriesData || []).map(cat => ({
-                    ...cat,
-                    sub_services: cat.sub_services || []
-                })) as ISubServiceCategoryWithRelations[];
-
-                return {
-                    ...service,
-                    sub_service_categories
-                };
-            })
+        // Two queries for the whole set, instead of one per service.
+        const categoryTree = await fetchCategoryTreeByServiceIds(
+            services.map(service => service.id),
+            true
         );
 
-        return servicesWithRelations;
+        return services.map(service => ({
+            ...service,
+            sub_service_categories: categoryTree.get(service.id) || [],
+        }));
     },
 
     /**
@@ -699,28 +766,17 @@ export const serviceRepository = {
             throw new Error(`Failed to fetch services: ${error.message}`);
         }
 
-        const servicesWithRelations = await Promise.all(
-            (services || []).map(async (service) => {
-                const { data: categoriesData } = await supabaseAdmin
-                    .from('sub_service_categories')
-                    .select('*')
-                    .eq('service_id', service.id)
-                    .eq('is_active', true)
-                    .order('display_order', { ascending: true });
-
-                const sub_service_categories = (categoriesData || []).map(cat => ({
-                    ...cat,
-                    sub_services: []
-                })) as ISubServiceCategoryWithRelations[];
-
-                return {
-                    ...service,
-                    sub_service_categories
-                } as IServiceWithRelations;
-            })
+        // One categories query for the whole page, instead of one per service.
+        // Sub-services are intentionally not loaded here, matching the original.
+        const categoryTree = await fetchCategoryTreeByServiceIds(
+            (services || []).map(service => service.id),
+            false
         );
 
-        return servicesWithRelations;
+        return (services || []).map(service => ({
+            ...service,
+            sub_service_categories: categoryTree.get(service.id) || [],
+        })) as IServiceWithRelations[];
     },
 
     /**
@@ -759,56 +815,19 @@ export const serviceRepository = {
             throw new Error(`Failed to fetch services: ${error.message}`);
         }
 
-        const servicesWithRelations = await Promise.all(
-            (services || []).map(async (service) => {
-                let sub_service_categories: ISubServiceCategoryWithRelations[] = [];
+        // Was N + N×M queries (one per service, then one per category). Now at
+        // most two, regardless of how many services and categories are involved.
+        const categoryTree = includeSubCategories
+            ? await fetchCategoryTreeByServiceIds(
+                (services || []).map(service => service.id),
+                includeSubServices
+            )
+            : new Map<string, ISubServiceCategoryWithRelations[]>();
 
-                if (includeSubCategories) {
-
-                    const { data: categoriesData } = await supabaseAdmin
-                        .from('sub_service_categories')
-                        .select('*')
-                        .eq('service_id', service.id)
-                        .eq('is_active', true)
-                        .order('display_order', { ascending: true });
-
-                    if (categoriesData && categoriesData.length > 0) {
-
-                        if (includeSubServices) {
-                            const categoriesWithSubServices = await Promise.all(
-                                categoriesData.map(async (category) => {
-                                    const { data: subServicesData } = await supabaseAdmin
-                                        .from('sub_services')
-                                        .select('*')
-                                        .eq('sub_service_category_id', category.id)
-                                        .eq('is_active', true)
-                                        .order('display_order', { ascending: true });
-
-                                    return {
-                                        ...category,
-                                        sub_services: subServicesData || []
-                                    };
-                                })
-                            );
-                            sub_service_categories = categoriesWithSubServices;
-                        } else {
-
-                            sub_service_categories = categoriesData.map(cat => ({
-                                ...cat,
-                                sub_services: []
-                            }));
-                        }
-                    }
-                }
-
-                return {
-                    ...service,
-                    sub_service_categories
-                } as IServiceWithRelations;
-            })
-        );
-
-        return servicesWithRelations;
+        return (services || []).map(service => ({
+            ...service,
+            sub_service_categories: categoryTree.get(service.id) || [],
+        })) as IServiceWithRelations[];
     },
 
     async getServicesByIds(serviceIds: string[], filter: IServiceFilter = {}): Promise<IService[]> {

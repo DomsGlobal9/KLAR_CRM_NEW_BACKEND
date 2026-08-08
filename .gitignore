@@ -24,3 +24,7 @@ Thumbs.db
 scratch_test_assign.ts
 *.scratch.ts
 *.test.local.ts
+
+# Test files
+src/__tests__/
+

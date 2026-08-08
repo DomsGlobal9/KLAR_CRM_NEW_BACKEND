@@ -32,30 +32,54 @@ export const departmentService = {
     async listDepartments(params?: { page?: number; limit?: number; search?: string; status?: string }) {
         const { departments: rawDepartments, pagination, stats } = await departmentRepository.listDepartments(params);
 
-        const enrichedDepartments = await Promise.all(
-            rawDepartments.map(async (dept) => {
-                const admins = await departmentRepository.getAdminsByIds(dept.admin_ids || []);
-                const teams = await departmentRepository.getTeamsByIds(dept.team_ids || []);
-                const services = await departmentRepository.getServicesByIds(dept.service_ids || []);
+        /**
+         * Previously this ran three lookups per department — 30 queries for a
+         * 10-department page. The repository methods already accept arrays, so
+         * we gather every id across the whole page, fetch each kind once, and
+         * redistribute the results in memory.
+         */
+        const collectIds = (pick: (dept: typeof rawDepartments[number]) => string[] | undefined) =>
+            [...new Set(rawDepartments.flatMap(dept => pick(dept) || []).filter(Boolean))];
 
-                const adminNames = admins.map(a => a.full_name || a.email || a.id).join(', ');
-                const teamNames = teams.map(t => t.name).join(', ');
-                const serviceNames = services.map(s => s.name).join(', ');
+        const [allAdmins, allTeams, allServices] = await Promise.all([
+            departmentRepository.getAdminsByIds(collectIds(d => d.admin_ids)),
+            departmentRepository.getTeamsByIds(collectIds(d => d.team_ids)),
+            departmentRepository.getServicesByIds(collectIds(d => d.service_ids)),
+        ]);
 
-                return {
-                    ...dept,
-                    admins,
-                    teams,
-                    services,
-                    admin_names: adminNames,
-                    team_names: teamNames,
-                    service_names: serviceNames,
-                    admin_count: admins.length,
-                    team_count: teams.length,
-                    service_count: services.length
-                };
-            })
-        );
+        const adminsById = new Map(allAdmins.map(admin => [admin.id, admin]));
+        const teamsById = new Map(allTeams.map(team => [team.id, team]));
+        const servicesById = new Map(allServices.map(service => [service.id, service]));
+
+        /**
+         * Preserves each department's own id order, and drops ids that no
+         * longer resolve — matching what the per-department queries returned.
+         */
+        const resolve = <T>(ids: string[] | undefined, lookup: Map<string, T>): T[] =>
+            (ids || []).map(id => lookup.get(id)).filter((item): item is T => item !== undefined);
+
+        const enrichedDepartments = rawDepartments.map((dept) => {
+            const admins = resolve(dept.admin_ids, adminsById);
+            const teams = resolve(dept.team_ids, teamsById);
+            const services = resolve(dept.service_ids, servicesById);
+
+            const adminNames = admins.map(a => a.full_name || a.email || a.id).join(', ');
+            const teamNames = teams.map(t => t.name).join(', ');
+            const serviceNames = services.map(s => s.name).join(', ');
+
+            return {
+                ...dept,
+                admins,
+                teams,
+                services,
+                admin_names: adminNames,
+                team_names: teamNames,
+                service_names: serviceNames,
+                admin_count: admins.length,
+                team_count: teams.length,
+                service_count: services.length
+            };
+        });
 
         return {
             departments: enrichedDepartments,

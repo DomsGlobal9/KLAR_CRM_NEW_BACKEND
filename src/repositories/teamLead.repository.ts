@@ -1,4 +1,5 @@
 // import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 
 // export const teamLeadRepository = {
 //     /**
@@ -172,7 +173,9 @@ export const teamLeadRepository = {
      */
     async findRMsByTL(tlId: string) {
         // 1. Fetch all users from Supabase Auth
-        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+        // Reads auth.users directly; the bare Auth API call defaulted to 50 per
+        // page, so RMs beyond the first 50 accounts were invisible here.
+        const { data: { users }, error } = await AuthRepository.listUsers();
         if (error) throw error;
 
         // 2. Find the person acting as the Team Lead in the list

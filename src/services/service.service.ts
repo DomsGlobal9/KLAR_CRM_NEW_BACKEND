@@ -397,28 +397,18 @@ export const serviceService = {
     async getServiceHierarchy(): Promise<IServiceWithRelations[]> {
         const services = await serviceRepository.getAllServices({ is_active: true });
 
-        const servicesWithHierarchy = await Promise.all(
-            services.map(async (service) => {
-                const categories = await serviceRepository.getSubServiceCategoriesByServiceId(service.id, { is_active: true });
-
-                const categoriesWithSubServices = await Promise.all(
-                    categories.map(async (category) => {
-                        const subServices = await serviceRepository.getSubServicesByCategoryId(category.id, { is_active: true });
-                        return {
-                            ...category,
-                            sub_services: subServices
-                        };
-                    })
-                );
-
-                return {
-                    ...service,
-                    sub_service_categories: categoriesWithSubServices
-                };
-            })
+        // Previously this looped: one categories query per service, then one
+        // sub-services query per category — N + N×M round trips to build one
+        // response. The repository now loads the whole tree in two queries.
+        const categoryTree = await serviceRepository.getCategoryTreeByServiceIds(
+            services.map(service => service.id),
+            true
         );
 
-        return servicesWithHierarchy;
+        return services.map(service => ({
+            ...service,
+            sub_service_categories: categoryTree.get(service.id) || [],
+        }));
     },
 
     /**

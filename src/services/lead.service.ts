@@ -4,7 +4,7 @@ import {
   LeadFilter,
   LeadWithRequirements
 } from '../interfaces/lead.interface';
-import { stageRepository } from '../repositories';
+import { stageRepository, AuthRepository } from '../repositories';
 import { leadRepository } from '../repositories/lead.repository';
 import { ValidationUtils } from '../utils';
 import { LeadDataMapper } from '../utils/lead-data-mapper';
@@ -20,7 +20,9 @@ import { supabaseAdmin } from '../config';
 async function getRoundRobinRM(): Promise<string | null> {
   try {
     // 1. Fetch all users from Supabase Auth
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    // Reads auth.users directly. Previously capped at the Auth API default of
+    // 50 users, so round-robin only ever considered the first 50 accounts.
+    const { data: { users }, error } = await AuthRepository.listUsers();
 
     if (error || !users || users.length === 0) {
 

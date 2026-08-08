@@ -1,9 +1,14 @@
 import { supabaseAdmin } from '../config';
+import { AuthRepository } from './auth.repository';
 import { getUserByEmail, getUserByUsername } from '../helpers';
 
 export const teamMemberRepository = {
+    /**
+     * Delegates to AuthRepository.listUsers(), which reads auth.users directly.
+     * The previous Auth API call silently capped at the first 1000 users.
+     */
     async listUsers() {
-        return supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        return AuthRepository.listUsers();
     },
  
     async createUser(payload: any) { 
@@ -28,19 +33,15 @@ export const teamMemberRepository = {
         return getUserByUsername(username);
     },
 
+    /**
+     * Find the team lead for a team.
+     *
+     * Was: fetch the first 1000 users and scan them in memory — so past user
+     * 1000 a team's lead could simply not be found. Now the filter runs in the
+     * database and returns at most one row.
+     */
     async findTLByTeam(teamId: string) {
-
-        const { data: usersData, error } = await supabaseAdmin.auth.admin.listUsers({
-            page: 1,
-            perPage: 1000
-        });
-
-        if (error) throw error;
-
-        return usersData.users.find(u => {
-            const meta = u.user_metadata || {};
-            return meta.role_name === 'tl' && meta.team_id === teamId;
-        }) || null;
+        return AuthRepository.findUserByMetadata({ role_name: 'tl', team_id: teamId });
     },
 
     async getUserById(userId: string) {

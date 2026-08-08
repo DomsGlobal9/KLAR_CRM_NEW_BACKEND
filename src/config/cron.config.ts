@@ -32,9 +32,22 @@ export const cronSchedules = {
     everyMinute: '* * * * *',
 
     /**
-     * Runs every 30 seconds (for testing)
+     * Runs every 30 seconds.
+     *
+     * Kept for local testing only. Never point a job that contacts customers at
+     * this — see the warning on cronJobConfigs below.
      */
     every30Seconds: '*/30 * * * * *',
+
+    /**
+     * Runs every day at 09:00
+     */
+    dailyNineAM: '0 9 * * *',
+
+    /**
+     * Runs every day at 10:00
+     */
+    dailyTenAM: '0 10 * * *',
 
     /**
      * Runs every Monday at 1 AM
@@ -188,6 +201,25 @@ export const cronJobs = {
 /**
  * List all cron jobs with their configurations
  */
+/**
+ * Job registry.
+ *
+ * ---------------------------------------------------------------------------
+ * READ THIS BEFORE ENABLING CRON JOBS
+ * ---------------------------------------------------------------------------
+ * None of these have ever actually run: cronService.initializeJobs() was never
+ * called. That was almost certainly an accident, but it is also the only reason
+ * the schedules below never caused an incident.
+ *
+ * As previously written, `invoiceReminder` ran EVERY 30 SECONDS and, on each
+ * tick, scanned the invoice table and sent a WhatsApp message to every customer
+ * with an outstanding balance. That is roughly 2,880 messages per customer per
+ * day. It would have read as spam, and WhatsApp would have banned the number.
+ *
+ * Schedules are now set to sane intervals, and the whole scheduler is gated
+ * behind ENABLE_CRON_JOBS so turning it on is a deliberate act. Verify the
+ * recipient logic against a test number BEFORE setting that flag in production.
+ */
 export const cronJobConfigs: CronJobConfig[] = [
     {
         name: 'cleanup',
@@ -217,36 +249,36 @@ export const cronJobConfigs: CronJobConfig[] = [
         enabled: envConfig.NODE_ENV === 'production',
         description: 'Creates database backup every Monday at 1 AM',
     },
-    {
-        name: 'thirtySecondMessage',
-        schedule: cronSchedules.every30Seconds,
-        task: cronJobs.displayThirtySecondMessage,
-        enabled: true,
-        description: 'Displays a message every 30 seconds',
-    },
     /**
-     * Add this new WhatsApp job configuration
+     * Development-only heartbeat. It sends a WhatsApp message to
+     * WHATSAPP_NUMBER, so it must never be enabled in production.
      */
     {
         name: 'whatsappMessage',
-        schedule: cronSchedules.every30Seconds,
+        schedule: cronSchedules.hourly,
         task: cronJobs.sendWhatsAppMessage,
-        enabled: true,
-        description: 'Sends WhatsApp message every 30 seconds',
+        enabled: false,
+        description: 'Development heartbeat — sends a test WhatsApp message',
     },
     /**
-     * Check invoices every hour (less frequent than 30 seconds)
+     * Customer-facing payment reminders.
+     *
+     * Was every 30 seconds. Now once a day at 10:00, which is the most any
+     * customer should hear from us about the same unpaid invoice. Note that
+     * processAllRestAmountInvoices() does not currently check
+     * last_reminder_sent before sending, so a customer receives one message per
+     * run regardless — daily is therefore the floor, not a throttle.
      */
     {
         name: 'invoiceReminder',
-        // schedule: cronSchedules.everyHour,
-        schedule: cronSchedules.every30Seconds,
+        schedule: cronSchedules.dailyTenAM,
         task: cronJobs.checkInvoiceRestAmounts,
         enabled: true,
-        description: 'Checks invoices with rest_amount and sends WhatsApp reminders',
+        description: 'Sends WhatsApp payment reminders for invoices with a balance',
     },
     /**
-     * Check overdue invoices every 6 hours
+     * Overdue escalation. Every 6 hours is defensible for genuinely overdue
+     * accounts, and this was already the schedule.
      */
     {
         name: 'overdueCheck',
@@ -256,11 +288,11 @@ export const cronJobConfigs: CronJobConfig[] = [
         description: 'Checks for overdue invoices and sends urgent notifications',
     },
     /**
-     * Daily summary at 9 AM
+     * Internal summary to staff, not customers.
      */
     {
         name: 'dailySummary',
-        schedule: '0 9 * * *',
+        schedule: cronSchedules.dailyNineAM,
         task: cronJobs.sendDailyPaymentSummary,
         enabled: true,
         description: 'Sends daily summary of pending payments',

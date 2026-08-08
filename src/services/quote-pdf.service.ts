@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import { renderPdf } from './pdf-browser.service';
 import handlebars from 'handlebars';
 import { supabaseAdmin } from '../config';
 

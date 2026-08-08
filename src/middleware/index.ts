@@ -1,2 +1,8 @@
-export { AuthRequest, authenticate, requireRole } from "./auth.middleware";
+export {
+    AuthRequest,
+    authenticate,
+    requireRole,
+    invalidateToken,
+    invalidateAllTokens,
+} from "./auth.middleware";
 export { upload } from "./upload.middleware";
