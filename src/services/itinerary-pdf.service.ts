@@ -330,7 +330,7 @@ export const itineraryPdfService = {
                             <td class="logo-container" style="width: 50%;">
                                 ${logoHtmlTag}
                             </td>
-                            <td class="company-details" style="width: 50%;"> <div class="company-name">KLAR TRAVELS</div> 305/307, 3rd Floor RDB Blue Hope,<br> Tilak Road, Abids, Telangana<br> Hyderabad – 500 001 India | Mob: +918099359377 | GSTIN: 36BGCPS2420P1Z4 </td>
+                            <td class="company-details" style="width: 50%;"> <div class="company-name">KLAR TRAVELS</div> 305/307, 3rd Floor RDB Blue Hope,<br> Tilak Road, Abids, Telangana<br> Hyderabad – 500 001 India | Mob: +918099359377 | GSTIN: 36ABEFK7511P1ZW </td>
                         </tr>
                     </table>
 
