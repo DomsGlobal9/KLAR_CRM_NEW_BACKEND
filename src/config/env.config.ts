@@ -281,6 +281,18 @@ const getSupabaseServiceRole = (): string => {
     }
 };
 
+const getSupabaseDatabaseUrl = (): string => {
+    switch (nodeEnv) {
+        case 'production':
+            return process.env.SUPABASE_PRODUCTION_DATABASE_URL || process.env.SUPABASE_DATABASE_URL || '';
+        case 'test':
+            return process.env.SUPABASE_TESTING_DATABASE_URL || process.env.SUPABASE_DATABASE_URL || '';
+        case 'development':
+        default:
+            return process.env.SUPABASE_DATABASE_URL || '';
+    }
+};
+
 /**
  * Validate and export environment configuration
  */
@@ -344,7 +356,7 @@ export const envConfig: EnvConfig = {
     SUPABASE_DEVELOPMENT_ANON_KEY: process.env.SUPABASE_DEVELOPMENT_ANON_KEY || '',
     SUPABASE_DEVELOPMENT_SERVICE_ROLE: process.env.SUPABASE_DEVELOPMENT_SERVICE_ROLE || '',
 
-    SUPABASE_DATABASE_URL: process.env.SUPABASE_DATABASE_URL || '',
+    SUPABASE_DATABASE_URL: getSupabaseDatabaseUrl(),
     SUPABASE_PRODUCTION_DATABASE_URL: process.env.SUPABASE_PRODUCTION_DATABASE_URL || '',
 
     /**
