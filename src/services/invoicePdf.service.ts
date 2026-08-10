@@ -504,11 +504,16 @@ export const pdfService = {
                             <td class="logo-container" style="width: 50%;">
                                 ${logoSrc ? `<img src="${logoSrc}" alt="KLAR TRAVELS" />` : '<div class="company-name" style="font-size: 24px;">KLAR TRAVELS</div>'}
                             </td>
+
                             <td class="company-info" style="width: 50%;">
                                 <div class="company-name">KLAR TRAVELS</div>
+
                                 <div class="company-address">
-                                    H.No 8-3-949/4 & 5, Ameerpet, Hyderabad - 500073
+                                    305/307, 3rd Floor RDB Blue Hope,<br>
+                                    Tilak Road, Abids, Telangana<br>
+                                    Hyderabad – 500 001 India
                                 </div>
+
                                 <div class="company-gst">
                                     <strong>GSTIN:</strong> 36BGCPS2420P1Z4
                                 </div>
