@@ -68,7 +68,6 @@
     "git": "^0.1.5",
     "handlebars": "^4.7.8",
     "helmet": "^8.1.0",
-    "html-pdf-node": "^1.0.8",
     "imapflow": "^1.2.18",
     "mailparser": "^3.9.6",
     "mongoose": "^9.4.1",
@@ -77,6 +76,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "postgres": "^3.4.9",
+    "puppeteer-core": "^25.5.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "uuid": "^13.0.0"
