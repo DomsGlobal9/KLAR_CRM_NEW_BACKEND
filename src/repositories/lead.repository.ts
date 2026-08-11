@@ -759,8 +759,35 @@ export const leadRepository = {
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value);
 
+            let activeCount = 0;
+            // Active leads are all leads except those in Closed Won or Closed Lost stages/statuses
+            totalData?.forEach((_, idx) => {
+                const stageStr = (stageData?.[idx]?.stage || '').toLowerCase().trim();
+                const statusStr = (statusData?.[idx]?.status || '').toLowerCase().trim();
+
+                const isClosedWon =
+                    stageStr.includes('closed won') ||
+                    stageStr.includes('closed_won') ||
+                    stageStr.includes('won') ||
+                    statusStr === 'converted' ||
+                    statusStr === 'won';
+
+                const isClosedLost =
+                    stageStr.includes('closed lost') ||
+                    stageStr.includes('closed_lost') ||
+                    stageStr.includes('lost') ||
+                    statusStr === 'lost' ||
+                    statusStr === 'cancelled' ||
+                    statusStr === 'inactive';
+
+                if (!isClosedWon && !isClosedLost) {
+                    activeCount++;
+                }
+            });
+
             return {
                 total: totalData?.length || 0,
+                active_count: activeCount,
                 by_stage: byStage,
                 by_type: byType,
                 by_status: byStatus,
