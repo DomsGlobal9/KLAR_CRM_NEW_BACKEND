@@ -5,9 +5,9 @@ import { envConfig } from '../config';
 export const s3UploadService = {
     async uploadToS3(fileBuffer: Buffer, fileName: string): Promise<string> {
         try {
-            console.log(`[s3UploadService] S3 upload commented out for testing. Direct email mode active for file: ${fileName}`);
+            // console.log(`[s3UploadService] S3 upload commented out for testing. Direct email mode active for file: ${fileName}`);
 
-            /*
+
             // =======================================================
             // S3 Upload logic commented down for testing direct email sending
             // =======================================================
@@ -46,10 +46,10 @@ export const s3UploadService = {
             }
 
             throw new Error('Upload failed: ' + response.data.message);
-            */
+
 
             // Return safe placeholder URL for direct email sending test
-            return `https://direct-email-mode.local/${encodeURIComponent(fileName)}`;
+            // return `https://direct-email-mode.local/${encodeURIComponent(fileName)}`;
         } catch (error: any) {
             console.error('[s3UploadService] Error:', error.message);
             throw new Error('Could not upload file to S3');
