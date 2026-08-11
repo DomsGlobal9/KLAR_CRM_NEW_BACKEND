@@ -2,11 +2,17 @@ import { paymentTrackingRepository, PaymentSummary } from '../repositories/payme
 
 export const paymentTrackingService = {
     /**
-     * Get total payments received (all time)
+     * Get total payments received (all time, current month, pending)
      */
-    async getTotalPaymentsReceived(): Promise<{ total: number }> {
-        const total = await paymentTrackingRepository.getTotalPaymentsReceived();
-        return { total };
+    async getTotalPaymentsReceived(): Promise<{ total: number; currentMonthTotal: number; pendingAmount: number }> {
+        return await paymentTrackingRepository.getTotalPaymentsReceived();
+    },
+
+    /**
+     * Get monthly revenue comparison for charts
+     */
+    async getMonthlyRevenueComparison(): Promise<Array<{ name: string; current: number; previous: number }>> {
+        return await paymentTrackingRepository.getYearOverYearMonthlyRevenue();
     },
 
     /**

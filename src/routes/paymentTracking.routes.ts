@@ -39,4 +39,9 @@ router.get('/analytics', paymentTrackingController.getPaymentAnalytics);
  */
 router.get('/dashboard/overview', paymentTrackingController.getDashboardOverview);
 
+/**
+ * Get monthly revenue comparison for charts
+ */
+router.get('/monthly-comparison', paymentTrackingController.getMonthlyRevenueComparison);
+
 export default router;

@@ -253,6 +253,33 @@ export class PaymentTrackingController {
             });
         }
     };
+
+    /**
+     * Get monthly revenue comparison for charts
+     */
+    getMonthlyRevenueComparison = async (req: AuthRequest, res: Response): Promise<Response> => {
+        try {
+            if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Access denied. Only administrators can view payment analytics.'
+                });
+            }
+
+            const data = await paymentTrackingService.getMonthlyRevenueComparison();
+
+            return res.status(200).json({
+                success: true,
+                data,
+                message: 'Monthly revenue comparison retrieved successfully'
+            });
+        } catch (error: any) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to get monthly revenue comparison'
+            });
+        }
+    };
 }
 
 export const paymentTrackingController = new PaymentTrackingController();

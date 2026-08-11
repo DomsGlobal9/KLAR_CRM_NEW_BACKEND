@@ -20,22 +20,92 @@ export interface PaymentSummary {
 
 export const paymentTrackingRepository = {
     /**
-     * Get total payments received (all time)
+     * Get total payments received (lifetime, current month, and pending balance)
      */
-    async getTotalPaymentsReceived(): Promise<number> {
+    async getTotalPaymentsReceived(): Promise<{ total: number; currentMonthTotal: number; pendingAmount: number }> {
         const { data, error } = await supabaseAdmin
             .from('invoices')
-            .select('paid_amount')
-            .eq('status', 'paid')
-            .not('paid_amount', 'is', null)
-            .gt('paid_amount', 0);
+            .select('paid_amount, paid_date, status, total, created_at')
+            .not('paid_amount', 'is', null);
 
         if (error) {
             throw new Error(`Failed to get total payments: ${error.message}`);
         }
 
-        const total = data?.reduce((sum, invoice) => sum + (invoice.paid_amount || 0), 0) || 0;
-        return total;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        let total = 0;
+        let currentMonthTotal = 0;
+        let pendingAmount = 0;
+
+        data?.forEach(invoice => {
+            const paid = invoice.paid_amount || 0;
+            const invoiceTotal = invoice.total || 0;
+
+            if (invoice.status === 'paid' || invoice.status === 'partially_paid') {
+                total += paid;
+
+                // Check if payment occurred in current month
+                const pDate = invoice.paid_date ? new Date(invoice.paid_date) : (invoice.created_at ? new Date(invoice.created_at) : null);
+                if (pDate && !isNaN(pDate.getTime())) {
+                    if (pDate.getFullYear() === currentYear && pDate.getMonth() === currentMonth) {
+                        currentMonthTotal += paid;
+                    }
+                }
+            }
+
+            if (invoice.status === 'pending' || invoice.status === 'partially_paid' || invoice.status === 'overdue') {
+                const remaining = invoiceTotal - paid;
+                if (remaining > 0) {
+                    pendingAmount += remaining;
+                }
+            }
+        });
+
+        return { total, currentMonthTotal, pendingAmount };
+    },
+
+    /**
+     * Get year-over-year monthly revenue comparisons for chart
+     */
+    async getYearOverYearMonthlyRevenue(): Promise<Array<{ name: string; current: number; previous: number }>> {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const previousYear = currentYear - 1;
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const chartData = monthNames.map(name => ({ name, current: 0, previous: 0 }));
+
+        const { data, error } = await supabaseAdmin
+            .from('invoices')
+            .select('paid_amount, paid_date, created_at, status')
+            .in('status', ['paid', 'partially_paid'])
+            .not('paid_amount', 'is', null)
+            .gt('paid_amount', 0);
+
+        if (error) {
+            console.error('Failed to fetch YoY monthly revenue:', error);
+            return chartData;
+        }
+
+        data?.forEach(invoice => {
+            const pDate = invoice.paid_date ? new Date(invoice.paid_date) : (invoice.created_at ? new Date(invoice.created_at) : null);
+            if (pDate && !isNaN(pDate.getTime())) {
+                const yr = pDate.getFullYear();
+                const mIdx = pDate.getMonth();
+                const amount = invoice.paid_amount || 0;
+
+                if (yr === currentYear) {
+                    chartData[mIdx].current += amount;
+                } else if (yr === previousYear) {
+                    chartData[mIdx].previous += amount;
+                }
+            }
+        });
+
+        return chartData;
     },
 
     /**

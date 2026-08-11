@@ -680,6 +680,31 @@ export const leadRepository = {
 
             if (statusError) throw statusError;
 
+            // Fetch inquiry sources map to resolve IDs if stored as UUIDs
+            const sourceNameMap: Record<string, string> = {};
+            try {
+                const { data: inqSources } = await supabaseAdmin
+                    .from('inquiry_sources')
+                    .select('id, name, value');
+                inqSources?.forEach(s => {
+                    if (s.id) sourceNameMap[s.id] = s.name || s.value;
+                    if (s.value) sourceNameMap[s.value] = s.name || s.value;
+                });
+            } catch (e) {
+                // Ignore inquiry_sources lookup error
+            }
+
+            // Fetch lead source column safely
+            let sourceData: any[] | null = null;
+            try {
+                const { data: sData } = await supabaseAdmin
+                    .from('leads')
+                    .select('source');
+                sourceData = sData;
+            } catch (e) {
+                console.error('Failed to fetch lead source column:', e);
+            }
+
             const { data: recentData, error: recentError } = await supabaseAdmin
                 .from('leads')
                 .select('id', { count: 'exact' })
@@ -704,6 +729,7 @@ export const leadRepository = {
             const byStage: Record<string, number> = {};
             const byType: Record<string, number> = {};
             const byStatus: Record<string, number> = {};
+            const bySourceMap: Record<string, number> = {};
 
             stageData?.forEach(lead => {
                 byStage[lead.stage] = (byStage[lead.stage] || 0) + 1;
@@ -717,11 +743,28 @@ export const leadRepository = {
                 byStatus[lead.status] = (byStatus[lead.status] || 0) + 1;
             });
 
+            sourceData?.forEach(lead => {
+                const raw = lead.source;
+                let resolvedName = 'Direct / Other';
+                if (raw && typeof raw === 'string' && raw.trim()) {
+                    resolvedName = sourceNameMap[raw] || raw;
+                    resolvedName = resolvedName
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                }
+                bySourceMap[resolvedName] = (bySourceMap[resolvedName] || 0) + 1;
+            });
+
+            const bySource = Object.entries(bySourceMap)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+
             return {
                 total: totalData?.length || 0,
                 by_stage: byStage,
                 by_type: byType,
                 by_status: byStatus,
+                by_source: bySource,
                 recent_count: recentData?.length || 0,
                 converted_count: convertedData?.length || 0,
                 with_itinerary_preferences: leadsWithPreferencesCount,
