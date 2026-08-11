@@ -4,8 +4,8 @@ import { authenticate, requireRole } from '../middleware';
 import { fileQuoteController } from '../controllers/file-quote.controller';
 
 const router = Router();
-router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
-// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead', 'OPERATION_TEAM'));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead', 'OPERATION_TEAM'));
 
 
 // Quote CRUD routes
