@@ -5,7 +5,7 @@
 
 // export const travelDocumentService = {
 //     async generateTravelProposalHTML(itineraryData: any, quoteData: any): Promise<string> {
-        
+
 //         const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
 
 //         const logoHtmlTag = `<img src="${hostedLogoUrl}" style="max-height: 60px; display: block;" alt="KLAR TRAVELS" />`;
@@ -47,7 +47,7 @@
 //                     font-size: 9.5pt; 
 //                     background-color: #f5f5f5;
 //                 }
-                
+
 //                 /* Main center-aligned container wrapping the payload body securely */
 //                 .document-container {
 //                     max-width: 1000px;
@@ -58,7 +58,7 @@
 //                     border-radius: 8px;
 //                     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
 //                 }
-                
+
 //                 /* Bulletproof Table header structure for strict layout consistency */
 //                 .header-table {
 //                     width: 100%;
@@ -68,30 +68,30 @@
 //                     padding-bottom: 10px;
 //                     margin-bottom: 20px;
 //                 }
-                
+
 //                 .header-table td {
 //                     vertical-align: middle;
 //                     padding-bottom: 10px;
 //                 }
-                
+
 //                 .logo-container {
 //                     text-align: left;
 //                 }
-                
+
 //                 .company-details { 
 //                     text-align: right; 
 //                     font-size: 8.5pt; 
 //                     color: #444; 
 //                     line-height: 1.4; 
 //                 }
-                
+
 //                 .company-name { font-weight: 800; color: #4b0082; font-size: 15pt; letter-spacing: 0.5px; }
 //                 .doc-title { text-align: center; color: #d32f2f; font-size: 19pt; text-decoration: underline; margin: 15px 0; font-weight: bold; letter-spacing: 1px; }
 //                 .section-header { border-left: 5px solid #d32f2f; padding: 6px 12px; color: #4b0082; font-size: 12pt; font-weight: bold; margin: 22px 0 12px 0; background: #f5f5f5; text-transform: uppercase; letter-spacing: 0.5px; }
-                
+
 //                 /* Master Details container box */
 //                 .details-box { border: 1px solid #b0b0b0; padding: 0; margin-bottom: 18px; border-radius: 4px; background: #fff; overflow: hidden; }
-                
+
 //                 /* Structured Grid Lines inside Itinerary Cards mimicking spreadsheet segments */
 //                 .itinerary-grid { display: grid; grid-template-columns: 1fr 1fr; }
 //                 .itinerary-grid div { 
@@ -102,9 +102,9 @@
 //                 /* Remove double boundary outlines */
 //                 .itinerary-grid div:nth-child(2n) { border-right: none; }
 //                 .itinerary-grid div:last-child, .itinerary-grid div:nth-last-child(2):not(:nth-child(2n)) { border-bottom: none; }
-                
+
 //                 .grid-span-2 { grid-column: span 2; border-right: none !important; }
-                
+
 //                 p { margin: 0; padding: 0; }
 //                 .field-label { color: #555; font-weight: 600; font-size: 9pt; display: inline-block; width: 110px; }
 //                 .field-value { color: #111; font-weight: 500; }
@@ -113,14 +113,14 @@
 //                 table.quotation-items-table { width: 100%; border-collapse: collapse; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 //                 th { background: #4b0082; color: white; border: 1px solid #9c7bb5; padding: 11px 10px; text-align: left; font-size: 9.5pt; font-weight: bold; letter-spacing: 0.5px; }
 //                 td { border: 1px solid #b0b0b0; padding: 11px 10px; vertical-align: middle; font-size: 9pt; color: #222; }
-                
+
 //                 .total-row { background: #fff5f5; font-weight: bold; }
 //                 .total-row td { border-top: 2px solid #4b0082; }
 //                 .service-tag { background: #d32f2f; color: white; padding: 3px 10px; border-radius: 12px; font-size: 7.5pt; float: right; font-weight: bold; letter-spacing: 0.5px; margin-top: 10px; margin-right: 14px; }
 //                 .card-title-bar { background: #fcfcfc; border-bottom: 1px solid #b0b0b0; padding: 2px 0; }
 //                 .req-highlight { color: #d32f2f; font-weight: bold; padding: 10px 14px; background: #fff8f8; display: block; border-top: 1px dashed #b0b0b0; font-size: 9pt; }
 //                 .page-break { page-break-after: always; }
-                
+
 //                 @media print {
 //                     body {
 //                         background: white;
@@ -136,9 +136,9 @@
 //             </style>
 //         </head>
 //         <body>
-            
+
 //             <div class="document-container">
-                
+
 //                 <table class="header-table">
 //                     <tr>
 //                         <td class="logo-container" style="width: 50%;">
@@ -179,7 +179,7 @@
 //                         <span class="service-tag">{{service_type}}</span>
 //                         <h3 style="margin: 10px 14px; color:#4b0082; font-size: 11pt; font-weight: 700;">{{title}}</h3>
 //                     </div>
-                    
+
 //                     <div class="itinerary-grid">
 //                         {{#if (eq service_type "TRANSFERS")}}
 //                             <div><span class="field-label">Transfer Type:</span><span class="field-value" style="text-transform: capitalize;">{{preferences.transfer_type}}</span></div>
@@ -336,7 +336,7 @@
 //                     (This is a computer-generated document. Signature not required)
 //                     <br><small style="color:#777; font-weight: normal; font-size: 8pt; margin-top: 4px; display: inline-block;">Every journey begins with trust.</small>
 //                 </div>
-                
+
 //             </div>
 //         </body>
 //         </html>
@@ -363,10 +363,10 @@
 //             ] 
 //         });
 //         const page = await browser.newPage();
-        
+
 //         // Fixed: Using type assertion to handle the 'networkidle0' option
 //         await page.setContent(html, { waitUntil: 'networkidle0' as any });
-        
+
 //         const pdf = await page.pdf({ 
 //             format: 'A4', 
 //             printBackground: true,
@@ -436,7 +436,7 @@ import path from 'path';
 export const travelDocumentService = {
     async generateTravelProposalHTML(itineraryData: any, quoteData: any): Promise<string> {
 
-        
+
         const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
 
         const logoHtmlTag = `<img src="${hostedLogoUrl}" style="max-height: 60px; display: block;" alt="KLAR TRAVELS" />`;
