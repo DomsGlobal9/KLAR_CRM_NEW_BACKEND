@@ -20,9 +20,9 @@ export interface PaymentSummary {
 
 export const paymentTrackingRepository = {
     /**
-     * Get total payments received (lifetime, current month, and pending balance)
+     * Get total payments received (lifetime, current week, current month, current year, and pending balance)
      */
-    async getTotalPaymentsReceived(): Promise<{ total: number; currentMonthTotal: number; pendingAmount: number }> {
+    async getTotalPaymentsReceived(): Promise<{ total: number; currentWeekTotal: number; currentMonthTotal: number; currentYearTotal: number; pendingAmount: number }> {
         const { data, error } = await supabaseAdmin
             .from('invoices')
             .select('paid_amount, paid_date, status, total, created_at')
@@ -36,8 +36,17 @@ export const paymentTrackingRepository = {
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth();
 
+        // Calculate start of current week (Monday at 00:00:00)
+        const startOfWeek = new Date(now);
+        const dayOfWeek = startOfWeek.getDay();
+        const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+        startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
+        startOfWeek.setHours(0, 0, 0, 0);
+
         let total = 0;
+        let currentWeekTotal = 0;
         let currentMonthTotal = 0;
+        let currentYearTotal = 0;
         let pendingAmount = 0;
 
         data?.forEach(invoice => {
@@ -47,11 +56,19 @@ export const paymentTrackingRepository = {
             if (invoice.status === 'paid' || invoice.status === 'partially_paid') {
                 total += paid;
 
-                // Check if payment occurred in current month
+                // Check payment date breakdown
                 const pDate = invoice.paid_date ? new Date(invoice.paid_date) : (invoice.created_at ? new Date(invoice.created_at) : null);
                 if (pDate && !isNaN(pDate.getTime())) {
-                    if (pDate.getFullYear() === currentYear && pDate.getMonth() === currentMonth) {
-                        currentMonthTotal += paid;
+                    if (pDate.getFullYear() === currentYear) {
+                        currentYearTotal += paid;
+
+                        if (pDate.getMonth() === currentMonth) {
+                            currentMonthTotal += paid;
+                        }
+
+                        if (pDate >= startOfWeek && pDate <= now) {
+                            currentWeekTotal += paid;
+                        }
                     }
                 }
             }
@@ -64,7 +81,7 @@ export const paymentTrackingRepository = {
             }
         });
 
-        return { total, currentMonthTotal, pendingAmount };
+        return { total, currentWeekTotal, currentMonthTotal, currentYearTotal, pendingAmount };
     },
 
     /**

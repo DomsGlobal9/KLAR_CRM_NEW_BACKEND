@@ -2,9 +2,9 @@ import { paymentTrackingRepository, PaymentSummary } from '../repositories/payme
 
 export const paymentTrackingService = {
     /**
-     * Get total payments received (all time, current month, pending)
+     * Get total payments received (all time, current week, current month, current year, pending)
      */
-    async getTotalPaymentsReceived(): Promise<{ total: number; currentMonthTotal: number; pendingAmount: number }> {
+    async getTotalPaymentsReceived(): Promise<{ total: number; currentWeekTotal: number; currentMonthTotal: number; currentYearTotal: number; pendingAmount: number }> {
         return await paymentTrackingRepository.getTotalPaymentsReceived();
     },
 
