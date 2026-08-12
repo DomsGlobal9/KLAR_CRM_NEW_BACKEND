@@ -465,15 +465,30 @@ export const itineraryPreferencesController = {
      * Display & Download Itinerary pdf
      */
     async downloadItineraryOnlyPDF(req: Request, res: Response) {
-        const { itinerary_id } = req.params;
-        const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
+        try {
+            const { itinerary_id } = req.params;
+            const itinResult = await itineraryPreferencesService.getPreferences(itinerary_id as string);
 
-        const html = await itineraryPdfService.generateHTML(itinResult.data);
-        const buffer = await itineraryPdfService.generateBuffer(html);
+            if (!itinResult || !itinResult.data) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Itinerary preferences data not found for the requested ID'
+                });
+            }
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
-        return res.send(buffer);
+            const html = await itineraryPdfService.generateHTML(itinResult.data);
+            const buffer = await itineraryPdfService.generateBuffer(html);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'attachment; filename="Itinerary.pdf"');
+            return res.send(buffer);
+        } catch (error: any) {
+            console.error('[downloadItineraryOnlyPDF] Error:', error.message || error);
+            return res.status(500).json({
+                success: false,
+                error: error.message || 'Failed to generate itinerary PDF'
+            });
+        }
     },
 
 

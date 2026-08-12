@@ -9,8 +9,8 @@ const router = Router();
    STATIC ROUTES FIRST
    ======================= */
 
-// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
-router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
+// router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead', 'OPERATION_TEAM'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead', 'OPERATION_TEAM'));
 
 
 router.get('/file-only-list', userItineraryFilesController.getAllFileItineraries);

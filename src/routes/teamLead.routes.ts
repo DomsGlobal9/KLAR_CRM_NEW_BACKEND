@@ -6,7 +6,7 @@ const router = Router();
 
 // Protect all Team Lead routes
 // router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'rm', "tl"));
-router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead'));
+router.use(authenticate, requireRole('SUPERADMIN', 'admin', 'relationship_manager', 'team_lead', 'OPERATION_TEAM'));
 
 
 /**

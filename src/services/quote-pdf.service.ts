@@ -23,7 +23,6 @@ export const quotePdfService = {
     },
 
     async generateHTML(quoteData: any): Promise<string> {
-        console.log("quote-pdf.service.ts: Generating HTML for quote data:", JSON.stringify(quoteData));
 
         const servicePreferences = quoteData?.lead_id
             ? await this.getPreferencesByLeadId(quoteData.lead_id)
