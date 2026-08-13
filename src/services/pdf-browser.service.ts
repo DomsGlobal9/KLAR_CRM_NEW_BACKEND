@@ -125,10 +125,18 @@ export const renderPdf = async (
         page = await browser.newPage();
         page.setDefaultTimeout(PAGE_TIMEOUT_MS);
 
-        await page.setContent(html, {
-            waitUntil: 'networkidle0' as any,
-            timeout: PAGE_TIMEOUT_MS,
-        });
+        try {
+            await page.setContent(html, {
+                waitUntil: 'networkidle0' as any,
+                timeout: PAGE_TIMEOUT_MS,
+            });
+        } catch (contentError) {
+            // Fallback if networkidle0 times out due to slow/blocked remote resources (e.g. logo images)
+            await page.setContent(html, {
+                waitUntil: 'domcontentloaded' as any,
+                timeout: PAGE_TIMEOUT_MS,
+            });
+        }
 
         const pdf = await page.pdf({ ...DEFAULT_PDF_OPTIONS, ...options });
         return Buffer.from(pdf);
