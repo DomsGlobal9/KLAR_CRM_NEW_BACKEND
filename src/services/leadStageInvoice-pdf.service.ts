@@ -134,7 +134,7 @@ export const leadStageInvoicePdfService = {
             statusBg = '#fdedad';
         }
 
-        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
+        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
 
         // Complete HTML template
         const templateHtml = `
@@ -652,10 +652,12 @@ export const leadStageInvoicePdfService = {
                             <td class="company-info" style="width: 50%;">
                                 <div class="company-name">KLAR TRAVELS</div>
                                 <div class="company-address">
-                                    H.No 8-3-949/4 & 5, Ameerpet, Hyderabad - 500073
+                                    305/307, 3rd Floor RDB Blue Hope,<br>
+                                    Tilak Road, Abids, Telangana<br>
+                                    Hyderabad – 500 001 India
                                 </div>
                                 <div class="company-gst">
-                                    <strong>GSTIN:</strong> 36BGCPS2420P1Z4
+                                    <strong>GST:</strong> 36ABEFK7511P1ZW
                                 </div>
                             </td>
                         </tr>
