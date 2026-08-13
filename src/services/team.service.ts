@@ -71,7 +71,12 @@ export const teamService = {
             const { data } = await AuthRepository.listUsers();
             const usersList = data?.users || [];
             const currentMembers = usersList || [];
-            const currentTeamMembers = currentMembers.filter((u: any) => u.user_metadata?.team_id === id);
+            const getMemberTeamId = (u: any) => {
+                const meta = u.user_metadata?.user_metadata || u.user_metadata || {};
+                return meta.team_id || meta.teamId || u.team_id || u.teamId;
+            };
+
+            const currentTeamMembers = currentMembers.filter((u: any) => getMemberTeamId(u) === id);
             const currentTeamMemberIds = currentTeamMembers.map((u: any) => u.id);
 
             const membersToRemove = currentTeamMemberIds.filter((mId: string) => !payload.member_ids!.includes(mId));

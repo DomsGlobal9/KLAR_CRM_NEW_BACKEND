@@ -76,12 +76,13 @@ export const teamController = {
     async update(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            const { name, description, is_active } = req.body;
+            const { name, description, is_active, member_ids } = req.body;
 
             const team = await teamService.updateTeam(id as string, {
                 name,
                 description,
-                is_active
+                is_active,
+                member_ids
             });
 
             // await createAuditLog({
