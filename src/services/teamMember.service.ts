@@ -26,25 +26,8 @@ export const teamMemberService = {
     * Validate that a team doesn't already have a Team Lead
     */
     async validateTeamLeadLimit(teamId: string, excludeUserId?: string) {
-
-        const { data, error } = await teamMemberRepository.listUsers();
-        if (error) throw error;
-
-        const existingTL = data.users.find(u => {
-
-            if (excludeUserId && u.id === excludeUserId) return false;
-
-            const metadata = u.user_metadata || {};
-
-            return (
-                metadata.role_name === 'tl' &&
-                metadata.team_id === teamId
-            );
-        });
-
-        if (existingTL) {
-            throw new Error('Team already has a Team Lead');
-        }
+        // Multiple Team Leads per team allowed
+        return;
     },
 
     /**
