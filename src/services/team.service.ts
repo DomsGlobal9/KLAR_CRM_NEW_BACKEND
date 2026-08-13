@@ -68,7 +68,8 @@ export const teamService = {
         }
     ) {
         if (payload.member_ids !== undefined && Array.isArray(payload.member_ids)) {
-            const { data: usersList } = await AuthRepository.listUsers();
+            const { data } = await AuthRepository.listUsers();
+            const usersList = data?.users || [];
             const currentMembers = usersList || [];
             const currentTeamMembers = currentMembers.filter((u: any) => u.user_metadata?.team_id === id);
             const currentTeamMemberIds = currentTeamMembers.map((u: any) => u.id);
