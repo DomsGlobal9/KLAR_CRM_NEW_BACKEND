@@ -122,7 +122,65 @@ export const travelerRepository = {
         return data ? this.mapDatabaseToInterface(data) : null;
     },
 
+    // Auto-sync existing travelers in DB: group all travelers sharing email (1st priority) or phone (2nd priority)
+    async autoSyncAllDuplicateGroups(): Promise<void> {
+        try {
+            const { data: allTravelers } = await supabaseAdmin
+                .from('travelers')
+                .select('id, group_id, traveler_email, traveler_phone');
+
+            if (!allTravelers || allTravelers.length === 0) return;
+
+            const emailGroups: Record<string, typeof allTravelers> = {};
+            const phoneGroups: Record<string, typeof allTravelers> = {};
+
+            allTravelers.forEach((t) => {
+                if (t.traveler_email && t.traveler_email.trim()) {
+                    const e = t.traveler_email.trim().toLowerCase();
+                    if (!emailGroups[e]) emailGroups[e] = [];
+                    emailGroups[e].push(t);
+                }
+                if (t.traveler_phone && t.traveler_phone.trim()) {
+                    const p = t.traveler_phone.trim();
+                    if (!phoneGroups[p]) phoneGroups[p] = [];
+                    phoneGroups[p].push(t);
+                }
+            });
+
+            // Sync email groups (2+ travelers sharing email)
+            for (const email of Object.keys(emailGroups)) {
+                const group = emailGroups[email];
+                if (group.length > 1) {
+                    const existingGroupTraveler = group.find((t) => Boolean(t.group_id));
+                    const targetGroupId = existingGroupTraveler?.group_id || `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    const idsToUpdate = group.filter((t) => t.group_id !== targetGroupId).map((t) => t.id);
+                    if (idsToUpdate.length > 0) {
+                        await supabaseAdmin.from('travelers').update({ group_id: targetGroupId }).in('id', idsToUpdate);
+                    }
+                }
+            }
+
+            // Sync phone groups (2+ travelers sharing phone)
+            for (const phone of Object.keys(phoneGroups)) {
+                const group = phoneGroups[phone];
+                if (group.length > 1) {
+                    const existingGroupTraveler = group.find((t) => Boolean(t.group_id));
+                    const targetGroupId = existingGroupTraveler?.group_id || `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    const idsToUpdate = group.filter((t) => t.group_id !== targetGroupId).map((t) => t.id);
+                    if (idsToUpdate.length > 0) {
+                        await supabaseAdmin.from('travelers').update({ group_id: targetGroupId }).in('id', idsToUpdate);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error auto-syncing duplicate groups:', err);
+        }
+    },
+
     async getAllTravelers(filter: TravelerFilter = {}): Promise<{ travelers: ITraveler[]; total: number; page: number; limit: number; totalPages: number }> {
+        // Auto-sync duplicate group IDs in database before querying
+        await this.autoSyncAllDuplicateGroups();
+
         const page = filter.page && filter.page > 0 ? filter.page : 1;
         const limit = filter.limit && filter.limit > 0 ? filter.limit : 10;
         const offset = filter.offset !== undefined ? filter.offset : (page - 1) * limit;
@@ -497,55 +555,88 @@ export const travelerRepository = {
         return results;
     },
 
-    // NEW METHOD: Find group by email or phone
+    // Find existing traveler group by email (1st priority) or phone (2nd priority)
     async findGroupByEmailOrPhone(email?: string, phone?: string): Promise<string | null> {
-        if (!email && !phone) return null;
-
-        let query = supabaseAdmin
-            .from('travelers')
-            .select('group_id')
-            .limit(1);
-
-        if (email) {
-            query = query.eq('traveler_email', email);
-        } else if (phone) {
-            query = query.eq('traveler_phone', phone);
-        }
-
-        const { data, error } = await query;
-
-        if (error || !data || data.length === 0) {
-            return null;
-        }
-
-        return data[0].group_id;
-    },
-
-    // NEW METHOD: Find or create group
-    async findOrCreateGroup(email?: string, phone?: string): Promise<string> {
-        // First, try to find existing group by email or phone
-        if (email || phone) {
-            let query = supabaseAdmin
+        // Priority 1: Search by email first
+        if (email && email.trim()) {
+            const { data, error } = await supabaseAdmin
                 .from('travelers')
                 .select('group_id')
+                .eq('traveler_email', email.trim())
                 .limit(1);
 
-            if (email) {
-                query = query.eq('traveler_email', email);
-            } else if (phone) {
-                query = query.eq('traveler_phone', phone);
-            }
-
-            const { data, error } = await query;
-
-            if (!error && data && data.length > 0) {
+            if (!error && data && data.length > 0 && data[0].group_id) {
                 return data[0].group_id;
             }
         }
 
-        // If no existing group found, create a new group ID
-        const groupId = `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return groupId;
+        // Priority 2: Search by phone if email didn't produce a match
+        if (phone && phone.trim()) {
+            const { data, error } = await supabaseAdmin
+                .from('travelers')
+                .select('group_id')
+                .eq('traveler_phone', phone.trim())
+                .limit(1);
+
+            if (!error && data && data.length > 0 && data[0].group_id) {
+                return data[0].group_id;
+            }
+        }
+
+        return null;
+    },
+
+    // Link ALL travelers sharing the same email (1st priority) or phone (2nd priority) into a group
+    async findOrCreateGroup(email?: string, phone?: string): Promise<string | null> {
+        let matchingTravelers: { id: string; group_id: string | null }[] = [];
+
+        // Priority 1: Check by Email first
+        if (email && email.trim()) {
+            const { data, error } = await supabaseAdmin
+                .from('travelers')
+                .select('id, group_id')
+                .eq('traveler_email', email.trim());
+
+            if (!error && data && data.length > 0) {
+                matchingTravelers = data;
+            }
+        }
+
+        // Priority 2: Check by Phone if email didn't match
+        if (matchingTravelers.length === 0 && phone && phone.trim()) {
+            const { data, error } = await supabaseAdmin
+                .from('travelers')
+                .select('id, group_id')
+                .eq('traveler_phone', phone.trim());
+
+            if (!error && data && data.length > 0) {
+                matchingTravelers = data;
+            }
+        }
+
+        // If matching travelers exist (sharing email or phone)
+        if (matchingTravelers.length > 0) {
+            // Find if any existing traveler already has a group_id
+            const existingGroupTraveler = matchingTravelers.find(t => Boolean(t.group_id));
+            const targetGroupId = existingGroupTraveler?.group_id || `GRP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            // Collect IDs of all matching travelers who need their group_id set/updated
+            const travelerIdsToUpdate = matchingTravelers
+                .filter(t => t.group_id !== targetGroupId)
+                .map(t => t.id);
+
+            if (travelerIdsToUpdate.length > 0) {
+                await supabaseAdmin
+                    .from('travelers')
+                    .update({ group_id: targetGroupId })
+                    .in('id', travelerIdsToUpdate);
+            }
+
+            return targetGroupId;
+        }
+
+        // Unique user (no matching email or phone) -> Return null (no group created)
+        return null;
     },
 
     // NEW METHOD: Get travelers by group
