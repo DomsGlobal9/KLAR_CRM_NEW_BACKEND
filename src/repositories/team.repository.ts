@@ -120,11 +120,20 @@ export const teamRepository = {
      * @param teamId 
      */
     async incrementMembersCount(teamId: string) {
-        const { error } = await supabaseAdmin.rpc(
-            'increment_team_members_count',
-            { p_team_id: teamId }
-        );
-        if (error) throw error;
+        try {
+            const { data } = await supabaseAdmin
+                .from('teams')
+                .select('members_count')
+                .eq('id', teamId)
+                .single();
+            const currentCount = data?.members_count || 0;
+            await supabaseAdmin
+                .from('teams')
+                .update({ members_count: currentCount + 1 })
+                .eq('id', teamId);
+        } catch (err) {
+            console.error('Error incrementing members count:', err);
+        }
     },
 
     /**
@@ -132,11 +141,20 @@ export const teamRepository = {
      * @param teamId 
      */
     async decrementMembersCount(teamId: string) {
-        const { error } = await supabaseAdmin.rpc(
-            'decrement_team_members_count',
-            { p_team_id: teamId }
-        );
-        if (error) throw error;
+        try {
+            const { data } = await supabaseAdmin
+                .from('teams')
+                .select('members_count')
+                .eq('id', teamId)
+                .single();
+            const currentCount = data?.members_count || 0;
+            await supabaseAdmin
+                .from('teams')
+                .update({ members_count: Math.max(0, currentCount - 1) })
+                .eq('id', teamId);
+        } catch (err) {
+            console.error('Error decrementing members count:', err);
+        }
     },
 
     /**

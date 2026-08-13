@@ -329,29 +329,32 @@ export const teamMemberService = {
         }
 
         // Team update - Skip if role is admin (admin should have no team)
+        let isAdmin = false;
         if (newRoleId) {
             const currentRole = await roleRepository.getById(newRoleId);
-            const isAdmin = currentRole?.name === 'admin';
+            isAdmin = currentRole?.name === 'admin';
+        }
 
-            if (!isAdmin && newTeamId !== oldTeamId) {
+        if (!isAdmin && newTeamId !== oldTeamId) {
+            if (newTeamId) {
                 const team = await teamRepository.getById(newTeamId as string);
-                if (newTeamId && !team) throw new Error('Team not found');
+                if (!team) throw new Error('Team not found');
+            }
 
-                updateMetadata.team_id = newTeamId;
+            updateMetadata.team_id = newTeamId;
 
-                if (oldTeamId) {
-                    await teamRepository.decrementMembersCount(oldTeamId);
-                }
+            if (oldTeamId) {
+                await teamRepository.decrementMembersCount(oldTeamId);
+            }
 
-                if (newTeamId) {
-                    await teamRepository.incrementMembersCount(newTeamId);
-                }
-            } else if (isAdmin && oldTeamId) {
-                // If changing to admin, remove team assignment
-                updateMetadata.team_id = null;
-                if (oldTeamId) {
-                    await teamRepository.decrementMembersCount(oldTeamId);
-                }
+            if (newTeamId) {
+                await teamRepository.incrementMembersCount(newTeamId as string);
+            }
+        } else if (isAdmin && oldTeamId) {
+            // If changing to admin, remove team assignment
+            updateMetadata.team_id = null;
+            if (oldTeamId) {
+                await teamRepository.decrementMembersCount(oldTeamId);
             }
         }
 

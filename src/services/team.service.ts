@@ -1,4 +1,5 @@
-import { teamRepository } from '../repositories';
+import { teamRepository, AuthRepository } from '../repositories';
+import { teamMemberService } from './teamMember.service';
 
 export const teamService = {
 
@@ -10,12 +11,25 @@ export const teamService = {
     async createTeam(payload: {
         name: string;
         description?: string;
+        member_ids?: string[];
     }) {
         try {
-            return await teamRepository.createTeam(
+            const team = await teamRepository.createTeam(
                 payload.name,
                 payload.description
             );
+
+            if (payload.member_ids && Array.isArray(payload.member_ids) && payload.member_ids.length > 0) {
+                for (const memberId of payload.member_ids) {
+                    try {
+                        await teamMemberService.updateTeamMember(memberId, { team_id: team.id });
+                    } catch (memberErr) {
+                        console.error(`Error assigning member ${memberId} to team ${team.id}:`, memberErr);
+                    }
+                }
+            }
+
+            return await teamRepository.getTeamById(team.id);
         } catch (error: any) {
             throw error;
         }
@@ -50,9 +64,45 @@ export const teamService = {
             name?: string;
             description?: string;
             is_active?: boolean;
+            member_ids?: string[];
         }
     ) {
-        return await teamRepository.updateTeam(id, payload);
+        if (payload.member_ids !== undefined && Array.isArray(payload.member_ids)) {
+            const { data: usersList } = await AuthRepository.listUsers();
+            const currentMembers = usersList || [];
+            const currentTeamMembers = currentMembers.filter((u: any) => u.user_metadata?.team_id === id);
+            const currentTeamMemberIds = currentTeamMembers.map((u: any) => u.id);
+
+            const membersToRemove = currentTeamMemberIds.filter((mId: string) => !payload.member_ids!.includes(mId));
+            for (const mId of membersToRemove) {
+                try {
+                    await teamMemberService.updateTeamMember(mId, { team_id: null });
+                } catch (err) {
+                    console.error(`Error removing member ${mId} from team ${id}:`, err);
+                }
+            }
+
+            for (const mId of payload.member_ids) {
+                if (!currentTeamMemberIds.includes(mId)) {
+                    try {
+                        await teamMemberService.updateTeamMember(mId, { team_id: id });
+                    } catch (err) {
+                        console.error(`Error adding member ${mId} to team ${id}:`, err);
+                    }
+                }
+            }
+        }
+
+        const updateData: { name?: string; description?: string; is_active?: boolean } = {};
+        if (payload.name !== undefined) updateData.name = payload.name;
+        if (payload.description !== undefined) updateData.description = payload.description;
+        if (payload.is_active !== undefined) updateData.is_active = payload.is_active;
+
+        if (Object.keys(updateData).length > 0) {
+            await teamRepository.updateTeam(id, updateData);
+        }
+
+        return await teamRepository.getTeamById(id);
     },
 
     /**
