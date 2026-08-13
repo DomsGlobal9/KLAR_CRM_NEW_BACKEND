@@ -122,45 +122,64 @@ export const travelerRepository = {
         return data ? this.mapDatabaseToInterface(data) : null;
     },
 
-    async getAllTravelers(filter: TravelerFilter = {}): Promise<ITraveler[]> {
-        let query = supabaseAdmin
+    async getAllTravelers(filter: TravelerFilter = {}): Promise<{ travelers: ITraveler[]; total: number; page: number; limit: number; totalPages: number }> {
+        const page = filter.page && filter.page > 0 ? filter.page : 1;
+        const limit = filter.limit && filter.limit > 0 ? filter.limit : 10;
+        const offset = filter.offset !== undefined ? filter.offset : (page - 1) * limit;
+
+        let countQuery = supabaseAdmin
+            .from('travelers')
+            .select('*', { count: 'exact', head: true });
+
+        let dataQuery = supabaseAdmin
             .from('travelers')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (filter.search) {
-            query = query.or(
-                `traveler_name.ilike.%${filter.search}%,traveler_email.ilike.%${filter.search}%,traveler_phone.ilike.%${filter.search}%`
+            const searchPattern = `%${filter.search}%`;
+            countQuery = countQuery.or(
+                `traveler_name.ilike.${searchPattern},traveler_email.ilike.${searchPattern},traveler_phone.ilike.${searchPattern}`
+            );
+            dataQuery = dataQuery.or(
+                `traveler_name.ilike.${searchPattern},traveler_email.ilike.${searchPattern},traveler_phone.ilike.${searchPattern}`
             );
         }
 
         if (filter.title) {
-            query = query.eq('title', filter.title);
+            countQuery = countQuery.eq('title', filter.title);
+            dataQuery = dataQuery.eq('title', filter.title);
         }
 
         if (filter.date_from) {
-            query = query.gte('created_at', filter.date_from);
+            countQuery = countQuery.gte('created_at', filter.date_from);
+            dataQuery = dataQuery.gte('created_at', filter.date_from);
         }
 
         if (filter.date_to) {
-            query = query.lte('created_at', filter.date_to);
+            countQuery = countQuery.lte('created_at', filter.date_to);
+            dataQuery = dataQuery.lte('created_at', filter.date_to);
         }
 
-        if (filter.limit) {
-            query = query.limit(filter.limit);
+        dataQuery = dataQuery.range(offset, offset + limit - 1);
+
+        const [countResult, dataResult] = await Promise.all([countQuery, dataQuery]);
+
+        if (dataResult.error) {
+            throw new Error(`Failed to fetch travelers: ${dataResult.error.message}`);
         }
 
-        if (filter.offset) {
-            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
-        }
+        const total = countResult.count || 0;
+        const totalPages = Math.ceil(total / limit) || 1;
+        const travelers = (dataResult.data || []).map((row: any) => this.mapDatabaseToInterface(row));
 
-        const { data, error } = await query;
-
-        if (error) {
-            throw new Error(`Failed to fetch travelers: ${error.message}`);
-        }
-
-        return data.map((row: any) => this.mapDatabaseToInterface(row));
+        return {
+            travelers,
+            total,
+            page,
+            limit,
+            totalPages
+        };
     },
 
     async updateTraveler(id: string, payload: UpdateTravelerPayload): Promise<boolean> {

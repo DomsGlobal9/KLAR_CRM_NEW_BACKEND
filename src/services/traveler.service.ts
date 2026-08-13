@@ -251,7 +251,7 @@ export const travelerService = {
         return traveler;
     },
 
-    async getAllTravelers(filter: TravelerFilter = {}): Promise<ITraveler[]> {
+    async getAllTravelers(filter: TravelerFilter = {}): Promise<{ travelers: ITraveler[]; total: number; page: number; limit: number; totalPages: number }> {
         return await travelerRepository.getAllTravelers(filter);
     },
 

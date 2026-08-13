@@ -29,25 +29,42 @@ export const travelerController = {
     },
 
     /**
-     * Get all travelers
+     * Get all travelers with database pagination and search
      */
     async getAllTravelers(req: Request, res: Response) {
         try {
+            const page = req.query.page ? parseInt(req.query.page as string) : (req.query.offset ? Math.floor(parseInt(req.query.offset as string) / (parseInt(req.query.limit as string) || 10)) + 1 : 1);
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+            const offset = req.query.offset ? parseInt(req.query.offset as string) : (page - 1) * limit;
+
             const filter = {
                 search: req.query.search as string,
                 title: req.query.title as string,
                 date_from: req.query.date_from as string,
                 date_to: req.query.date_to as string,
-                limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-                offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+                limit,
+                offset,
+                page
             };
 
-            const travelers = await travelerService.getAllTravelers(filter);
+            const result = await travelerService.getAllTravelers(filter);
 
             res.json({
                 success: true,
-                data: travelers,
-                count: travelers.length
+                data: result.travelers,
+                count: result.travelers.length,
+                total: result.total,
+                totalCount: result.total,
+                page: result.page,
+                limit: result.limit,
+                totalPages: result.totalPages,
+                pagination: {
+                    page: result.page,
+                    limit: result.limit,
+                    totalCount: result.total,
+                    total: result.total,
+                    totalPages: result.totalPages
+                }
             });
         } catch (error: any) {
 

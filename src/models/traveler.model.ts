@@ -80,6 +80,7 @@ export interface TravelerFilter {
     date_to?: string;
     limit?: number;
     offset?: number;
+    page?: number;
 }
 
 export interface AdvancedTravelerFilter {
