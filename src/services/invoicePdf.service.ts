@@ -515,7 +515,7 @@ export const pdfService = {
                                 </div>
 
                                 <div class="company-gst">
-                                    <strong>GSTIN:</strong> 36ABEFK7511P1ZW
+                                    <strong>GST:</strong> 36ABEFK7511P1ZW
                                 </div>
                             </td>
                         </tr>

@@ -2,25 +2,25 @@ import { renderPdf } from './pdf-browser.service';
 import handlebars from 'handlebars';
 
 export const leadStageVoucherPdfService = {
-  /**
-   * Compiles data context values down into cleanly-styled responsive HTML layouts
-   * aligned perfectly with the itinerary brand theme.
-   */
-  async generateHTML(voucherData: any, forEmail: boolean = false): Promise<string> {
+    /**
+     * Compiles data context values down into cleanly-styled responsive HTML layouts
+     * aligned perfectly with the itinerary brand theme.
+     */
+    async generateHTML(voucherData: any, forEmail: boolean = false): Promise<string> {
 
-    if (!voucherData) {
-      throw new Error("Template engine context structure cannot be blank.");
-    }
+        if (!voucherData) {
+            throw new Error("Template engine context structure cannot be blank.");
+        }
 
-    const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
-    const logoHtmlTag = logoUrl 
-      ? `<img src="${logoUrl}" alt="KLAR TRAVELS" />` 
-      : '<div style="font-weight: bold; color: #4b0082; font-size: 16px;">KLAR TRAVELS</div>';
+        const logoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
+        const logoHtmlTag = logoUrl
+            ? `<img src="${logoUrl}" alt="KLAR TRAVELS" />`
+            : '<div style="font-weight: bold; color: #4b0082; font-size: 16px;">KLAR TRAVELS</div>';
 
-    // Register a conditional equal checking helper for Handlebars template logic loops
-    handlebars.registerHelper('eq', (a: any, b: any) => a === b);
+        // Register a conditional equal checking helper for Handlebars template logic loops
+        handlebars.registerHelper('eq', (a: any, b: any) => a === b);
 
-    const templateHtml = `
+        const templateHtml = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -218,8 +218,10 @@ export const leadStageVoucherPdfService = {
                     </td>
                     <td class="company-details">
                         <div class="company-name">KLAR TRAVELS</div>
-                        #8-3-949/4 & 5, MADHU'S HOUSE, AMEERPET, PANJAGUTTA<br>
-                        HYDERABAD - 500 073 | Mob: +918099359377 | GSTIN: 36BGCPS2420P1Z4
+                        305/307, 3rd Floor RDB Blue Hope,<br>
+                        Tilak Road, Abids, Telangana<br>
+                        Hyderabad – 500 001 India<br>
+                        GST: 36ABEFK7511P1ZW
                     </td>
                 </tr>
             </table>
@@ -266,13 +268,13 @@ export const leadStageVoucherPdfService = {
     </html>
     `;
 
-    return handlebars.compile(templateHtml)(voucherData);
-  },
+        return handlebars.compile(templateHtml)(voucherData);
+    },
 
-  /**
-   * Compiles HTML content layout string directly into a safe A4 binary buffer string
-   */
-  async generateBuffer(html: string): Promise<Buffer> {
-    return renderPdf(html);
-  }
+    /**
+     * Compiles HTML content layout string directly into a safe A4 binary buffer string
+     */
+    async generateBuffer(html: string): Promise<Buffer> {
+        return renderPdf(html);
+    }
 };

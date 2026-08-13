@@ -437,7 +437,7 @@ export const travelDocumentService = {
     async generateTravelProposalHTML(itineraryData: any, quoteData: any): Promise<string> {
 
 
-        const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
+        const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
 
         const logoHtmlTag = `<img src="${hostedLogoUrl}" style="max-height: 60px; display: block;" alt="KLAR TRAVELS" />`;
 
@@ -604,10 +604,10 @@ export const travelDocumentService = {
                         </td>
                         <td class="company-details" style="width: 50%;">
                             <div class="company-name">KLAR TRAVELS</div>
-                            #8-3-949/4 & 5, MADHU'S HOUSE, AMEERPET, PANJAGUTTA<br>
-                            HYDERABAD - 500 0073 | Tel: +914023745112, 42603413<br>
-                            Mob: +918099359377 | Email: praveentour1@gmail.com<br>
-                            <strong>GSTIN: 36BGCPS2420P1Z4</strong>
+                            305/307, 3rd Floor RDB Blue Hope,<br>
+                            Tilak Road, Abids, Telangana<br>
+                            Hyderabad – 500 001 India<br>
+                            <strong>GST: 36ABEFK7511P1ZW</strong>
                         </td>
                     </tr>
                 </table>

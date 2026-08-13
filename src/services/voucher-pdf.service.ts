@@ -3,7 +3,7 @@ import handlebars from 'handlebars';
 
 export const voucherPdfService = {
     async generateHTML(voucherData: any): Promise<string> {
-        const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/Frame%201000007152%202.png';
+        const hostedLogoUrl = 'https://travel-pdfs-prod-399934155938-eu-north-1-an.s3.eu-north-1.amazonaws.com/pdf/logo.png';
         const logoHtmlTag = `<img src="${hostedLogoUrl}" style="max-height: 60px; display: block;" alt="KLAR TRAVELS" />`;
 
         // Register formatting helpers dynamically if missing
