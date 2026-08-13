@@ -155,6 +155,20 @@ export const travelerService = {
             errors.push(`Emergency contact validation failed: ${ecErrors.join(', ')}`);
         }
 
+        // Validate Passport number
+        let passportNumber = payload.passportNumber;
+        if (payload.passport?.passportNumber && !passportNumber) {
+            passportNumber = payload.passport.passportNumber;
+        }
+
+        // Validate at least one identity document (Aadhaar OR Passport) is provided
+        const hasAadhaar = Boolean(payload.aadhaarNumber && payload.aadhaarNumber.trim());
+        const hasPassport = Boolean(passportNumber && passportNumber.trim());
+
+        if (!hasAadhaar && !hasPassport) {
+            errors.push('At least one identity document (Aadhaar Number or Passport Number) is required');
+        }
+
         if (payload.aadhaarNumber) {
             const aadhaarErrors = validateAadhaar(payload.aadhaarNumber);
             if (aadhaarErrors.length > 0) {
@@ -165,12 +179,6 @@ export const travelerService = {
             if (!isUnique) {
                 errors.push('Aadhaar number already exists');
             }
-        }
-
-        // Validate Passport number
-        let passportNumber = payload.passportNumber;
-        if (payload.passport?.passportNumber && !passportNumber) {
-            passportNumber = payload.passport.passportNumber;
         }
 
         if (passportNumber) {
