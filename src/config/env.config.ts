@@ -104,6 +104,12 @@ interface EnvConfig {
    * Super admin email
    */
   SUPER_ADMIN_EMAIL: string;
+
+    /**
+     * JWT Configuration
+     */
+    JWT_SECRET: string;
+    JWT_EXPIRES_IN: string;
 }
 
 /**
@@ -398,6 +404,12 @@ export const envConfig: EnvConfig = {
    * Super admin email
    */
   SUPER_ADMIN_EMAIL: validateRequired(process.env.SUPER_ADMIN_EMAIL, 'SUPER_ADMIN_EMAIL'),
+
+    /**
+     * JWT Configuration
+     */
+    JWT_SECRET: validateOptional(process.env.JWT_SECRET, 'klar_crm_default_jwt_secret_key_2026'),
+    JWT_EXPIRES_IN: validateOptional(process.env.JWT_EXPIRES_IN, '24h'),
 };
 
 /**

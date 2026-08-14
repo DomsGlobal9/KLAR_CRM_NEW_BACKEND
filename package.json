@@ -6,6 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "migrate": "ts-node --transpile-only scripts/run-migration.ts",
     "verify:auth-access": "ts-node --transpile-only scripts/verify-auth-access.ts",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --exec ts-node --transpile-only src/index.ts",
@@ -37,6 +38,7 @@
     "@types/express": "^5.0.6",
     "@types/handlebars": "^4.0.40",
     "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mailparser": "^3.4.6",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.1.0",
@@ -69,6 +71,7 @@
     "handlebars": "^4.7.8",
     "helmet": "^8.1.0",
     "imapflow": "^1.2.18",
+    "jsonwebtoken": "^9.0.3",
     "mailparser": "^3.9.6",
     "mongoose": "^9.4.1",
     "morgan": "^1.10.1",

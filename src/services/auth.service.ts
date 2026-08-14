@@ -1,14 +1,12 @@
-import { AuthRepository, roleRepository, teamRepository } from '../repositories';
-import { getAllowedRoles } from '../utils';
+import bcrypt from 'bcrypt';
+import { AuthRepository, roleRepository } from '../repositories';
 import { RegisterPayload } from '../interfaces';
+import { generateAccessToken } from '../utils/jwt.utils';
 
 export const AuthService = {
 
     /**
      * Register a new user
-     * @param payload 
-     * @param requester 
-     * @returns 
      */
     async register(payload: RegisterPayload) {
         const { email, password, username, full_name, phone } = payload;
@@ -17,75 +15,127 @@ export const AuthService = {
             throw new Error('Email, password, and username are required');
         }
 
-        const { data: existingUsers } = await AuthRepository.listUsers();
-        // if (existingUsers.users.length > 7) {
-        //     throw new Error('Registration is closed. Superadmin already exists.');
-        // }
+        const existingRes = await AuthRepository.getUserByEmail(email);
+        if (existingRes.user) {
+            const error: any = new Error('Email already registered');
+            error.statusCode = 409;
+            throw error;
+        }
 
         const role = await roleRepository.getRoleByIdOrName({ name: 'SUPERADMIN' });
-        if (!role) {
-            throw new Error('Superadmin role not found in database');
-        }
 
-        if (role.name !== 'SUPERADMIN') {
-            throw new Error('Only SUPERADMIN can be registered');
-        }
-
-        if (existingUsers.users.some((u: any) => u.email === email)) {
-            throw new Error('Email already registered');
-        }
+        const password_hash = await bcrypt.hash(password, 10);
 
         const result = await AuthRepository.createUser({
             email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-                username,
-                role_id: role.id,
-                role_name: 'SUPERADMIN',
-                team_id: null,
-                full_name: full_name ?? null,
-                phone: phone ?? null,
-                status: 'active',
-                created_by: null,
-                assigned_under: null,
-                assigned_leads_count: 0,
-                last_login_at: null
-            }
+            password_hash,
+            username,
+            full_name: full_name ?? undefined,
+            phone: phone ?? undefined,
+            role_id: role?.id,
+            is_active: true,
         });
 
-        await roleRepository.incrementAssignedCount(role.id);
+        if (role?.id) {
+            await roleRepository.incrementAssignedCount(role.id);
+        }
 
-        return result;
+        const createdUser = result.data.user;
+        if (!createdUser) {
+            throw new Error('User registration failed');
+        }
+        const accessToken = generateAccessToken({
+            id: createdUser.id,
+            email: createdUser.email || email,
+            role: 'SUPERADMIN',
+        });
+
+        return {
+            data: {
+                user: createdUser,
+                token: accessToken,
+                session: {
+                    access_token: accessToken,
+                    expires_at: Math.floor(Date.now() / 1000) + 86400,
+                }
+            }
+        };
     },
 
     /**
-     * Login user
-     * @param email 
-     * @param password 
-     * @returns 
+     * Login user with email and password
      */
     async login(email: string, password: string) {
-        return AuthRepository.signIn(email, password);
+        if (!email || !password) {
+            return { data: null, error: new Error('Email and password required') };
+        }
+
+        const res = await AuthRepository.getUserByEmail(email);
+        if (res.error || !res.user || !res.rawUser) {
+            return { data: null, error: new Error('Invalid email or password') };
+        }
+
+        if (res.rawUser.isActive === false) {
+            return { data: null, error: new Error('Account is not active') };
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, res.rawUser.passwordHash);
+        if (!isPasswordValid) {
+            return { data: null, error: new Error('Invalid email or password') };
+        }
+
+        await AuthRepository.updateLastLogin(res.rawUser.id);
+
+        let roleName = res.user.user_metadata?.role_name || 'SUPERADMIN';
+        if (res.rawUser.roleId) {
+            const roleObj = await roleRepository.getRoleByIdOrName({ id: res.rawUser.roleId });
+            if (roleObj?.name) roleName = roleObj.name;
+        }
+
+        const accessToken = generateAccessToken({
+            id: res.rawUser.id,
+            email: res.rawUser.email,
+            role: roleName,
+        });
+
+        const expiresAt = Math.floor(Date.now() / 1000) + 86400;
+
+        return {
+            data: {
+                user: res.user,
+                session: {
+                    access_token: accessToken,
+                    refresh_token: accessToken,
+                    expires_at: expiresAt,
+                }
+            },
+            error: null,
+        };
     },
 
     /**
      * Refresh token
-     * @param refresh_token 
-     * @returns 
      */
     async refresh(refresh_token: string) {
-        return AuthRepository.refresh(refresh_token);
+        if (!refresh_token) {
+            return { data: null, error: new Error('Refresh token required') };
+        }
+        return {
+            data: {
+                session: {
+                    access_token: refresh_token,
+                    refresh_token: refresh_token,
+                    expires_at: Math.floor(Date.now() / 1000) + 86400,
+                }
+            },
+            error: null,
+        };
     },
 
     async logout(userId: string) {
         if (!userId) {
             throw new Error('User not authenticated');
         }
-        await AuthRepository.revokeSessions(userId);
-
         return true;
     },
-
-    
 };

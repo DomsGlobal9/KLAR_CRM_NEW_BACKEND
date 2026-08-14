@@ -38,8 +38,7 @@ export const userController = {
             return res.json({
                 success: true,
                 message: 'Profile updated successfully',
-                data: result.user,
-                // updated_fields: result.updated_fields
+                data: result.data?.user,
             });
         } catch (err: any) {
             return res.status(400).json({

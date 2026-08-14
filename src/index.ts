@@ -2,13 +2,13 @@ import dns from "node:dns/promises";
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1", "0.0.0.0"]);
 
 import dotenv from 'dotenv';
+dotenv.config();
+
 import app from './app';
 import { registerProcessHandlers } from './lifecycle';
 import { client as postgresClient } from './db/drizzle';
 import { closeDB } from './config/mongodbDatabase.config';
 import { closeBrowser } from './services/pdf-browser.service';
-
-dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 

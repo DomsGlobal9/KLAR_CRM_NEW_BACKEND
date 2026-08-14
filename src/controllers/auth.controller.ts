@@ -1,9 +1,13 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { AuthRequest, invalidateToken } from '../middleware';
 import { AuthService, otpService } from '../services';
 import { createAuditLog } from '../helpers';
 import { AuthRepository, roleRepository } from '../repositories';
 import { supabase, supabaseAdmin } from '../config';
+import { db } from '../db/drizzle';
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { request } from 'node:http';
 
 export const authController = {
@@ -32,7 +36,8 @@ export const authController = {
             });
 
         } catch (err: any) {
-            res.status(400).json({ error: err.message });
+            const status = err.statusCode || 400;
+            res.status(status).json({ error: err.message });
         }
     },
 
@@ -617,16 +622,11 @@ export const authController = {
             }
 
 
-            // Update password using Supabase Admin API
-            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                user.id,
-                { password: newPassword }
-            );
-
-            if (updateError) {
-
-                throw new Error('Failed to update password');
-            }
+            // Update password using bcrypt and Drizzle ORM
+            const password_hash = await bcrypt.hash(newPassword, 10);
+            await db.update(users)
+                .set({ passwordHash: password_hash, updatedAt: new Date() })
+                .where(eq(users.id, user.id));
 
 
             // Create audit log

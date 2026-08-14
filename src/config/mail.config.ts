@@ -32,7 +32,9 @@ class MailConfig {
             },
         });
 
-        this.verifyConnection();
+        if (envConfig.NODE_ENV !== 'test') {
+            this.verifyConnection();
+        }
     }
 
     public static getInstance(): MailConfig {

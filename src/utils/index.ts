@@ -5,3 +5,4 @@ export { StageValidationUtils } from "./validation.utils";
 export { camelToSnakeCase, snakeToCamelCase } from "./camelCase.validator";
 export { quoteValidator } from "./quote.validator";
 export { perfLogger } from "./performanceLogger";
+export { generateAccessToken, verifyAccessToken } from "./jwt.utils";

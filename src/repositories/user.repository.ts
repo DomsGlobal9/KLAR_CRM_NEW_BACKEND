@@ -1,94 +1,77 @@
-import { supabaseAdmin } from '../config';
+import { db } from '../db/drizzle';
+import { users, teams, roles } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { AuthRepository } from './auth.repository';
-import { User } from '../models/user.model';
 
 export const userRepository = {
 
     /**
      * Update user metadata
-     * @param userId 
-     * @param metadata 
-     * @returns 
      */
     async updateUserMetadata(userId: string, metadata: any) {
-        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
-            userId,
-            { user_metadata: metadata }
-        );
-        if (error) throw error;
-        return data;
+        return AuthRepository.updateMetadata(userId, metadata);
     },
 
     /**
      * Update user email
-     * @param userId 
-     * @param email 
-     * @returns 
      */
     async updateUserEmail(userId: string, email: string) {
-        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
-            userId,
-            { email }
-        );
-        if (error) throw error;
-        return data;
+        const [updated] = await db.update(users)
+            .set({ email: email.toLowerCase(), updatedAt: new Date() })
+            .where(eq(users.id, userId))
+            .returning();
+        if (!updated) throw new Error('User not found');
+        return { user: updated };
     },
 
     /**
-     * List all users.
-     *
-     * Delegates to AuthRepository.listUsers(), which reads auth.users directly.
-     * The previous Auth API call silently capped at the first 1000 users.
+     * List all users
      */
     async listUsers() {
         return AuthRepository.listUsers();
     },
 
     /**
-     * Get user by ID
-     * @param userId 
-     * @returns
+     * Get user by ID (safe view, without password_hash)
      */
     async getById(userId: string) {
-        const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
-        if (error) throw error;
-
-        const user = data.user;
+        if (!user) {
+            throw new Error('User not found');
+        }
 
         let teamName: string | null = null;
-        const teamId = user.user_metadata?.team_id;
+        if (user.teamId) {
+            const [t] = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, user.teamId)).limit(1);
+            if (t) teamName = t.name;
+        }
 
-        if (teamId) {
-            const { data: team, error: teamError } =
-                await supabaseAdmin
-                    .from('teams')
-                    .select('name')
-                    .eq('id', teamId)
-                    .single();
-
-            if (teamError && teamError.code !== 'PGRST116') {
-                throw teamError;
-            }
-
-            teamName = team?.name ?? null;
+        let roleName: string | null = null;
+        if (user.roleId) {
+            const [r] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, user.roleId)).limit(1);
+            if (r) roleName = r.name;
         }
 
         return {
             id: user.id,
             email: user.email || null,
-            username: user.user_metadata?.username || null,
-            role: user.user_metadata?.role_name || null,
-            full_name: user.user_metadata?.full_name || null,
-            gender: user.user_metadata?.gender || null,
-            phone: user.phone || user.user_metadata?.phone || null,
-            dob: user.user_metadata?.dob || null,
-            status: user.user_metadata?.status || null,
-            team_id: user.user_metadata?.team_id || null,
+            username: user.username || null,
+            role: roleName,
+            role_id: user.roleId || null,
+            full_name: user.fullName || null,
+            first_name: user.firstName || null,
+            last_name: user.lastName || null,
+            phone: user.phone || null,
+            status: user.isActive ? 'active' : 'inactive',
+            is_active: user.isActive,
+            team_id: user.teamId || null,
             team_name: teamName,
-            image: user.user_metadata?.image || null,
-            created_at: user.created_at || null,
-            updated_at: user.updated_at || null
+            department: user.department || null,
+            image: user.image || null,
+            created_at: user.createdAt || null,
+            updated_at: user.updatedAt || null,
+            last_login_at: user.lastLoginAt || null,
         };
     }
 };

@@ -1,5 +1,4 @@
 import { pgTable, uuid, text, integer, jsonb, boolean, timestamp } from "drizzle-orm/pg-core";
-import { authUsers } from "./auth-users.schema";
 
 export const roles = pgTable("roles", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -10,5 +9,5 @@ export const roles = pgTable("roles", {
     isSystem: boolean("is_system").notNull().default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
-    createdBy: uuid("created_by").references(() => authUsers.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by"),
 });
