@@ -49,6 +49,7 @@ export class EmailService {
     }
 
     async sendEmail(payload: SendEmailPayload): Promise<EmailResponse> {
+        const backendEndpoint = this.getBackendUrl('/email/send');
         try {
             if (!payload.to) {
                 throw new Error('Recipient (to) is required');
@@ -88,7 +89,6 @@ export class EmailService {
             }));
 
             // Call Email Backend Service (BullMQ / SES / Redis)
-            const backendEndpoint = this.getBackendUrl('/email/send');
             const response = await axios.post(
                 backendEndpoint,
                 {
@@ -126,7 +126,10 @@ export class EmailService {
                 response: 'Email dispatched via Email Backend Service',
             };
         } catch (error: any) {
-            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to send email via Email Backend Service';
+            let errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to send email via Email Backend Service';
+            if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || errorMsg === 'fetch failed') {
+                errorMsg = `Email backend service unreachable at ${backendEndpoint}. Please check if the email backend service (port 5013) is running or update EMAIL_BACKEND_URL in .env.`;
+            }
             console.error('[EmailService] Send email error:', errorMsg);
 
             return {
