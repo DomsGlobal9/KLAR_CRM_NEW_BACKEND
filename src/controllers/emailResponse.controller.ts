@@ -213,7 +213,7 @@ export const emailResponseController = {
 
     async getEmailById(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const data = await emailResponseService.getEmailById(id);
             if (!data) {
                 return res.status(404).json({
