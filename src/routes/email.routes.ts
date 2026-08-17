@@ -18,6 +18,7 @@ router.get('/email/all', authenticate, emailResponseController.getAllEmails);
  * @desc    Health check for email service
  * @access  Public
  */
+router.get('/health', emailController.healthCheck.bind(emailController));
 router.get('/email/health', emailController.healthCheck.bind(emailController));
 
 /**
@@ -25,6 +26,7 @@ router.get('/email/health', emailController.healthCheck.bind(emailController));
  * @desc    Get email service status
  * @access  Public
  */
+router.get('/status', emailController.getServiceStatus.bind(emailController));
 router.get('/email/status', emailController.getServiceStatus.bind(emailController));
 
 /**
@@ -33,6 +35,7 @@ router.get('/email/status', emailController.getServiceStatus.bind(emailControlle
  * @access  Public
  * @body    {SendEmailPayload}
  */
+router.post('/send', emailController.sendEmail.bind(emailController));
 router.post('/email/send', emailController.sendEmail.bind(emailController));
 
 /**
@@ -41,6 +44,7 @@ router.post('/email/send', emailController.sendEmail.bind(emailController));
  * @access  Public
  * @body    {BulkEmailPayload}
  */
+router.post('/send-bulk', emailController.sendBulkEmails.bind(emailController));
 router.post('/email/send-bulk', emailController.sendBulkEmails.bind(emailController));
 
 /**
@@ -49,6 +53,7 @@ router.post('/email/send-bulk', emailController.sendBulkEmails.bind(emailControl
  * @access  Public
  * @body    {to?: string}
  */
+router.post('/send-test', emailController.sendTestEmail.bind(emailController));
 router.post('/email/send-test', emailController.sendTestEmail.bind(emailController));
 
 /**
@@ -57,6 +62,7 @@ router.post('/email/send-test', emailController.sendTestEmail.bind(emailControll
  * @access  Public
  * @body    {emails: string | string[]}
  */
+router.post('/validate', emailController.validateEmails.bind(emailController));
 router.post('/email/validate', emailController.validateEmails.bind(emailController));
 
 /**
