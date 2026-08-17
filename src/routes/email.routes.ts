@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import { emailController } from '../controllers/email.controller';
+import { emailResponseController } from '../controllers/emailResponse.controller';
+import { authenticate } from '../middleware';
 
 const router = Router();
+
+/**
+ * @route   GET /api/email/all
+ * @desc    Get all emails from Supabase database
+ * @access  Private
+ */
+router.get('/all', authenticate, emailResponseController.getAllEmails);
+router.get('/email/all', authenticate, emailResponseController.getAllEmails);
 
 /**
  * @route   GET /api/email/health
