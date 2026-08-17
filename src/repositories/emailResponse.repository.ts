@@ -348,5 +348,37 @@ export const emailResponseRepository = {
             outgoing,
             lastMessageAt,
         };
+    },
+
+    async getEmailById(id: string): Promise<EmailMessage | null> {
+        let { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (!data) {
+            const { data: byTrack } = await supabaseAdmin
+                .from('email_messages')
+                .select('*')
+                .eq('tracking_id', id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            data = byTrack;
+        }
+
+        if (!data) {
+            const { data: byMsg } = await supabaseAdmin
+                .from('email_messages')
+                .select('*')
+                .eq('message_id', id)
+                .maybeSingle();
+            data = byMsg;
+        }
+
+        if (error || !data) return null;
+        const formatted = await formatMessagesWithUserLookup([data]);
+        return formatted[0] || null;
     }
 };

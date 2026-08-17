@@ -210,4 +210,27 @@ export const emailResponseController = {
             });
         }
     },
+
+    async getEmailById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const data = await emailResponseService.getEmailById(id);
+            if (!data) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Email not found',
+                });
+            }
+            res.json({
+                success: true,
+                message: 'Email fetched successfully',
+                data,
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    },
 };

@@ -36,4 +36,9 @@ router.get('/lead/:leadId', authenticate, emailResponseController.getEmailsByLea
  */
 router.get('/replies/unread', authenticate, emailResponseController.getRecentReplies);
 
+/**
+ * Get single email by ID
+ */
+router.get('/:id', authenticate, emailResponseController.getEmailById);
+
 export default router;

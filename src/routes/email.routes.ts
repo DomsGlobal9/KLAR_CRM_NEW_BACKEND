@@ -59,4 +59,11 @@ router.post('/email/send-test', emailController.sendTestEmail.bind(emailControll
  */
 router.post('/email/validate', emailController.validateEmails.bind(emailController));
 
+/**
+ * @route   GET /api/email/:id
+ * @desc    Get email by ID
+ * @access  Private
+ */
+router.get('/:id', authenticate, emailResponseController.getEmailById);
+
 export default router;

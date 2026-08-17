@@ -155,4 +155,7 @@ export const emailResponseService = {
         };
     },
 
+    async getEmailById(id: string) {
+        return await emailResponseRepository.getEmailById(id);
+    }
 };
