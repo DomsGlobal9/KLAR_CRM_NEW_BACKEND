@@ -180,6 +180,27 @@ export const emailMessageRepository = {
         return data;
     },
 
+    async getLatestMessageByEmail(email: string) {
+        if (!email) return null;
+        let clean = email;
+        if (clean.includes('<') && clean.includes('>')) {
+            const match = clean.match(/<([^>]+)>/);
+            if (match) clean = match[1];
+        }
+        clean = clean.toLowerCase().trim();
+
+        const { data, error } = await supabaseAdmin
+            .from('email_messages')
+            .select('*')
+            .or(`from_email.ilike.%${clean}%,to_email.cs.{"${clean}"}`)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) return null;
+        return data;
+    },
+
     async getThreadByTrackingId(trackingId: string) {
         const { data, error } = await supabaseAdmin
             .from('email_messages')

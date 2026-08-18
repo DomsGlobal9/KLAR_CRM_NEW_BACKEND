@@ -294,11 +294,20 @@ export class EmailReaderService {
                 }
 
                 if (!trackingId) {
+                    try {
+                        const existingMsg = await emailMessageRepository.getLatestMessageByEmail(from);
+                        if (existingMsg && existingMsg.tracking_id) {
+                            trackingId = existingMsg.tracking_id;
+                            parentTrackingId = existingMsg.tracking_id;
+                            if (existingMsg.lead_id && !leadId) {
+                                leadId = existingMsg.lead_id;
+                            }
+                        }
+                    } catch (e) { }
+                }
 
+                if (!trackingId) {
                     trackingId = uuidv4();
-
-
-
                     parentTrackingId = null;
                 }
 

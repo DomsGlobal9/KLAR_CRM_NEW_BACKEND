@@ -301,14 +301,114 @@ export const emailResponseRepository = {
         messages: EmailMessage[];
         total: number;
     }> {
-        const { data, error, count } = await supabaseAdmin
-            .from('email_messages')
-            .select('*', { count: 'exact', head: false })
-            .eq('tracking_id', trackingId)
-            .order('created_at', { ascending: true });
+        try {
+            // Step 1: Find reference message(s) by tracking_id or id
+            const { data: refData } = await supabaseAdmin
+                .from('email_messages')
+                .select('*')
+                .or(`tracking_id.eq.${trackingId},id.eq.${trackingId}`);
 
-        if (error) throw error;
-        return { messages: data as EmailMessage[], total: count || 0 };
+            const refMessages = refData || [];
+
+            const leadIds = new Set<string>();
+            const trackingIds = new Set<string>([trackingId]);
+            const customerEmails = new Set<string>();
+
+            refMessages.forEach(msg => {
+                if (msg.lead_id) leadIds.add(msg.lead_id);
+                if (msg.tracking_id) trackingIds.add(msg.tracking_id);
+                if (msg.parent_tracking_id) trackingIds.add(msg.parent_tracking_id);
+
+                const extractCleanEmail = (str: string) => {
+                    if (!str) return '';
+                    const match = str.match(/<([^>]+)>/);
+                    const e = match ? match[1] : str;
+                    return e.toLowerCase().trim();
+                };
+
+                if (msg.direction === 'incoming' && msg.from_email) {
+                    const clean = extractCleanEmail(msg.from_email);
+                    if (clean) customerEmails.add(clean);
+                } else if (msg.direction === 'outgoing' && msg.to_email) {
+                    const toArr = Array.isArray(msg.to_email) ? msg.to_email : [msg.to_email];
+                    toArr.forEach((e: string) => {
+                        const clean = extractCleanEmail(e);
+                        if (clean) customerEmails.add(clean);
+                    });
+                }
+            });
+
+            let candidateMessages: EmailMessage[] = [];
+
+            // Query by lead_id if available
+            if (leadIds.size > 0) {
+                const { data: leadMsgs } = await supabaseAdmin
+                    .from('email_messages')
+                    .select('*')
+                    .in('lead_id', Array.from(leadIds))
+                    .order('created_at', { ascending: true });
+                if (leadMsgs) candidateMessages.push(...(leadMsgs as EmailMessage[]));
+            }
+
+            // Query by tracking_id or parent_tracking_id
+            if (trackingIds.size > 0) {
+                const { data: trackMsgs } = await supabaseAdmin
+                    .from('email_messages')
+                    .select('*')
+                    .or(`tracking_id.in.(${Array.from(trackingIds).join(',')}),parent_tracking_id.in.(${Array.from(trackingIds).join(',')})`)
+                    .order('created_at', { ascending: true });
+                if (trackMsgs) candidateMessages.push(...(trackMsgs as EmailMessage[]));
+            }
+
+            // Query by customer email if available
+            if (customerEmails.size > 0) {
+                for (const email of Array.from(customerEmails)) {
+                    const { data: emailMsgs } = await supabaseAdmin
+                        .from('email_messages')
+                        .select('*')
+                        .or(`from_email.ilike.%${email}%,to_email.cs.{"${email}"}`)
+                        .order('created_at', { ascending: true });
+                    if (emailMsgs) candidateMessages.push(...(emailMsgs as EmailMessage[]));
+                }
+            }
+
+            // Fallback: If no reference messages were found initially, do simple eq query
+            if (candidateMessages.length === 0) {
+                const { data: fallbackData } = await supabaseAdmin
+                    .from('email_messages')
+                    .select('*')
+                    .eq('tracking_id', trackingId)
+                    .order('created_at', { ascending: true });
+                candidateMessages = (fallbackData as EmailMessage[]) || [];
+            }
+
+            // Deduplicate by ID
+            const msgMap = new Map<string, EmailMessage>();
+            candidateMessages.forEach(msg => {
+                if (msg && msg.id && !msgMap.has(msg.id)) {
+                    msgMap.set(msg.id, msg);
+                }
+            });
+
+            // Sort chronologically (oldest -> newest)
+            const allMessages = Array.from(msgMap.values()).sort((a, b) => {
+                const dateA = new Date(a.created_at || 0).getTime();
+                const dateB = new Date(b.created_at || 0).getTime();
+                return dateA - dateB;
+            });
+
+            const formatted = await formatMessagesWithUserLookup(allMessages);
+            return { messages: formatted, total: formatted.length };
+        } catch (err) {
+            // Fallback in case of unexpected query errors
+            const { data, count } = await supabaseAdmin
+                .from('email_messages')
+                .select('*', { count: 'exact', head: false })
+                .eq('tracking_id', trackingId)
+                .order('created_at', { ascending: true });
+            const formatted = await formatMessagesWithUserLookup(data || []);
+            return { messages: formatted, total: count || 0 };
+        }
     },
 
     async getLatestEmailByTrackingId(trackingId: string): Promise<EmailMessage | null> {

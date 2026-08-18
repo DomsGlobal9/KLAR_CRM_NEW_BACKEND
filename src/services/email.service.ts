@@ -70,7 +70,18 @@ export class EmailService {
             const uniqueCc = processRecipients(payload.cc);
             const uniqueBcc = processRecipients(payload.bcc);
 
-            const trackingId = payload.trackingId || uuidv4();
+            let trackingId = payload.trackingId;
+            if (!trackingId && uniqueTo.length > 0) {
+                try {
+                    const existingMsg = await emailMessageRepository.getLatestMessageByEmail(uniqueTo[0]);
+                    if (existingMsg && existingMsg.tracking_id) {
+                        trackingId = existingMsg.tracking_id;
+                    }
+                } catch (e) { }
+            }
+            if (!trackingId) {
+                trackingId = uuidv4();
+            }
 
             let finalSubject = payload.subject;
             if (!payload.isOtp) {
