@@ -211,11 +211,14 @@ export const travelerService = {
             if (existingGroupId) {
                 groupId = existingGroupId;
             } else {
-                // Create new group
-                groupId = await travelerRepository.findOrCreateGroup(
+                // Create new group only if another traveler shares same email/phone
+                const createdGroupId = await travelerRepository.findOrCreateGroup(
                     payload.travelerEmail,
                     payload.travelerPhone
                 );
+                if (createdGroupId) {
+                    groupId = createdGroupId;
+                }
             }
         }
 

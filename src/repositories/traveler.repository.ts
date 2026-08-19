@@ -75,13 +75,8 @@ export const travelerRepository = {
             insertData.aadhaar_number = payload.passport.aadhaarNumber;
         }
 
-        // Set group_id
-        if (payload.group_id) {
-            insertData.group_id = payload.group_id;
-        } else {
-            // This should be handled in service before calling repository
-            throw new Error('group_id is required');
-        }
+        // Set group_id (null for single users; assigned when multiple travelers share email/phone)
+        insertData.group_id = payload.group_id || null;
 
 
         const { data, error } = await supabaseAdmin
